@@ -1,0 +1,168 @@
+:root {
+  color-scheme: dark;
+  --bg: #04050a;
+  --panel: rgba(9, 13, 24, 0.42);
+  --line: rgba(191, 244, 255, 0.28);
+  --glow-cyan: #3df6ff;
+  --glow-magenta: #ff4fd8;
+  --glow-gold: #ffcf59;
+  --glow-lime: #b4ff5e;
+  --text-soft: rgba(232, 245, 255, 0.82);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+body {
+  min-height: 100vh;
+}
+
+.experience-body {
+  position: relative;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: var(--text-soft);
+  user-select: none;
+  touch-action: none;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.minimal-hud {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  gap: 10px;
+  z-index: 30;
+}
+
+.icon-button {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+    0 0 24px rgba(61, 246, 255, 0.08);
+  cursor: pointer;
+}
+
+.icon-button::before,
+.icon-button::after,
+.icon {
+  content: "";
+  position: absolute;
+  display: block;
+}
+
+.icon-sound {
+  width: 12px;
+  height: 12px;
+  border: 2px solid transparent;
+  border-left-color: var(--glow-cyan);
+  border-top-color: var(--glow-cyan);
+  border-bottom-color: var(--glow-cyan);
+  transform: skewX(-8deg);
+}
+
+.icon-sound::before {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: -1px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--glow-cyan);
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0 10px 10px 0;
+}
+
+.icon-reset {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--glow-magenta);
+  border-right-color: transparent;
+  border-radius: 50%;
+  transform: rotate(-20deg);
+}
+
+.icon-reset::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-top: 2px solid var(--glow-magenta);
+  border-right: 2px solid var(--glow-magenta);
+  transform: rotate(18deg);
+}
+
+.icon-fullscreen {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-fullscreen::before,
+.icon-fullscreen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--glow-gold), var(--glow-gold)) left top / 6px 2px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) left top / 2px 6px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) right top / 6px 2px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) right top / 2px 6px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) left bottom / 6px 2px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) left bottom / 2px 6px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) right bottom / 6px 2px no-repeat,
+    linear-gradient(var(--glow-gold), var(--glow-gold)) right bottom / 2px 6px no-repeat;
+}
+
+.icon-button:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 0 28px rgba(61, 246, 255, 0.16);
+}
+
+.pointer-hint {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.pointer-ring {
+  position: absolute;
+  left: var(--pointer-x, 50%);
+  top: var(--pointer-y, 50%);
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.35;
+}

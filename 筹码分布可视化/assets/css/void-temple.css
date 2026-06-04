@@ -1,0 +1,22 @@
+body.temple-page {
+  background:
+    radial-gradient(circle at 50% 55%, rgba(73, 168, 255, 0.12), transparent 25%),
+    radial-gradient(circle at 20% 20%, rgba(255, 79, 216, 0.08), transparent 24%),
+    radial-gradient(circle at 75% 18%, rgba(255, 207, 89, 0.08), transparent 22%),
+    #05060d;
+}
+
+body.temple-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, transparent 42%, rgba(4, 5, 10, 0.42) 72%, rgba(4, 5, 10, 0.94) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+#temple-canvas {
+  position: relative;
+  z-index: 2;
+}
