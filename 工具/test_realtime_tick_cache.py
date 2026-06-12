@@ -137,6 +137,50 @@ class RealtimeTickCacheTest(unittest.TestCase):
         self.assertEqual(upsert.call_args.kwargs["write_snapshots"], True)
         self.assertEqual(upsert.call_args.kwargs["write_latest"], False)
 
+    def test_snapshot_flush_worker_keeps_only_latest_row_per_stock(self) -> None:
+        worker = realtime_cache.SnapshotFlushWorker(
+            Path("dummy.sqlite"),
+            flush_interval_seconds=60.0,
+        )
+
+        worker.enqueue(
+            [
+                {
+                    "htsc_code": "600000.SH",
+                    "ts": "2026-06-12 09:30:03",
+                    "last_price": 9.57,
+                },
+                {
+                    "htsc_code": "600001.SH",
+                    "ts": "2026-06-12 09:30:03",
+                    "last_price": 8.01,
+                },
+            ]
+        )
+        worker.enqueue(
+            [
+                {
+                    "htsc_code": "600000.SH",
+                    "ts": "2026-06-12 09:30:06",
+                    "last_price": 9.59,
+                }
+            ]
+        )
+
+        self.assertEqual(worker.pending_count(), 2)
+        with patch.object(
+            realtime_cache,
+            "upsert_tick_snapshots",
+            return_value=(2, {"snapshot_sec": 0.1, "latest_sec": 0.0, "commit_sec": 0.2}),
+        ) as upsert:
+            worker.flush_once()
+
+        rows = list(upsert.call_args.args[1])
+        self.assertEqual(len(rows), 2)
+        latest_600000 = [row for row in rows if row["htsc_code"] == "600000.SH"][0]
+        self.assertEqual(latest_600000["ts"], "2026-06-12 09:30:06")
+        self.assertEqual(latest_600000["last_price"], 9.59)
+
     def test_write_tick_batch_can_enqueue_snapshots_without_waiting_for_flush(self) -> None:
         tick_data = {
             "600000.SH": {

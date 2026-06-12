@@ -178,16 +178,35 @@ def load_xtquant_sector_universe(sector_name: str) -> list[str]:
     return sorted({normalize_code(code) for code in stock_list if str(code).strip()})
 
 
+def load_xtquant_instrument_meta(code: str) -> dict[str, str]:
+    """读取 xtquant 单只股票名称等基础字段；失败时返回空字段。"""
+    normalized = normalize_code(code)
+    exchange = normalized.split(".")[-1] if "." in normalized else ""
+    try:
+        detail = xtdata.get_instrument_detail(normalized) or {}
+    except Exception as exc:
+        print(f"[WARN] 获取股票名称失败: {normalized} | {exc}")
+        detail = {}
+    name = str(detail.get("InstrumentName") or detail.get("Name") or "").strip()
+    exchange = str(detail.get("ExchangeID") or exchange).strip().upper()
+    return {
+        "name": name,
+        "exchange": exchange,
+    }
+
+
 def build_universe_df(codes: list[str]) -> pd.DataFrame:
     rows = []
     for code in sorted({normalize_code(code) for code in codes}):
+        meta = load_xtquant_instrument_meta(code)
+        name = meta["name"]
         rows.append(
             {
                 "htsc_code": code,
-                "name": "",
-                "pinyin_initials": "",
+                "name": name,
+                "pinyin_initials": name_to_pinyin_initials(name),
                 "listing_state": "",
-                "exchange": code.split(".")[-1] if "." in code else "",
+                "exchange": meta["exchange"],
             }
         )
     return pd.DataFrame(rows)
@@ -356,6 +375,8 @@ def _normalize_xtquant_daily_dataframe(raw_df: pd.DataFrame, code: str) -> pd.Da
         raise ValueError(f"xtquant 返回缺少必要列: {missing_columns}")
     if "amount" not in df.columns:
         df["amount"] = pd.NA
+    if "pvolume" not in df.columns:
+        df["pvolume"] = pd.NA
 
     raw_time = df["time"]
     if pd.api.types.is_numeric_dtype(raw_time):
@@ -381,8 +402,9 @@ def _normalize_xtquant_daily_dataframe(raw_df: pd.DataFrame, code: str) -> pd.Da
     df["value"] = pd.to_numeric(df["amount"], errors="coerce")
     df["security_type"] = ""
     df["exchange"] = ""
-    for column in ["open", "high", "low", "close", "volume", "value"]:
+    for column in ["open", "high", "low", "close", "volume", "pvolume", "value"]:
         df[column] = pd.to_numeric(df[column], errors="coerce")
+    df["volume"] = df["pvolume"].fillna(df["volume"] * 100)
 
     ordered_columns = [
         "htsc_code",

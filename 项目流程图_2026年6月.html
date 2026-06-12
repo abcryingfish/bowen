@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026年6月项目流程图</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      color: #162033;
+      background: #f5f7fb;
+    }
+
+    .page {
+      width: 920px;
+      min-height: 720px;
+      margin: 0 auto;
+      padding: 42px 52px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 247, 251, 0.98)),
+        #f5f7fb;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 34px;
+      border-bottom: 2px solid #dce4f2;
+      padding-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.18;
+      font-weight: 700;
+      letter-spacing: 0;
+      color: #10213d;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      font-size: 16px;
+      color: #5d6b82;
+    }
+
+    .range {
+      min-width: 230px;
+      padding: 10px 14px;
+      border: 1px solid #d4ddec;
+      border-radius: 8px;
+      background: #ffffff;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 700;
+      color: #24476f;
+    }
+
+    .timeline {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 34px;
+      align-items: center;
+      padding: 26px 0 10px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 28px;
+      bottom: 24px;
+      width: 4px;
+      height: auto;
+      background: #7ba7d7;
+      border-radius: 999px;
+      transform: translateX(-50%);
+    }
+
+    .step {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 720px;
+      min-height: 0;
+      padding: 24px 28px 24px 82px;
+      border: 1px solid #d7e0ed;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 30px rgba(26, 43, 73, 0.08);
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      top: 34px;
+      left: 0;
+      width: 30px;
+      height: 30px;
+      border: 5px solid #ffffff;
+      border-radius: 50%;
+      background: #2e74b5;
+      box-shadow: 0 0 0 3px #7ba7d7;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    .step:not(:last-child)::after {
+      content: "⌄";
+      position: absolute;
+      left: -17px;
+      bottom: -28px;
+      z-index: 3;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #2e74b5;
+      color: #ffffff;
+      text-align: center;
+      line-height: 28px;
+      font-size: 30px;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+    }
+
+    .date {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 40px;
+      margin-bottom: 15px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #eaf2fb;
+      color: #174a7c;
+      font-size: 17px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      color: #10213d;
+      font-size: 22px;
+      line-height: 1.25;
+      text-align: left;
+      letter-spacing: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+      margin: 0 0 10px;
+      padding-left: 22px;
+      color: #26364d;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    li::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 9px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2e74b5;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-self: flex-start;
+      margin-top: 8px;
+      padding: 7px 13px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #526175;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        width: 100%;
+        min-height: auto;
+        padding: 24px;
+      }
+
+      .step {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <section class="header">
+      <div>
+        <h1>项目推进流程图</h1>
+        <p class="subtitle">一切为预期安排，实际以实际情况为准</p>
+      </div>
+      <div class="range">2026年6月8日 - 6月28日</div>
+    </section>
+
+    <section class="timeline" aria-label="项目流程时间线">
+      <article class="step">
+        <div class="date">2026年6月8日 - 2026年6月14日</div>
+        <h2>测试与数据基础准备</h2>
+        <ul>
+          <li>简单测试，验证基础流程可跑通。</li>
+          <li>找了16年的分钟数据。</li>
+          <li>数据接口从 Insight 转 qmt，包含部分市值类分钟数据。</li>
+          <li>研究分时价差逻辑，后续有空切分与处理数据。</li>
+          <li>处理数据一致性问题。</li>
+          <li>日内增量信息存入 SQLite。</li>
+          <li>处理日内数据合并与前端显示问题。</li>
+        </ul>
+        <span class="tag">阶段一：数据底座</span>
+      </article>
+
+      <article class="step">
+        <div class="date">2026年6月15日 - 2026年6月21日</div>
+        <h2>实盘与回测算法隔离</h2>
+        <ul>
+          <li>隔离实盘与回测算法。</li>
+          <li>确认实盘出的信号是否需要多一份备份。</li>
+          <li>优化实盘交易信号算法。</li>
+          <li>设计预实盘数据读取方案。</li>
+          <li>设计实盘操作界面。</li>
+          <li>优化机器出信号时的主观判断效率。</li>
+        </ul>
+        <span class="tag">阶段二：交易链路</span>
+      </article>
+
+      <article class="step">
+        <div class="date">2026年6月22日 - 2026年6月28日</div>
+        <h2>前后端联调与模拟实盘</h2>
+        <ul>
+          <li>出页面，整理页面开发中需要考虑的事项。</li>
+          <li>确认前端发送信号和后端数据一致性。</li>
+          <li>设置一定风控，避免误操作。</li>
+          <li>模拟实盘，验证完整操作流程。</li>
+        </ul>
+        <span class="tag">阶段三：落地验证</span>
+      </article>
+    </section>
+  </main>
+</body>
+
+</html>

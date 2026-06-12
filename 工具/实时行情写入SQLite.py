@@ -28,13 +28,14 @@ if hasattr(sys.stderr, "reconfigure"):
 
 DEFAULT_SECTOR_NAME = "沪深A股"
 DEFAULT_INTERVAL_SECONDS = 3.0
+DEFAULT_SNAPSHOT_INTERVAL_SECONDS = 60.0
 
 
 class SnapshotFlushWorker:
     def __init__(self, db_path: Path, flush_interval_seconds: float) -> None:
         self.db_path = db_path
         self.flush_interval_seconds = max(float(flush_interval_seconds), 0.1)
-        self._rows: list[dict[str, Any]] = []
+        self._rows_by_code: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._wake_event = threading.Event()
@@ -58,17 +59,23 @@ class SnapshotFlushWorker:
         if not rows:
             return
         with self._lock:
-            self._rows.extend(dict(row) for row in rows)
+            for row in rows:
+                row_copy = dict(row)
+                code = normalize_code(row_copy.get("htsc_code") or row_copy.get("code"))
+                if not code:
+                    continue
+                row_copy["htsc_code"] = code
+                self._rows_by_code[code] = row_copy
         self._wake_event.set()
 
     def pending_count(self) -> int:
         with self._lock:
-            return len(self._rows)
+            return len(self._rows_by_code)
 
     def flush_once(self) -> int:
         with self._lock:
-            rows = self._rows
-            self._rows = []
+            rows = list(self._rows_by_code.values())
+            self._rows_by_code = {}
         if not rows:
             return 0
         start = time.perf_counter()
@@ -98,7 +105,10 @@ class SnapshotFlushWorker:
             return int(written)
         except Exception as exc:
             with self._lock:
-                self._rows = rows + self._rows
+                for row in rows:
+                    code = normalize_code(row.get("htsc_code") or row.get("code"))
+                    if code and code not in self._rows_by_code:
+                        self._rows_by_code[code] = row
             print(f"[WARN] 后台快照落盘失败: {exc}")
             return 0
 
@@ -274,7 +284,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sector-name", default=DEFAULT_SECTOR_NAME, help="xtquant 板块名，默认 沪深A股")
     parser.add_argument("--db-path", default="", help="SQLite 路径，默认 D:\\database\\temp_today_data\\market_cache_YYYY-MM-DD.sqlite")
     parser.add_argument("--interval-sec", type=float, default=DEFAULT_INTERVAL_SECONDS, help="轮询间隔秒数，默认 3")
-    parser.add_argument("--snapshot-interval-sec", type=float, default=15.0, help="tick_snapshot 写入间隔秒数；0 表示每轮都写，默认 15")
+    parser.add_argument(
+        "--snapshot-interval-sec",
+        type=float,
+        default=DEFAULT_SNAPSHOT_INTERVAL_SECONDS,
+        help="tick_snapshot 抽样写入间隔秒数；默认 60，只保留每只股票最新快照后批量落盘",
+    )
     parser.add_argument("--once", action="store_true", help="只获取并写入一轮，用于测试")
     parser.add_argument("--codes", nargs="*", default=None, help="手动指定股票代码；不传则取 xtquant 板块 沪深A股")
     return parser.parse_args()

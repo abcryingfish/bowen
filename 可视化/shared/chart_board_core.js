@@ -236,7 +236,7 @@ if (PAGE_BOOT.allowYkrsCurve) {
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
-const AUTO_REFRESH_SECONDS = 30;
+const AUTO_REFRESH_SECONDS = 4;
 /** 时间轴左右拖动不超出首末 K 线，中间无数据区间仍可见。 */
 const TIME_SCALE_DATA_CLAMP = {
     fixLeftEdge: true,
@@ -373,6 +373,16 @@ let tvDayMinuteChart = null;
 let tvDayMinuteCandleSeries = null;
 let tvDayMinutePercentSeries = null;
 let tvDayMinuteVolumeSeries = null;
+let tvDayMinuteRefreshTimer = null;
+let tvDayMinuteRefreshToken = 0;
+let tvDayMinuteActiveRequest = false;
+let tvDayMinuteModalState = null;
+let tvDayMinuteBarsCache = [];
+let tvDayMinuteKeyboardIndex = -1;
+let tvDayMinuteMouseIndex = -1;
+let tvDayMinuteMouseVersion = 0;
+let tvDayMinuteKeyboardMouseVersion = -1;
+let tvDayMinuteApplyingKeyboardCrosshair = false;
 const SIGNAL_SLOT_BINDINGS_KEY = "SIGNAL_SLOT_BINDINGS_V1";
 const SIGNAL_SLOT_SERIES_COLORS = Object.freeze({
     strong_buy: "#ef5350",
@@ -726,6 +736,12 @@ function resetTvDayMinuteChart() {
     tvDayMinuteCandleSeries = null;
     tvDayMinutePercentSeries = null;
     tvDayMinuteVolumeSeries = null;
+    tvDayMinuteBarsCache = [];
+    tvDayMinuteKeyboardIndex = -1;
+    tvDayMinuteMouseIndex = -1;
+    tvDayMinuteMouseVersion = 0;
+    tvDayMinuteKeyboardMouseVersion = -1;
+    tvDayMinuteApplyingKeyboardCrosshair = false;
     const chartEl = document.getElementById("tv-day-minute-chart");
     if (chartEl) {
         chartEl.innerHTML = "";
@@ -753,37 +769,6 @@ async function fetchTvDayMinuteBars(code, dayTs) {
     return Array.isArray(body.bars) ? body.bars : [];
 }
 
-async function fetchPrevDailyCloseUnadjusted(code, dayTs) {
-    const dayStartTs = alignToCurrentInterval(dayTs);
-    if (!Number.isFinite(dayStartTs)) {
-        return NaN;
-    }
-    const params = new URLSearchParams({
-        code,
-        interval: "1day",
-        adjust: "none",
-        from: String(dayStartTs - 15 * 24 * 60 * 60),
-        to: String(dayStartTs),
-        limit: "32"
-    });
-    const url = `${API_BASE_URL}/api/market/bars?${params.toString()}`;
-    const resp = await fetch(url, { method: "GET", cache: "no-store" });
-    const body = await resp.json();
-    if (!resp.ok) {
-        const message = body && body.error && body.error.message ? body.error.message : "前收查询失败";
-        throw new Error(message);
-    }
-    const dailyBars = Array.isArray(body.bars) ? body.bars : [];
-    for (let i = dailyBars.length - 1; i >= 0; i -= 1) {
-        const item = dailyBars[i];
-        const itemTs = Number(item && item.time);
-        if (Number.isFinite(itemTs) && itemTs < dayStartTs) {
-            return Number(item && item.close);
-        }
-    }
-    return NaN;
-}
-
 function formatTvDayTitleDate(dayTs) {
     const dt = new Date(Number(dayTs) * 1000);
     if (Number.isNaN(dt.getTime())) {
@@ -793,6 +778,24 @@ function formatTvDayTitleDate(dayTs) {
     const m = String(dt.getUTCMonth() + 1).padStart(2, "0");
     const d = String(dt.getUTCDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
+}
+
+function formatTvDayMinuteCrosshairTimeLabel(time) {
+    let dt = null;
+    if (typeof time === "number") {
+        dt = new Date(time * 1000);
+    } else if (time && typeof time === "object" && "timestamp" in time) {
+        dt = new Date(Number(time.timestamp) * 1000);
+    } else if (time && typeof time === "object" && "year" in time && "month" in time && "day" in time) {
+        dt = new Date(Date.UTC(Number(time.year), Number(time.month) - 1, Number(time.day), 0, 0, 0));
+    }
+    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) {
+        return "--";
+    }
+    const hour24 = dt.getUTCHours();
+    const hh = String(hour24 % 12 || 12).padStart(2, "0");
+    const mm = String(dt.getUTCMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
 }
 
 function renderTvDayMinuteChart(bars, prevClose = NaN) {
@@ -806,8 +809,8 @@ function renderTvDayMinuteChart(bars, prevClose = NaN) {
         grid: { vertLines: { color: "#2b2b2b" }, horzLines: { color: "#2b2b2b" } },
         leftPriceScale: { visible: true, borderColor: "#2b2b2b", minimumWidth: RIGHT_PRICE_SCALE_MIN_WIDTH_PX },
         rightPriceScale: { visible: true, borderColor: "#2b2b2b", minimumWidth: RIGHT_PRICE_SCALE_MIN_WIDTH_PX },
-        localization: { timeFormatter: formatXAxisTimeLabel },
-        timeScale: { timeVisible: true, secondsVisible: false, borderColor: "#2b2b2b" },
+        localization: { timeFormatter: formatTvDayMinuteCrosshairTimeLabel },
+        timeScale: { timeVisible: true, secondsVisible: true, borderColor: "#2b2b2b" },
         crosshair: {
             horzLine: { labelBackgroundColor: "#3b82f6" },
             vertLine: { labelBackgroundColor: "#3b82f6" }
@@ -850,10 +853,52 @@ function renderTvDayMinuteChart(bars, prevClose = NaN) {
         scaleMargins: { top: 0.82, bottom: 0 },
         visible: false
     });
+    tvDayMinuteChart.subscribeCrosshairMove((param) => {
+        if (tvDayMinuteApplyingKeyboardCrosshair) {
+            return;
+        }
+        const index = findTvDayMinuteBarIndexByTime(param && param.time);
+        if (index < 0) {
+            return;
+        }
+        tvDayMinuteMouseIndex = index;
+        tvDayMinuteMouseVersion += 1;
+        tvDayMinuteKeyboardMouseVersion = -1;
+    });
+    chartEl.addEventListener("mousemove", (event) => {
+        if (!tvDayMinuteChart || !tvDayMinuteBarsCache.length) {
+            return;
+        }
+        const bounds = chartEl.getBoundingClientRect();
+        const x = event.clientX - bounds.left;
+        const timeValue = tvDayMinuteChart.timeScale().coordinateToTime(x);
+        const index = findTvDayMinuteBarIndexByTime(timeValue);
+        if (index < 0 || index === tvDayMinuteMouseIndex) {
+            return;
+        }
+        tvDayMinuteMouseIndex = index;
+        tvDayMinuteMouseVersion += 1;
+        tvDayMinuteKeyboardMouseVersion = -1;
+    });
+    updateTvDayMinuteChartData(bars, prevClose, true);
+}
+
+function updateTvDayMinuteChartData(bars, prevClose = NaN, fitContent = false) {
+    if (!tvDayMinuteChart || !tvDayMinuteCandleSeries || !tvDayMinutePercentSeries || !tvDayMinuteVolumeSeries) {
+        renderTvDayMinuteChart(bars, prevClose);
+        return;
+    }
+    const previousTime = tvDayMinuteKeyboardIndex >= 0 && tvDayMinuteKeyboardIndex < tvDayMinuteBarsCache.length
+        ? Number(tvDayMinuteBarsCache[tvDayMinuteKeyboardIndex].time)
+        : NaN;
+    tvDayMinuteBarsCache = Array.isArray(bars) ? bars.slice() : [];
     const priceData = bars.map((item) => ({
         time: Number(item.time),
         value: Number(item.close)
     }));
+    if (!priceData.length) {
+        return;
+    }
     const prevClosePrice = Number(prevClose);
     const basePrice = Number.isFinite(prevClosePrice) && prevClosePrice !== 0
         ? prevClosePrice
@@ -888,25 +933,160 @@ function renderTvDayMinuteChart(bars, prevClose = NaN) {
     tvDayMinuteVolumeSeries.setData(bars.map((item) => ({
         time: Number(item.time),
         value: Number(item.volume || 0),
-        color: Number(item.close) >= Number(item.open) ? "rgba(239,83,80,0.5)" : "rgba(38,166,154,0.5)"
+        color: getAShareBarColor(item)
     })));
-    tvDayMinuteChart.timeScale().fitContent();
+    if (fitContent) {
+        tvDayMinuteChart.timeScale().fitContent();
+    }
+    if (Number.isFinite(previousTime)) {
+        const nextIndex = tvDayMinuteBarsCache.findIndex((item) => Number(item && item.time) === previousTime);
+        tvDayMinuteKeyboardIndex = nextIndex >= 0 ? nextIndex : Math.min(tvDayMinuteKeyboardIndex, tvDayMinuteBarsCache.length - 1);
+        applyTvDayMinuteKeyboardCrosshair();
+    }
 }
 
-async function loadTvDayMinuteChart(code, dayTs, prevClose = NaN) {
-    setTvDayMinuteStatus("加载分钟线...");
-    resetTvDayMinuteChart();
+function isTvDayMinuteModalVisible() {
+    const mask = document.getElementById("tv-day-modal-mask");
+    return Boolean(mask && mask.classList.contains("visible"));
+}
+
+function findTvDayMinuteBarIndexByTime(timeValue) {
+    if (!tvDayMinuteBarsCache.length) {
+        return -1;
+    }
+    const target = normalizeTimeToSeconds(timeValue);
+    if (!Number.isFinite(target)) {
+        return -1;
+    }
+    let bestIndex = -1;
+    let bestDistance = Infinity;
+    for (let i = 0; i < tvDayMinuteBarsCache.length; i += 1) {
+        const itemTime = Number(tvDayMinuteBarsCache[i] && tvDayMinuteBarsCache[i].time);
+        if (!Number.isFinite(itemTime)) {
+            continue;
+        }
+        const distance = Math.abs(itemTime - target);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = i;
+        }
+    }
+    return bestDistance <= 45 ? bestIndex : -1;
+}
+
+function applyTvDayMinuteKeyboardCrosshair() {
+    if (!tvDayMinuteChart || !tvDayMinuteCandleSeries || !tvDayMinuteBarsCache.length) {
+        return false;
+    }
+    if (tvDayMinuteKeyboardIndex < 0) {
+        tvDayMinuteKeyboardIndex = tvDayMinuteBarsCache.length - 1;
+    }
+    tvDayMinuteKeyboardIndex = Math.min(
+        Math.max(0, tvDayMinuteKeyboardIndex),
+        tvDayMinuteBarsCache.length - 1
+    );
+    const bar = tvDayMinuteBarsCache[tvDayMinuteKeyboardIndex];
+    const close = Number(bar && bar.close);
+    const time = Number(bar && bar.time);
+    if (!Number.isFinite(close) || !Number.isFinite(time) || typeof tvDayMinuteChart.setCrosshairPosition !== "function") {
+        return false;
+    }
+    tvDayMinuteApplyingKeyboardCrosshair = true;
+    try {
+        tvDayMinuteChart.setCrosshairPosition(close, time, tvDayMinuteCandleSeries);
+    } finally {
+        setTimeout(() => {
+            tvDayMinuteApplyingKeyboardCrosshair = false;
+        }, 0);
+    }
+    return true;
+}
+
+function moveTvDayMinuteKeyboardCrosshair(offset) {
+    if (!isTvDayMinuteModalVisible() || !tvDayMinuteBarsCache.length) {
+        return false;
+    }
+    if (
+        tvDayMinuteMouseIndex >= 0
+        && tvDayMinuteMouseIndex < tvDayMinuteBarsCache.length
+        && tvDayMinuteMouseVersion !== tvDayMinuteKeyboardMouseVersion
+    ) {
+        tvDayMinuteKeyboardIndex = tvDayMinuteMouseIndex + offset;
+        tvDayMinuteKeyboardMouseVersion = tvDayMinuteMouseVersion;
+    } else if (tvDayMinuteKeyboardIndex < 0) {
+        tvDayMinuteKeyboardIndex = tvDayMinuteBarsCache.length - 1;
+    } else {
+        tvDayMinuteKeyboardIndex += offset;
+    }
+    return applyTvDayMinuteKeyboardCrosshair();
+}
+
+async function loadTvDayMinuteChart(code, dayTs, prevClose = NaN, options = {}) {
+    const silent = options && options.silent === true;
+    const token = tvDayMinuteRefreshToken;
+    if (!silent) {
+        setTvDayMinuteStatus("加载分钟线...");
+        resetTvDayMinuteChart();
+    }
     try {
         const bars = await fetchTvDayMinuteBars(code, dayTs);
+        if (token !== tvDayMinuteRefreshToken) {
+            return;
+        }
         if (!bars.length) {
-            setTvDayMinuteStatus("当天暂无分钟线数据");
+            if (!silent) {
+                setTvDayMinuteStatus("当天暂无分钟线数据");
+            }
             return;
         }
         setTvDayMinuteStatus("", false);
-        renderTvDayMinuteChart(bars, prevClose);
+        if (silent) {
+            updateTvDayMinuteChartData(bars, prevClose);
+        } else {
+            renderTvDayMinuteChart(bars, prevClose);
+        }
     } catch (err) {
-        setTvDayMinuteStatus(err && err.message ? err.message : "分钟线加载失败");
+        if (token === tvDayMinuteRefreshToken) {
+            setTvDayMinuteStatus(err && err.message ? err.message : "分钟线加载失败");
+        }
     }
+}
+
+async function refreshTvDayMinuteModal() {
+    if (!tvDayMinuteModalState || tvDayMinuteActiveRequest) {
+        return;
+    }
+    const mask = document.getElementById("tv-day-modal-mask");
+    if (!mask || !mask.classList.contains("visible")) {
+        return;
+    }
+    tvDayMinuteActiveRequest = true;
+    try {
+        await loadTvDayMinuteChart(
+            tvDayMinuteModalState.code,
+            tvDayMinuteModalState.dayTs,
+            tvDayMinuteModalState.prevClose,
+            { silent: true }
+        );
+    } finally {
+        tvDayMinuteActiveRequest = false;
+    }
+}
+
+function stopTvDayMinuteAutoRefresh() {
+    if (tvDayMinuteRefreshTimer) {
+        clearInterval(tvDayMinuteRefreshTimer);
+        tvDayMinuteRefreshTimer = null;
+    }
+    tvDayMinuteActiveRequest = false;
+    tvDayMinuteModalState = null;
+    tvDayMinuteRefreshToken += 1;
+}
+
+function startTvDayMinuteAutoRefresh(code, dayTs, prevClose = NaN) {
+    stopTvDayMinuteAutoRefresh();
+    tvDayMinuteModalState = { code, dayTs, prevClose };
+    tvDayMinuteRefreshTimer = setInterval(refreshTvDayMinuteModal, AUTO_REFRESH_SECONDS * 1000);
 }
 
 function openTvDayModal(code, dayTs, prevClose = NaN) {
@@ -917,7 +1097,26 @@ function openTvDayModal(code, dayTs, prevClose = NaN) {
     }
     mask.classList.add("visible");
     mask.setAttribute("aria-hidden", "false");
+    startTvDayMinuteAutoRefresh(code, dayTs, prevClose);
     void loadTvDayMinuteChart(code, dayTs, prevClose);
+}
+
+function openTvDayModalForBarIndex(barIndex) {
+    if (currentInterval !== "1day" || isMainChartLineMode()) {
+        return false;
+    }
+    if (!Number.isInteger(barIndex) || barIndex < 0 || barIndex >= barsCache.length) {
+        return false;
+    }
+    const bar = barsCache[barIndex];
+    const dayTs = alignToCurrentInterval(Number(bar && bar.time));
+    if (!Number.isFinite(dayTs)) {
+        return false;
+    }
+    const prevBar = barIndex > 0 ? barsCache[barIndex - 1] : null;
+    const prevClose = prevBar ? Number(prevBar.close) : NaN;
+    openTvDayModal(currentCode, dayTs, prevClose);
+    return true;
 }
 
 function closeTvDayModal() {
@@ -925,8 +1124,19 @@ function closeTvDayModal() {
     if (!mask) {
         return;
     }
+    if (document.activeElement && mask.contains(document.activeElement)) {
+        if (container && typeof container.focus === "function") {
+            container.focus({ preventScroll: true });
+        } else if (document.body && typeof document.body.focus === "function") {
+            document.body.focus({ preventScroll: true });
+        }
+        if (document.activeElement && mask.contains(document.activeElement) && typeof document.activeElement.blur === "function") {
+            document.activeElement.blur();
+        }
+    }
     mask.classList.remove("visible");
     mask.setAttribute("aria-hidden", "true");
+    stopTvDayMinuteAutoRefresh();
     resetTvDayMinuteChart();
 }
 
@@ -950,19 +1160,8 @@ function bindDailyChartDoubleClickModal() {
         if (barIndex < 0) {
             return;
         }
-        const bar = barsCache[barIndex];
-        const dayTs = alignToCurrentInterval(Number(bar && bar.time));
-        if (!Number.isFinite(dayTs)) {
-            return;
-        }
         event.preventDefault();
-        let prevClose = NaN;
-        try {
-            prevClose = await fetchPrevDailyCloseUnadjusted(currentCode, dayTs);
-        } catch (err) {
-            console.warn("fetchPrevDailyCloseUnadjusted failed", err);
-        }
-        openTvDayModal(currentCode, dayTs, prevClose);
+        openTvDayModalForBarIndex(barIndex);
     });
 }
 
@@ -1162,12 +1361,19 @@ const chart = LightweightCharts.createChart(container, {
     }
 });
 
+const A_SHARE_UP_COLOR = "#ef5350";
+const A_SHARE_DOWN_COLOR = "#26a69a";
+
+function getAShareBarColor(bar) {
+    return Number(bar && bar.close) >= Number(bar && bar.open) ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
+}
+
 const candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-    upColor: "#ef5350",
-    downColor: "#26a69a",
+    upColor: A_SHARE_UP_COLOR,
+    downColor: A_SHARE_DOWN_COLOR,
     borderVisible: false,
-    wickUpColor: "#ef5350",
-    wickDownColor: "#26a69a"
+    wickUpColor: A_SHARE_UP_COLOR,
+    wickDownColor: A_SHARE_DOWN_COLOR
 });
 const mainLineSeries = chart.addSeries(LightweightCharts.LineSeries, {
     color: "#3b82f6",
@@ -2639,6 +2845,17 @@ function onGlobalChartNavigationKeydown(event) {
         }
         event.preventDefault();
         toggleCrosshairLock();
+        return;
+    }
+    if (key === "Enter") {
+        const mask = document.getElementById("tv-day-modal-mask");
+        if (mask && mask.classList.contains("visible")) {
+            return;
+        }
+        const barIndex = resolveCrosshairLockBarIndex();
+        if (openTvDayModalForBarIndex(barIndex)) {
+            event.preventDefault();
+        }
         return;
     }
     if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "ArrowUp" && key !== "ArrowDown") {
@@ -4357,6 +4574,14 @@ function formatTradeMarkerAmount(value) {
     return numeric.toFixed(0);
 }
 
+function getDisplayedVolumeValue(bar) {
+    const cumulativeVolume = Number(bar && bar.cumulative_volume);
+    if (Number.isFinite(cumulativeVolume)) {
+        return cumulativeVolume;
+    }
+    return Number((bar && bar.volume) || 0);
+}
+
 function renderChartData() {
     applyMainChartSeriesMode();
     const ohlc = withLatestDayMinuteWhitespace(barsCache.map((item) => ({
@@ -4376,8 +4601,8 @@ function renderChartData() {
     }));
     const volume = withLatestDayMinuteWhitespace(barsCache.map((item) => ({
         time: toChartTime(item.time),
-        value: Number(item.volume || 0),
-        color: Number(item.close) >= Number(item.open) ? "rgba(239,83,80,0.5)" : "rgba(38,166,154,0.5)"
+        value: getDisplayedVolumeValue(item),
+        color: getAShareBarColor(item)
     })));
     if (isMainChartLineMode()) {
         candlestickSeries.setData([]);

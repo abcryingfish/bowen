@@ -7,7 +7,7 @@
 parquet schema 后落盘，全部完成后统一重建 merged.parquet。
 
 数据写入 ``D:\\database\\stock_basic_data_mins``（可通过 ``--base-dir`` 覆盖），
-分区：``year=YYYY/month=MM/*.parquet`` + ``merged.parquet``。
+分区：``year=YYYY/month=MM/day=DD/*.parquet`` + ``merged.parquet``。
 """
 from __future__ import annotations
 
@@ -99,24 +99,26 @@ def save_partitioned_parquet(
     normalized_df = normalized_df.with_columns(
         pl.col("time").dt.year().alias("year"),
         pl.col("time").dt.month().alias("month"),
+        pl.col("time").dt.day().alias("day"),
     )
 
-    touched_partitions: list[tuple[int, int]] = []
+    touched_partitions: list[tuple[int, int, int]] = []
     safe_code = normalize_code(code).replace(".", "_")
 
-    for partition_df in normalized_df.partition_by(["year", "month"], maintain_order=True):
+    for partition_df in normalized_df.partition_by(["year", "month", "day"], maintain_order=True):
         year = int(partition_df["year"][0])
         month = int(partition_df["month"][0])
-        partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}"
+        day = int(partition_df["day"][0])
+        partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}" / f"day={day:02d}"
         partition_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{timestamp}_{safe_code}_year_{year}_month_{month:02d}.parquet"
+        file_name = f"{timestamp}_{safe_code}_year_{year}_month_{month:02d}_day_{day:02d}.parquet"
         file_path = partition_dir / file_name
 
-        save_df = partition_df.drop(["year", "month"])
+        save_df = partition_df.drop(["year", "month", "day"])
         save_df.write_parquet(str(file_path), compression="zstd")
-        touched_partitions.append((year, month))
+        touched_partitions.append((year, month, day))
         print(f"[OK] 已保存: {file_path} (共 {save_df.height} 条记录)")
 
     return touched_partitions
@@ -142,12 +144,12 @@ def _is_readable_parquet(path: Path) -> bool:
 
 def rebuild_merged_parquets(
     base_dir: str,
-    touched_partitions: set[tuple[int, int]],
+    touched_partitions: set[tuple[int, int, int]],
     transform_merged=None,
 ) -> list[Path]:
     rebuilt_files: list[Path] = []
-    for year, month in sorted(touched_partitions):
-        partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}"
+    for year, month, day in sorted(touched_partitions):
+        partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}" / f"day={day:02d}"
         if not partition_dir.exists():
             continue
 
@@ -159,7 +161,7 @@ def rebuild_merged_parquets(
         input_files = ([merged_path] if merged_path.exists() else []) + raw_files
         input_files = [path for path in input_files if _is_readable_parquet(path)]
         if not input_files:
-            print(f"[WARN] 分区 {year}-{month:02d} 无有效 parquet，跳过 merged 重建。")
+            print(f"[WARN] 分区 {year}-{month:02d}-{day:02d} 无有效 parquet，跳过 merged 重建。")
             continue
 
         try:
@@ -175,7 +177,7 @@ def rebuild_merged_parquets(
             rebuilt_files.append(merged_path)
             print(f"[OK] 已重建 merged: {merged_path}")
         except Exception as exc:
-            print(f"[WARN] 分区 {year}-{month:02d} merged 重建失败: {exc}")
+            print(f"[WARN] 分区 {year}-{month:02d}-{day:02d} merged 重建失败: {exc}")
             continue
 
         deleted_count = 0
@@ -186,7 +188,7 @@ def rebuild_merged_parquets(
             except OSError as exc:
                 print(f"[WARN] 删除原始文件失败，保留到下次合并: {raw_file.name} | {exc}")
         if deleted_count:
-            print(f"[OK] 已删除原始 parquet 文件数: {deleted_count} | 分区: {year}-{month:02d}")
+            print(f"[OK] 已删除原始 parquet 文件数: {deleted_count} | 分区: {year}-{month:02d}-{day:02d}")
     return rebuilt_files
 
 
@@ -237,6 +239,8 @@ def _normalize_xtquant_dataframe(
         raise ValueError(f"xtquant 返回缺少必要列: {missing_columns}")
     if "amount" not in df.columns:
         df["amount"] = pd.NA
+    if "pvolume" not in df.columns:
+        df["pvolume"] = pd.NA
 
     raw_time = df["time"]
     if pd.api.types.is_numeric_dtype(raw_time):
@@ -259,8 +263,9 @@ def _normalize_xtquant_dataframe(
     if df.empty:
         return _empty_minute_frame()
 
-    for column in ["open", "high", "low", "close", "volume", "amount"]:
+    for column in ["open", "high", "low", "close", "volume", "pvolume", "amount"]:
         df[column] = pd.to_numeric(df[column], errors="coerce")
+    df["volume"] = df["pvolume"].fillna(df["volume"] * 100)
 
     df = df.dropna(subset=["open", "high", "low", "close"])
     df = df.drop_duplicates(subset=["htsc_code", "time"], keep="last")
@@ -341,42 +346,7 @@ def _collect_scan_parquet_paths(base_dir: str, scan_months: int = 3) -> list[str
     merged_files = sorted(base_path.glob("**/merged.parquet"))
     if merged_files:
         return [str(p).replace("\\", "/") for p in merged_files]
-
-    now = datetime.now()
-    month_keys: set[tuple[int, int]] = set()
-    year, month = now.year, now.month
-    for _ in range(max(1, scan_months)):
-        month_keys.add((year, month))
-        month -= 1
-        if month <= 0:
-            month = 12
-            year -= 1
-
-    valid_files: list[str] = []
-    skipped_small = 0
-    for y, m in sorted(month_keys):
-        month_dir = base_path / f"year={y}" / f"month={m:02d}"
-        if not month_dir.exists():
-            continue
-        for path in sorted(month_dir.glob("*.parquet")):
-            if path.name == MERGED_FILE_NAME:
-                continue
-            try:
-                if path.stat().st_size < MIN_PARQUET_BYTES:
-                    skipped_small += 1
-                    continue
-            except OSError:
-                skipped_small += 1
-                continue
-            valid_files.append(str(path).replace("\\", "/"))
-
-    if skipped_small:
-        print(f"[WARN] 扫描时跳过 {skipped_small} 个无效/损坏 parquet 小文件。")
-    if valid_files:
-        print(
-            f"[INFO] 无 merged.parquet，仅扫描近 {scan_months} 个月分区共 {len(valid_files)} 个文件推断增量起点。"
-        )
-    return valid_files
+    return []
 
 
 def scan_latest_downloaded_state(
@@ -591,7 +561,7 @@ def parse_args() -> argparse.Namespace:
         "--scan-months",
         type=int,
         default=3,
-        help="无 merged 时，扫描最近 N 个月分区推断各票最新分钟（默认 3）",
+        help="兼容旧参数，当前仅扫描日级 merged.parquet",
     )
     parser.add_argument(
         "--skip-rebuild",
@@ -657,7 +627,7 @@ def main() -> None:
     failed_requests: list[dict[str, object]] = []
     processed_requests = 0
     total_rows_written = 0
-    touched_partitions: set[tuple[int, int]] = set()
+    touched_partitions: set[tuple[int, int, int]] = set()
 
     print(f"需更新股票数量: {pending_codes}")
     print(f"结束时刻: {format_dt(time_end_date)}")
@@ -740,4 +710,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

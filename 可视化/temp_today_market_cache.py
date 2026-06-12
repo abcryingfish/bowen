@@ -29,6 +29,10 @@ def _connect(db_path: str | Path, *, read_only: bool = False) -> sqlite3.Connect
         conn = sqlite3.connect(path, timeout=SQLITE_TIMEOUT_SECONDS)
     conn.row_factory = sqlite3.Row
     conn.execute(f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}")
+    if not read_only:
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA temp_store = MEMORY")
+        conn.execute("PRAGMA wal_autocheckpoint = 10000")
     return conn
 
 
@@ -401,15 +405,37 @@ def query_today_minute_bars(
     try:
         rows = conn.execute(
             """
-            SELECT ts, last_price, amount, volume
+            SELECT ts, last_price, amount, volume, pvolume
             FROM tick_snapshot
             WHERE htsc_code = ?
             ORDER BY ts ASC
             """,
             (code_u,),
         ).fetchall()
+        latest_row = conn.execute(
+            """
+            SELECT ts, last_price, amount, volume, pvolume
+            FROM latest_quote
+            WHERE htsc_code = ?
+              AND last_price IS NOT NULL
+              AND last_price > 0
+            """,
+            (code_u,),
+        ).fetchone()
     finally:
         conn.close()
+
+    latest_ts_sec: int | None = None
+    if latest_row is not None:
+        try:
+            latest_ts_sec = _ts_to_epoch(str(latest_row["ts"]))
+        except ValueError:
+            latest_ts_sec = None
+
+    if latest_row is not None and latest_ts_sec is not None and from_ts <= latest_ts_sec <= to_ts:
+        snapshot_latest_ts = max((_ts_to_epoch(str(row["ts"])) for row in rows), default=None)
+        if snapshot_latest_ts is None or latest_ts_sec >= snapshot_latest_ts:
+            rows = [*rows, latest_row]
 
     grouped: dict[int, list[sqlite3.Row]] = {}
     for row in rows:
@@ -421,19 +447,28 @@ def query_today_minute_bars(
 
     bars: list[dict[str, Any]] = []
     for minute_sec in sorted(grouped):
-        bucket = [
-            row
-            for row in grouped[minute_sec]
+        bucket = sorted(
+            [
+                row
+                for row in grouped[minute_sec]
+                if (price := _safe_float(row["last_price"])) is not None and price > 0
+            ],
+            key=lambda row: str(row["ts"]),
+        )
+        prices = [
+            price
+            for row in bucket
             if (price := _safe_float(row["last_price"])) is not None and price > 0
         ]
-        prices = [_safe_float(row["last_price"]) for row in bucket]
-        prices = [price for price in prices if price is not None and price > 0]
         if not prices:
             continue
         amounts = [_safe_float(row["amount"]) for row in bucket]
         volumes = [_safe_float(row["volume"]) for row in bucket]
+        pvolumes = [_safe_float(row["pvolume"]) for row in bucket]
         amount_values = [value for value in amounts if value is not None]
         volume_values = [value for value in volumes if value is not None]
+        pvolume_values = [value for value in pvolumes if value is not None]
+        cumulative_volume_values = pvolume_values or volume_values
         bars.append(
             {
                 "time": minute_sec,
@@ -442,6 +477,7 @@ def query_today_minute_bars(
                 "low": float(min(prices)),
                 "close": float(prices[-1]),
                 "volume": float(volume_values[-1] - volume_values[0]) if volume_values else 0.0,
+                "cumulative_volume": float(cumulative_volume_values[-1]) if cumulative_volume_values else 0.0,
                 "amount": float(amount_values[-1] - amount_values[0]) if amount_values else 0.0,
             }
         )
@@ -462,7 +498,7 @@ def query_today_daily_bar(
     try:
         row = conn.execute(
             """
-            SELECT ts, open, high, low, last_price, volume
+            SELECT ts, open, high, low, last_price, volume, pvolume
             FROM latest_quote
             WHERE htsc_code = ?
               AND last_price IS NOT NULL
@@ -484,7 +520,9 @@ def query_today_daily_bar(
             "high": float(row["high"]) if row["high"] is not None else 0.0,
             "low": float(row["low"]) if row["low"] is not None else 0.0,
             "close": float(row["last_price"]) if row["last_price"] is not None else 0.0,
-            "volume": float(row["volume"]) if row["volume"] is not None else 0.0,
+            "volume": float(row["pvolume"] if row["pvolume"] is not None else row["volume"])
+            if row["pvolume"] is not None or row["volume"] is not None
+            else 0.0,
         }
     ]
 
@@ -535,10 +573,10 @@ def merge_bars_with_parquet_priority(
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
     merged: dict[int, dict[str, Any]] = {}
-    for bar in sqlite_bars:
-        merged[int(bar["time"])] = dict(bar)
     for bar in parquet_bars:
         merged[int(bar["time"])] = dict(bar)
+    for bar in sqlite_bars:
+        merged.setdefault(int(bar["time"]), dict(bar))
     bars = [merged[t] for t in sorted(merged)]
     return bars[-limit:] if limit and len(bars) > limit else bars
 

@@ -96,6 +96,7 @@ class TempTodayMarketCacheTest(unittest.TestCase):
         self.assertEqual(bars[0]["low"], 10.0)
         self.assertEqual(bars[0]["close"], 11.0)
         self.assertEqual(bars[0]["volume"], 80.0)
+        self.assertEqual(bars[0]["cumulative_volume"], 18000.0)
         self.assertEqual(bars[0]["amount"], 800.0)
 
     def test_minute_aggregation_ignores_zero_price_snapshots(self) -> None:
@@ -113,6 +114,7 @@ class TempTodayMarketCacheTest(unittest.TestCase):
                 "last_price": 10.0,
                 "amount": 1000.0,
                 "volume": 100.0,
+                "pvolume": 10000.0,
             },
             {
                 "htsc_code": "600519.SH",
@@ -120,6 +122,7 @@ class TempTodayMarketCacheTest(unittest.TestCase):
                 "last_price": 12.0,
                 "amount": 1500.0,
                 "volume": 150.0,
+                "pvolume": 15000.0,
             },
         ]
         for row in rows:
@@ -137,7 +140,95 @@ class TempTodayMarketCacheTest(unittest.TestCase):
         self.assertEqual(bars[0]["low"], 10.0)
         self.assertEqual(bars[0]["close"], 12.0)
         self.assertEqual(bars[0]["volume"], 50.0)
+        self.assertEqual(bars[0]["cumulative_volume"], 15000.0)
         self.assertEqual(bars[0]["amount"], 500.0)
+
+    def test_minute_bar_updates_current_bucket_from_latest_quote(self) -> None:
+        upsert_tick_snapshots(
+            self.db_path,
+            [
+                {
+                    "htsc_code": "600519.SH",
+                    "ts": "2026-06-11 09:30:01",
+                    "last_price": 10.0,
+                    "amount": 1000.0,
+                    "volume": 100.0,
+                    "pvolume": 10000.0,
+                },
+                {
+                    "htsc_code": "600519.SH",
+                    "ts": "2026-06-11 09:30:31",
+                    "last_price": 11.0,
+                    "amount": 1400.0,
+                    "volume": 140.0,
+                    "pvolume": 14000.0,
+                },
+            ],
+            write_latest=False,
+        )
+        upsert_tick_snapshots(
+            self.db_path,
+            [
+                {
+                    "htsc_code": "600519.SH",
+                    "ts": "2026-06-11 09:30:45",
+                    "last_price": 12.0,
+                    "amount": 1800.0,
+                    "volume": 180.0,
+                    "pvolume": 18000.0,
+                }
+            ],
+            write_snapshots=False,
+            write_latest=True,
+        )
+
+        bars = query_today_minute_bars(
+            self.db_path,
+            "600519.SH",
+            from_ts=epoch("2026-06-11 09:30:00"),
+            to_ts=epoch("2026-06-11 09:31:00"),
+        )
+
+        self.assertEqual(len(bars), 1)
+        self.assertEqual(bars[0]["open"], 10.0)
+        self.assertEqual(bars[0]["high"], 12.0)
+        self.assertEqual(bars[0]["low"], 10.0)
+        self.assertEqual(bars[0]["close"], 12.0)
+        self.assertEqual(bars[0]["volume"], 80.0)
+        self.assertEqual(bars[0]["cumulative_volume"], 18000.0)
+        self.assertEqual(bars[0]["amount"], 800.0)
+
+    def test_minute_bar_can_use_latest_quote_before_snapshot_flush(self) -> None:
+        upsert_tick_snapshots(
+            self.db_path,
+            [
+                {
+                    "htsc_code": "600519.SH",
+                    "ts": "2026-06-11 09:31:05",
+                    "last_price": 12.0,
+                    "amount": 1800.0,
+                    "volume": 180.0,
+                }
+            ],
+            write_snapshots=False,
+            write_latest=True,
+        )
+
+        bars = query_today_minute_bars(
+            self.db_path,
+            "600519.SH",
+            from_ts=epoch("2026-06-11 09:31:00"),
+            to_ts=epoch("2026-06-11 09:32:00"),
+        )
+
+        self.assertEqual(len(bars), 1)
+        self.assertEqual(bars[0]["time"], epoch("2026-06-11 09:31:00"))
+        self.assertEqual(bars[0]["open"], 12.0)
+        self.assertEqual(bars[0]["high"], 12.0)
+        self.assertEqual(bars[0]["low"], 12.0)
+        self.assertEqual(bars[0]["close"], 12.0)
+        self.assertEqual(bars[0]["volume"], 0.0)
+        self.assertEqual(bars[0]["amount"], 0.0)
 
     def test_daily_bar_does_not_update_with_zero_last_price(self) -> None:
         upsert_tick_snapshot(
@@ -210,7 +301,7 @@ class TempTodayMarketCacheTest(unittest.TestCase):
         self.assertEqual(bars[0]["high"], 12.0)
         self.assertEqual(bars[0]["low"], 9.7)
         self.assertEqual(bars[0]["close"], 11.0)
-        self.assertEqual(bars[0]["volume"], 180.0)
+        self.assertEqual(bars[0]["volume"], 18000.0)
 
     def test_supplement_decision_respects_parquet_priority(self) -> None:
         today_minute = epoch("2026-06-11 09:30:00")
@@ -331,7 +422,10 @@ class MarketDataServiceTempCacheIntegrationTest(unittest.TestCase):
         self.tmp_dir.cleanup()
 
     def _write_parquet_partition(self, base: Path, rows: list[dict[str, object]]) -> None:
+        is_minute_base = base == self.minute_base
         part_dir = base / "year=2026" / "month=06"
+        if is_minute_base:
+            part_dir = part_dir / "day=11"
         part_dir.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_parquet(part_dir / "merged.parquet", index=False)
 
@@ -437,6 +531,92 @@ class MarketDataServiceTempCacheIntegrationTest(unittest.TestCase):
         self.assertEqual(len(result["bars"]), 1)
         self.assertEqual(result["bars"][0]["close"], 1.0)
         self.assertNotIn("temp_today_supplemented", result["meta"])
+
+    def test_build_partition_paths_prefers_day_partitions(self) -> None:
+        month_dir = self.minute_base / "year=2026" / "month=06"
+        day10_dir = month_dir / "day=10"
+        day11_dir = month_dir / "day=11"
+        month_dir.mkdir(parents=True, exist_ok=True)
+        day10_dir.mkdir(parents=True, exist_ok=True)
+        day11_dir.mkdir(parents=True, exist_ok=True)
+        month_file = month_dir / "merged.parquet"
+        day10_file = day10_dir / "merged.parquet"
+        day11_file = day11_dir / "merged.parquet"
+        for path in [month_file, day10_file, day11_file]:
+            path.write_bytes(b"placeholder")
+
+        paths = market_data_service.build_partition_paths(
+            str(self.minute_base),
+            epoch("2026-06-11"),
+            epoch("2026-06-11 23:59:59"),
+        )
+
+        normalized = {Path(path).as_posix() for path in paths}
+        self.assertIn(day11_file.as_posix(), normalized)
+        self.assertNotIn(day10_file.as_posix(), normalized)
+        self.assertNotIn(month_file.as_posix(), normalized)
+
+    def test_query_market_bars_adjusts_supplemented_daily_bar(self) -> None:
+        self._write_parquet_partition(
+            self.daily_base,
+            [
+                {
+                    "htsc_code": "600519.SH",
+                    "time": epoch("2026-06-10"),
+                    "open": 10.0,
+                    "high": 10.0,
+                    "low": 10.0,
+                    "close": 10.0,
+                    "volume": 10.0,
+                }
+            ],
+        )
+        upsert_tick_snapshot(
+            self.db_path,
+            {
+                "htsc_code": "600519.SH",
+                "ts": "2026-06-11 14:56:00",
+                "last_price": 20.0,
+                "open": 20.0,
+                "high": 20.0,
+                "low": 20.0,
+                "last_close": 19.0,
+                "amount": 200.0,
+                "volume": 20.0,
+                "pvolume": 2000.0,
+            },
+        )
+
+        with patch.object(
+            market_data_service,
+            "adjust_daily_bars",
+            side_effect=lambda code, bars, mode: (
+                [
+                    {
+                        **bar,
+                        "open": bar["open"] * 2,
+                        "high": bar["high"] * 2,
+                        "low": bar["low"] * 2,
+                        "close": bar["close"] * 2,
+                    }
+                    for bar in bars
+                ],
+                "forward",
+            ),
+        ):
+            result = market_data_service.query_market_bars(
+                "600519.SH",
+                "1day",
+                from_ts=epoch("2026-06-10"),
+                to_ts=epoch("2026-06-11 23:59:59"),
+                limit=10,
+                adjust="forward",
+            )
+
+        self.assertEqual([bar["time"] for bar in result["bars"]], [epoch("2026-06-10"), epoch("2026-06-11")])
+        self.assertEqual(result["bars"][0]["close"], 20.0)
+        self.assertEqual(result["bars"][1]["close"], 40.0)
+        self.assertEqual(result["meta"]["adjust"], "forward")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@
 # │ query_market_bars() │ 查询并返回标准化 bars + meta │
 # │ validate_query_params() │ 校验 code/interval/time/limit 参数 │
 # │ get_base_path_by_interval() │ 根据周期返回对应数据根目录 │
-# │ build_partition_paths() │ 按时间范围构建月度 parquet 路径 │
+# │ build_partition_paths() │ 按时间范围构建 parquet 路径 │
 # │ search_market_codes() │ 按关键词检索股票代码（最多 5 条） │
 #
 # ── 状态/变量表 ───────────────────────────────────────────────
@@ -52,7 +52,7 @@ import csv
 from pathlib import Path
 from threading import Lock
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import duckdb
@@ -695,34 +695,65 @@ def _iter_year_month(from_ts: int, to_ts: int) -> list[tuple[int, int]]:
     return result
 
 
-def _list_partition_data_files(month_dir: str) -> list[str]:
-    """返回一个月分区内可读的数据文件：merged 优先，再读增量 part。"""
-    if not os.path.isdir(month_dir):
+def _iter_utc_days(from_ts: int, to_ts: int) -> list[datetime]:
+    start_dt = datetime.utcfromtimestamp(from_ts).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_dt = datetime.utcfromtimestamp(to_ts).replace(hour=0, minute=0, second=0, microsecond=0)
+    result: list[datetime] = []
+    current = start_dt
+    while current <= end_dt:
+        result.append(current)
+        current += timedelta(days=1)
+    return result
+
+
+def _list_partition_data_files(partition_dir: str) -> list[str]:
+    """返回一个分区内可读的数据文件：merged 优先，再读增量 part。"""
+    if not os.path.isdir(partition_dir):
         return []
 
     paths: list[str] = []
-    merged_path = os.path.join(month_dir, MERGED_FILE_NAME)
+    merged_path = os.path.join(partition_dir, MERGED_FILE_NAME)
     if os.path.exists(merged_path) and os.path.isfile(merged_path):
         paths.append(merged_path.replace("\\", "/"))
 
-    for file_name in sorted(os.listdir(month_dir)):
+    for file_name in sorted(os.listdir(partition_dir)):
         if not file_name.startswith("part_") or not file_name.endswith(".parquet"):
             continue
-        part_path = os.path.join(month_dir, file_name)
+        part_path = os.path.join(partition_dir, file_name)
         if os.path.isfile(part_path):
             paths.append(part_path.replace("\\", "/"))
     return paths
 
 
+def _list_day_partition_paths(base_path: str, from_ts: int, to_ts: int) -> list[str]:
+    paths: list[str] = []
+    for day in _iter_utc_days(from_ts, to_ts):
+        day_dir = os.path.join(
+            base_path,
+            f"year={day.year}",
+            f"month={day.month:02d}",
+            f"day={day.day:02d}",
+        )
+        paths.extend(_list_partition_data_files(day_dir))
+    return paths
+
+
 def build_partition_paths(base_path: str, from_ts: int, to_ts: int) -> list[str]:
-    """按时间范围构建存在的月度数据文件路径集合（merged + part）。"""
+    """按时间范围构建数据文件路径集合；分钟线只读日分区，日线仍读月分区。"""
+    normalized_base = os.path.normcase(os.path.abspath(base_path))
+    minute_bases = {
+        os.path.normcase(os.path.abspath(MINUTE_BASE_PATH)),
+        os.path.normcase(os.path.abspath(PORTFOLIO_MINUTE_BASE_PATH)),
+    }
+    if normalized_base in minute_bases:
+        return _list_day_partition_paths(base_path, from_ts, to_ts)
+
     paths: list[str] = []
     for year, month in _iter_year_month(from_ts, to_ts):
-        month_str = f"{month:02d}"
         month_dir = os.path.join(
             base_path,
             f"year={year}",
-            f"month={month_str}",
+            f"month={month:02d}",
         )
         paths.extend(_list_partition_data_files(month_dir))
     return paths
@@ -2760,6 +2791,8 @@ def query_market_bars(
                 and not is_portfolio_curve_code(params.code)
                 and resolved_base_path == get_base_path_by_interval("1day")
             )
+            if should_adjust_daily_stock:
+                temp_bars, adjust_mode = adjust_daily_bars(params.code, temp_bars, adjust_mode)
             return {
                 "bars": temp_bars,
                 "meta": _build_market_bars_meta(
@@ -2826,6 +2859,8 @@ def query_market_bars(
             parsed_run_tag,
         )
         if temp_bars:
+            if should_adjust_daily_stock:
+                temp_bars, adjust_mode = adjust_daily_bars(params.code, temp_bars, adjust_mode)
             return {
                 "bars": temp_bars,
                 "meta": _build_market_bars_meta(
@@ -2853,11 +2888,6 @@ def query_market_bars(
             }
         raise MarketDataNotFoundError("目标时间范围内未找到对应股票数据")
 
-    if should_adjust_daily_stock:
-        bars, adjust_mode = adjust_daily_bars(params.code, bars, adjust_mode)
-    else:
-        adjust_mode = "none"
-
     bars = _supplement_bars_from_temp_today_cache(
         params,
         bars,
@@ -2866,6 +2896,11 @@ def query_market_bars(
         resolved_base_path,
         parsed_run_tag,
     )
+
+    if should_adjust_daily_stock:
+        bars, adjust_mode = adjust_daily_bars(params.code, bars, adjust_mode)
+    else:
+        adjust_mode = "none"
 
     meta = _build_market_bars_meta(
         params,
