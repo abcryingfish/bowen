@@ -1,0 +1,12 @@
+*.parquet
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.nbc
+*.nbi
+.ipynb_checkpoints/
+*.sqlite
+*.db
+*.log

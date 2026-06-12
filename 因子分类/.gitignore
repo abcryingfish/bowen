@@ -1,0 +1,3 @@
+# 忽略所有 parquet 数据文件
+*.parquet
+*.parquet/
