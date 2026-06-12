@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>舆情面 - イカロス看板</title>
+
+    <link rel="stylesheet" href="../shared/chart_board.css">
+
+    <link rel="stylesheet" href="../shared/edge_float.css">
+
+    <link rel="stylesheet" href="sentiment.css">
+
+</head>
+
+
+
+<body class="page-sentiment">
+
+    <div class="page-header" id="page-header">
+
+        <div class="page-header-title">イカロス的量化系统</div>
+
+        <nav id="header-tabs-container" class="header-center-tabs" style="grid-column: 3 / 4;" aria-label="分析视图">
+
+            <a class="header-tab" href="../量化因子/index.html">量化因子</a>
+
+            <a class="header-tab" href="../形态面/index.html">形态面</a>
+
+            <a class="header-tab active" href="../舆情面/index.html">舆情面</a>
+
+            <a class="header-tab" href="../基本面/index.html">基本面</a>
+
+        </nav>
+
+        <div id="page-clock" class="page-clock page-header-clock">Time: --</div>
+
+    </div>
+
+
+
+    <div class="workspace">
+
+        <div id="main-layout" class="layout">
+
+            <aside id="left-panel" class="left-panel">
+
+                <div id="watchlist-cards" class="watchlist-cards">
+
+                    <div class="watchlist-detail">点击「加入自选股」后，会在这里显示股票卡片</div>
+
+                </div>
+
+            </aside>
+
+            <div id="splitter-left" class="splitter-v" title="拖拽调整左侧宽度"></div>
+
+
+
+            <div id="center-column" class="center-column">
+
+                <div class="chart-wrap">
+
+                    <div class="chart-toolbar sentiment-toolbar">
+
+                        <div id="standard-code-input-wrap" class="code-input-wrap">
+
+                            <input id="code-input" class="field" type="text" value="301469.SZ"
+
+                                placeholder="请输入 code（如 301469.SZ）">
+
+                            <ul id="code-suggestions" class="suggestions"></ul>
+
+                        </div>
+
+                        <label class="field" for="interval-select">
+
+                            周期:
+
+                            <select id="interval-select" class="field"
+
+                                style="border: 0; padding: 0 0 4px; min-height: auto; background: transparent;">
+
+                                <option value="1min">1min</option>
+
+                                <option value="1day">1day</option>
+
+                            </select>
+
+                        </label>
+
+                        <span id="auto-refresh-label" class="field status-ok">自动刷新: 开启（30秒）</span>
+
+                        <button id="btn-add-watch-current" class="field btn" type="button">加入自选股</button>
+
+                    </div>
+
+                    <div id="sentiment-content" class="sentiment-content">
+                        <div class="sentiment-maintenance" role="status">维护中</div>
+                    </div>
+
+                    <div class="sentiment-chart-stub" aria-hidden="true">
+
+                        <div id="chart-container"></div>
+
+                    </div>
+
+                </div>
+
+                <div id="splitter-signal" class="splitter-h" title="拖拽调整副图（信号）高度"></div>
+
+                <div id="signal-chart-wrap" class="signal-chart-wrap">
+
+                    <div class="signal-chart-caption">
+
+                        <span id="signal-caption-title">信号: --</span>
+
+                        <span id="signal-caption-ohlcv" class="signal-caption-ohlcv">O: -- H: -- L: -- C: -- V: --</span>
+
+                    </div>
+
+                    <div id="signal-chart-container" class="signal-chart-container"></div>
+
+                </div>
+
+                <div id="splitter-center-v" class="splitter-h" title="拖拽调整中间下区高度"></div>
+
+                <div id="center-bottom-panel" class="center-bottom-panel"></div>
+
+            </div>
+
+
+
+            <div id="splitter-right" class="splitter-v" title="拖拽调整右侧宽度"></div>
+
+            <aside id="right-panel" class="side-panel">
+
+                <div id="right-panel-body" class="right-panel-body"></div>
+
+                <div id="right-panel-model-overlay" class="right-panel-model-overlay" aria-hidden="true">
+
+                    <div class="right-panel-model-overlay-header">
+
+                        <span id="right-panel-model-overlay-title" class="right-panel-model-overlay-title"></span>
+
+                    </div>
+
+                    <div id="right-panel-model-overlay-body" class="right-panel-model-overlay-body"></div>
+
+                </div>
+
+            </aside>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600"
+
+                aria-hidden="true"></canvas>
+
+        </div>
+
+    </div>
+
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+
+
+    <script>window.PAGE_VIEW = "sentiment";</script>
+
+    <script defer src="../shared/backtest_run_context.js"></script>
+
+    <script defer src="../shared/edge_float_nav.js"></script>
+
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+
+    <script defer src="../shared/edge_float_hud.js"></script>
+
+    <script defer src="../shared/chart_board_info_core.js"></script>
+
+    <script defer src="./board_sentiment.js"></script>
+
+    <script defer src="../shared/chart_board_boot.js"></script>
+
+</body>
+
+
+
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回测组合结果</title>
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="result_print_light.css">
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #131722;
+            color: #d1d4dc;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .boot-hint {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #8b97a5;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="boot-hint" id="boot-hint">正在加载组合回测视图...</div>
+    <iframe id="portfolio-frame" title="回测组合结果"></iframe>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600"
+                aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script src="../shared/backtest_run_context.js"></script>
+    <script src="../shared/edge_float_nav.js"></script>
+    <script src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script src="../shared/edge_float_hud.js"></script>
+    <script src="./result_print_light.js"></script>
+    <script>
+        (function () {
+            const frame = document.getElementById("portfolio-frame");
+            const hint = document.getElementById("boot-hint");
+            const outer = new URL(window.location.href);
+            const inner = new URL("../组合图表/index.html", outer.href);
+
+            if (location.protocol === "file:" && hint) {
+                hint.textContent = "建议用 HTTP 打开：运行 start_all.bat 后访问 http://127.0.0.1:8086/组合结果/index.html（file:// 下 iframe/API 可能不可用）";
+                hint.style.color = "#f59e0b";
+                hint.style.maxWidth = "520px";
+                hint.style.textAlign = "center";
+                hint.style.padding = "0 16px";
+                hint.style.pointerEvents = "auto";
+            }
+
+            if (!outer.searchParams.has("code")) {
+                inner.searchParams.set("code", "000000.YKRS");
+            }
+            inner.searchParams.set("portfolio", "1");
+            inner.searchParams.set("embed", "1");
+
+            if (window.BacktestRunContext) {
+                BacktestRunContext.syncActiveRunFromUrl(outer.searchParams);
+                const tag = BacktestRunContext.getActiveRunTag();
+                if (tag) {
+                    inner.searchParams.set("run_tag", tag);
+                }
+            }
+
+            for (const key of ["code", "portfolio", "embed", "lock_code", "api", "api_base", "run_tag"]) {
+                const value = outer.searchParams.get(key);
+                if (value) {
+                    inner.searchParams.set(key, value);
+                }
+            }
+
+            if (typeof window.initResultPrintLight === "function") {
+                window.initResultPrintLight(frame);
+            }
+
+            frame.addEventListener("load", () => {
+                if (hint) {
+                    hint.style.display = "none";
+                }
+            });
+            frame.src = `../组合图表/index.html${inner.search}${inner.hash}`;
+        })();
+
+        if (window.initEdgeFloatHud && typeof window.initEdgeFloatHud === "function") {
+            window.initEdgeFloatHud({
+                pageId: "portfolio",
+                onNavigate: window.edgeFloatNavigateToPage,
+            });
+        }
+    </script>
+</body>
+
+</html>

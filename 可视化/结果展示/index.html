@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化策略回测系统 - 成果展示</title>
+    <style>
+        :root {
+            --bg-color: #131722;
+            --card-bg: #1e222d;
+            --text-main: #d1d4dc;
+            --text-muted: #8b97a5;
+            --primary-color: #6b9cff;
+            --success-color: #26a69a;
+            --danger-color: #ef5350;
+            --border-color: #2b2b2b;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.22);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: min(1800px, 96vw);
+            width: 96vw;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+        }
+
+        .header-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--text-main);
+        }
+
+        .active-run-badge {
+            display: inline-block;
+            padding: 0.35rem 0.85rem;
+            border-radius: 6px;
+            background: rgba(34, 197, 94, 0.22);
+            border: 1px solid rgba(34, 197, 94, 0.55);
+            color: #86efac;
+            font-size: 0.85rem;
+            font-weight: 600;
+            max-width: min(520px, 50vw);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .active-run-badge[hidden] {
+            display: none !important;
+        }
+
+        .header-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .name-filter-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .name-filter-input {
+            width: min(280px, 42vw);
+            padding: 0.45rem 0.75rem;
+            border-radius: 9999px;
+            border: 1px solid #4a5366;
+            background: #151821;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .name-filter-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(107, 156, 255, 0.25);
+        }
+
+        .name-filter-input::placeholder {
+            color: #6b7280;
+        }
+
+        .name-filter-clear {
+            padding: 0.4rem 0.75rem;
+            border-radius: 9999px;
+            border: 1px solid #4a5366;
+            background: #2f3542;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .name-filter-clear:hover {
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .name-filter-clear[hidden] {
+            display: none !important;
+        }
+
+        .stat-badge {
+            background-color: #2f3542;
+            color: var(--text-main);
+            border: 1px solid #4a5366;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .record-card {
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .record-card:hover {
+            border-color: #3a3f4a;
+        }
+
+        .record-card.record-card-group {
+            background-color: rgba(107, 156, 255, 0.14);
+            border-color: rgba(107, 156, 255, 0.42);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .record-card.record-card-group:hover {
+            border-color: rgba(107, 156, 255, 0.62);
+            background-color: rgba(107, 156, 255, 0.18);
+        }
+
+        .record-card.record-card-group .card-summary {
+            background-color: rgba(107, 156, 255, 0.1);
+        }
+
+        .record-card.record-card-group .card-details {
+            background-color: rgba(107, 156, 255, 0.08);
+            border-top-color: rgba(107, 156, 255, 0.28);
+        }
+
+        .record-card.record-card-group .group-children-wrap {
+            background-color: rgba(107, 156, 255, 0.05);
+        }
+
+        .record-card.record-card-nested {
+            margin: 0 0 10px 12px;
+            border-left: 2px solid rgba(107, 156, 255, 0.35);
+        }
+
+        .record-card.record-card-nested:last-child {
+            margin-bottom: 0;
+        }
+
+        .group-summary-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .group-children-wrap {
+            padding: 10px 12px 14px 12px;
+        }
+
+        .summary-info.summary-info-group {
+            grid-template-columns: minmax(0, 2.2fr) repeat(2, minmax(0, 1fr)) auto;
+        }
+
+        .anomaly-tag {
+            font-size: 0.72rem;
+            color: #f59e0b;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+
+        .card-summary {
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .summary-info {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .strategy-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .value-positive {
+            color: var(--success-color);
+        }
+
+        .value-negative {
+            color: var(--danger-color);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 1rem;
+            margin-left: 2rem;
+        }
+
+        button {
+            border: 1px solid #4a5366;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-select-run {
+            background-color: rgba(34, 197, 94, 0.18);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .btn-select-run:hover {
+            background-color: rgba(34, 197, 94, 0.28);
+            border-color: rgba(34, 197, 94, 0.7);
+        }
+
+        .record-card.record-card--active {
+            border-color: rgba(34, 197, 94, 0.65);
+            box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.35);
+        }
+
+        .record-card.record-card--active .card-summary {
+            background-color: rgba(34, 197, 94, 0.08);
+        }
+
+        .btn-delete {
+            background-color: #3a2428;
+            color: #ff9f9d;
+            border-color: #6e3e45;
+        }
+
+        .btn-delete:hover {
+            background-color: #4a2b31;
+            border-color: #8f535c;
+        }
+
+        .card-details {
+            max-height: 0;
+            overflow: hidden;
+            background-color: #171c28;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .card-details.open {
+            max-height: none;
+            overflow: visible;
+        }
+
+        .details-content {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.5rem;
+        }
+
+        .detail-lazy-hint,
+        .detail-loading {
+            margin: 0;
+            padding: 0.35rem 0 0.75rem;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+        }
+
+        .detail-error {
+            margin: 0;
+            padding: 0.35rem 0 0.75rem;
+            font-size: 0.88rem;
+            color: var(--danger-color);
+            grid-column: 1 / -1;
+        }
+
+        .detail-panel {
+            min-width: 0;
+        }
+
+        @media (max-width: 1100px) {
+            .details-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-panel h4 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.25rem;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .detail-item span:first-child {
+            color: var(--text-muted);
+        }
+
+        .detail-item span:last-child {
+            font-weight: 500;
+        }
+
+        .detail-item.detail-item-block {
+            display: block;
+        }
+
+        .detail-list-block {
+            display: block;
+            max-height: 150px;
+            overflow: auto;
+            margin-top: 0.5rem;
+            padding: 0.65rem;
+            border-radius: 6px;
+            background: #121722;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            line-height: 1.5;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .code-block {
+            background-color: #121722;
+            color: var(--primary-color);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .stock-performance-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .stock-performance-table th,
+        .stock-performance-table td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.4rem 0.35rem;
+            text-align: right;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .stock-performance-table th:first-child,
+        .stock-performance-table td:first-child {
+            text-align: left;
+        }
+
+        .stock-performance-wrap {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #161b27;
+        }
+
+        .portfolio-pict-panel .pict-dropzone {
+            position: relative;
+            width: 100%;
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .portfolio-pict-panel .pict-dropzone:not(.has-image) {
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eceef2;
+            border-color: #b8c0ce;
+        }
+
+        .portfolio-pict-panel .pict-dropzone.has-image {
+            background: #0f1219;
+            border-style: solid;
+            border-color: var(--border-color);
+        }
+
+        .portfolio-pict-panel .pict-dropzone.drag-over:not(.has-image) {
+            border-color: var(--primary-color);
+            background: #e2e9f5;
+        }
+
+        .portfolio-pict-panel .pict-dropzone.drag-over.has-image {
+            border-color: var(--primary-color);
+            background: #141b2e;
+        }
+
+        .portfolio-pict-panel .pict-dropzone-placeholder {
+            pointer-events: none;
+            user-select: none;
+            padding: 0.5rem 1rem;
+            text-align: center;
+        }
+
+        .portfolio-pict-panel .pict-dropzone-text {
+            color: #6b7280;
+            opacity: 0.72;
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+
+        .portfolio-pict-panel .pict-dropzone.has-image .pict-dropzone-placeholder {
+            display: none;
+        }
+
+        .portfolio-pict-panel .pict-file-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            font-size: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .portfolio-pict-panel .pict-dropzone-frame {
+            display: none;
+            position: relative;
+            width: 100%;
+            z-index: 0;
+            background: #0f1219;
+        }
+
+        .portfolio-pict-panel .pict-dropzone.has-image .pict-dropzone-frame {
+            display: block;
+        }
+
+        .portfolio-pict-panel .pict-preview {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: min(92vh, 1400px);
+            object-fit: contain;
+            vertical-align: middle;
+            margin: 0 auto;
+            border-radius: 4px;
+        }
+
+        .portfolio-pict-panel .pict-remove-link {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 4;
+            margin: 0;
+            padding: 4px 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+            background: rgba(19, 23, 34, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .portfolio-pict-panel .pict-remove-link:hover {
+            color: #fff;
+            border-color: #fff;
+            background: rgba(30, 34, 45, 0.92);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 2px dashed var(--border-color);
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #10141f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a3f4a;
+            border-radius: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5366;
+        }
+
+        /* 侧边浮标组：与 index.html 一致（外层定位 + 内层圆钮 + 悬停弹出菜单） */
+        .edge-float-cluster {
+            position: fixed;
+            z-index: 10050;
+            --edge-float-size: 52px;
+            --edge-float-blue: #4da3ff;
+            --edge-float-blue-glow: rgba(77, 163, 255, 0.55);
+            width: var(--edge-float-size);
+            height: var(--edge-float-size);
+            pointer-events: auto;
+        }
+
+        /* 万花筒写轮眼 Canvas + 参考页同款红瞳外圈（浮标 52px 不变） */
+        .edge-float-hud {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(255, 68, 40, 0.55);
+            background: #000;
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.55),
+                0 0 10px rgba(255, 0, 0, 0.38),
+                0 0 20px rgba(255, 50, 0, 0.32),
+                inset 0 0 22px rgba(0, 0, 0, 0.58);
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+            animation: edge-float-hud-halo-pulse 3s ease-in-out infinite;
+        }
+
+        .edge-float-hud::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(circle, rgba(255, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+            animation: edge-float-hud-breathe-glow 3s ease-in-out infinite alternate;
+        }
+
+        .edge-float-hud:hover {
+            border-color: rgba(255, 120, 90, 0.82);
+            animation-duration: 2.4s;
+        }
+
+        .edge-float-hud:hover::before {
+            animation-duration: 2.4s;
+        }
+
+        .edge-float-hud:active {
+            cursor: grabbing;
+            transform: scale(0.96);
+        }
+
+        .edge-float-mangekyo-canvas {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            pointer-events: none;
+            object-fit: cover;
+        }
+
+        @keyframes edge-float-hud-halo-pulse {
+
+            0%,
+            100% {
+                box-shadow:
+                    0 0 0 1px rgba(0, 0, 0, 0.55),
+                    0 0 8px rgba(255, 40, 0, 0.32),
+                    0 0 16px rgba(255, 60, 0, 0.22),
+                    inset 0 0 18px rgba(0, 0, 0, 0.55);
+            }
+
+            50% {
+                box-shadow:
+                    0 0 0 1px rgba(0, 0, 0, 0.55),
+                    0 0 14px rgba(255, 50, 20, 0.5),
+                    0 0 28px rgba(255, 80, 40, 0.36),
+                    inset 0 0 22px rgba(0, 0, 0, 0.62);
+            }
+        }
+
+        @keyframes edge-float-hud-breathe-glow {
+            0% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0.8;
+                transform: scale(1.06);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .edge-float-hud,
+            .edge-float-hud::before {
+                animation-duration: 6s;
+            }
+        }
+
+        .edge-float-menu {
+            position: fixed;
+            z-index: 10051;
+            display: none;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 184px;
+            padding: 11px 11px 12px;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 1px solid rgba(72, 118, 178, 0.3);
+            background:
+                linear-gradient(125deg, rgba(55, 120, 200, 0.09) 0%, transparent 42%, transparent 100%),
+                linear-gradient(315deg, rgba(30, 72, 140, 0.07) 0%, transparent 38%),
+                repeating-linear-gradient(0deg,
+                    transparent 0,
+                    transparent 3px,
+                    rgba(70, 120, 180, 0.032) 3px,
+                    rgba(70, 120, 180, 0.032) 4px),
+                repeating-linear-gradient(90deg,
+                    transparent 0,
+                    transparent 3px,
+                    rgba(70, 120, 180, 0.026) 3px,
+                    rgba(70, 120, 180, 0.026) 4px),
+                linear-gradient(180deg, rgba(16, 36, 72, 0.9) 0%, rgba(8, 22, 48, 0.94) 100%);
+            box-shadow:
+                0 0 0 1px rgba(24, 48, 88, 0.55),
+                0 10px 36px rgba(4, 12, 32, 0.55),
+                0 0 24px rgba(30, 70, 140, 0.22),
+                0 0 48px rgba(50, 100, 180, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                inset 0 -1px 0 rgba(4, 14, 36, 0.55);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            opacity: 0;
+            transform: translateY(10px) scale(0.97);
+            filter: saturate(1.05);
+            transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), filter 0.22s ease;
+            pointer-events: none;
+        }
+
+        .edge-float-menu::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            transform-origin: 50% 50%;
+            background: conic-gradient(from 210deg,
+                    transparent 0deg,
+                    rgba(60, 130, 220, 0.16) 38deg,
+                    transparent 76deg,
+                    rgba(100, 160, 230, 0.08) 120deg,
+                    transparent 200deg,
+                    rgba(35, 75, 150, 0.12) 280deg,
+                    transparent 360deg);
+            opacity: 0.4;
+            animation: edge-float-menu-halo-rotate 8s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .edge-float-menu::after {
+            content: "";
+            position: absolute;
+            left: -5%;
+            right: -5%;
+            top: -60%;
+            height: 38%;
+            background: linear-gradient(to bottom,
+                    transparent,
+                    rgba(140, 190, 240, 0.1) 45%,
+                    rgba(50, 100, 170, 0.05) 55%,
+                    transparent);
+            filter: blur(0.5px);
+            animation: edge-float-menu-scan 2.6s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .edge-float-menu.is-open {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+            animation: edge-float-menu-glow-pulse 2.4s ease-in-out infinite;
+        }
+
+        .edge-float-menu.is-open::before {
+            opacity: 0.52;
+        }
+
+        .edge-float-menu-btn.field.btn {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            text-align: left;
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            min-height: 32px;
+            padding: 7px 11px 7px 13px;
+            margin: 0;
+            border-radius: 6px;
+            line-height: 1.35;
+            color: var(--text-main);
+            cursor: pointer;
+            border: 1px solid rgba(48, 82, 130, 0.65);
+            background: linear-gradient(180deg, rgba(22, 44, 82, 0.82) 0%, rgba(12, 28, 58, 0.88) 100%);
+            box-shadow: inset 0 1px 0 rgba(120, 170, 230, 0.07);
+            transition:
+                border-color 0.18s ease,
+                background 0.18s ease,
+                box-shadow 0.18s ease,
+                color 0.18s ease,
+                transform 0.18s ease;
+        }
+
+        .edge-float-menu-btn.field.btn::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 10%;
+            bottom: 10%;
+            width: 3px;
+            border-radius: 0 2px 2px 0;
+            background: linear-gradient(180deg, transparent, rgba(77, 163, 255, 0.55), transparent);
+            opacity: 0;
+            transition: opacity 0.18s ease;
+        }
+
+        .edge-float-menu-btn.field.btn:hover {
+            border-color: rgba(85, 140, 205, 0.55);
+            background: linear-gradient(180deg, rgba(28, 55, 98, 0.88) 0%, rgba(14, 36, 72, 0.92) 100%);
+            color: #e8f0fc;
+            text-shadow: 0 0 10px rgba(120, 175, 240, 0.35);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 0 14px rgba(50, 110, 190, 0.14);
+            transform: translateX(2px);
+        }
+
+        .edge-float-menu-btn.field.btn:hover::before {
+            opacity: 1;
+        }
+
+        .edge-float-menu-btn.field.btn:active {
+            transform: translateX(1px) scale(0.99);
+        }
+
+        @keyframes edge-float-menu-halo-rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes edge-float-menu-scan {
+            0% {
+                transform: translateY(-120%);
+                opacity: 0;
+            }
+
+            12% {
+                opacity: 0.85;
+            }
+
+            88% {
+                opacity: 0.75;
+            }
+
+            100% {
+                transform: translateY(320%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes edge-float-menu-glow-pulse {
+
+            0%,
+            100% {
+                box-shadow:
+                    0 0 0 1px rgba(18, 38, 72, 0.6),
+                    0 10px 36px rgba(2, 8, 22, 0.58),
+                    0 0 18px rgba(28, 65, 130, 0.16),
+                    0 0 40px rgba(45, 95, 165, 0.08),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                    inset 0 -1px 0 rgba(4, 12, 32, 0.5);
+            }
+
+            50% {
+                box-shadow:
+                    0 0 0 1px rgba(22, 48, 88, 0.62),
+                    0 12px 40px rgba(2, 10, 28, 0.62),
+                    0 0 28px rgba(35, 80, 155, 0.24),
+                    0 0 52px rgba(55, 110, 185, 0.12),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                    inset 0 -1px 0 rgba(4, 14, 36, 0.5);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-title-wrap">
+                <h1>策略回测结果库</h1>
+                <span id="active-run-badge" class="active-run-badge" hidden></span>
+            </div>
+            <div class="header-tools">
+                <label class="name-filter-wrap" for="name-filter-input">
+                    <input type="search" id="name-filter-input" class="name-filter-input" placeholder="输入回测名称关键词…"
+                        autocomplete="off" />
+                </label>
+                <button type="button" id="name-filter-clear" class="name-filter-clear" hidden>清除</button>
+                <div class="stat-badge" id="record-count">共 5 条回测记录</div>
+            </div>
+        </div>
+
+        <div id="results-container">
+        </div>
+
+        <div class="empty-state" id="empty-state">
+            <svg style="width: 64px; height: 64px; color: #cbd5e1; margin-bottom: 1rem;" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                </path>
+            </svg>
+            <h3>暂无回测数据</h3>
+            <p>请运行您的策略引擎生成新的回测报告。</p>
+        </div>
+    </div>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600"
+                aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script src="../shared/backtest_run_context.js"></script>
+    <script src="../shared/edge_float_nav.js"></script>
+    <script src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script src="../shared/edge_float_hud.js"></script>
+    <script>
+        const container = document.getElementById("results-container");
+        const emptyState = document.getElementById("empty-state");
+        const recordCount = document.getElementById("record-count");
+        const nameFilterInput = document.getElementById("name-filter-input");
+        const nameFilterClear = document.getElementById("name-filter-clear");
+        const activeRunBadge = document.getElementById("active-run-badge");
+
+        function refreshActiveRunBadge() {
+            if (!activeRunBadge || !window.BacktestRunContext) {
+                return;
+            }
+            const tag = BacktestRunContext.getActiveRunTag();
+            if (!tag) {
+                activeRunBadge.hidden = true;
+                activeRunBadge.textContent = "";
+                return;
+            }
+            activeRunBadge.hidden = false;
+            const label = BacktestRunContext.getActiveRunLabel();
+            activeRunBadge.textContent = label ? `run_tag: ${label}` : "";
+            activeRunBadge.title = tag ? `run_tag: ${tag}` : "";
+        }
+
+        function applyActiveCardHighlight() {
+            const tag = window.BacktestRunContext ? BacktestRunContext.getActiveRunTag() : "";
+            container.querySelectorAll(".record-card").forEach((card) => {
+                const id = String(card.id || "").replace(/^card-/, "");
+                card.classList.toggle("record-card--active", Boolean(tag) && id === tag);
+            });
+        }
+
+        window.selectRunTag = function (event, runTag, label) {
+            event.stopPropagation();
+            if (!window.BacktestRunContext) {
+                return;
+            }
+            BacktestRunContext.setActiveRun(runTag, label);
+            refreshActiveRunBadge();
+            applyActiveCardHighlight();
+        };
+
+        function getApiBase() {
+            try {
+                const sp = new URLSearchParams(window.location.search || "");
+                const raw = (sp.get("api") || sp.get("api_base") || "").trim();
+                if (raw) {
+                    const normalized = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+                    const u = new URL(normalized.endsWith("/") ? normalized : `${normalized}/`);
+                    if (u.protocol === "http:" || u.protocol === "https:") {
+                        return u.origin;
+                    }
+                }
+            } catch {
+                /* ignore */
+            }
+            try {
+                const ls = (localStorage.getItem("RESULTS_API_BASE") || "").trim();
+                if (ls) {
+                    const normalized = /^https?:\/\//i.test(ls) ? ls : `http://${ls}`;
+                    const u = new URL(normalized.endsWith("/") ? normalized : `${normalized}/`);
+                    if (u.protocol === "http:" || u.protocol === "https:") {
+                        return u.origin;
+                    }
+                }
+            } catch {
+                /* ignore */
+            }
+            try {
+                if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+                    return `http://${window.location.hostname}:8000`;
+                }
+            } catch {
+                /* ignore */
+            }
+            return "http://127.0.0.1:8000";
+        }
+
+        function apiUrl(path) {
+            const p = path.startsWith("/") ? path : `/${path}`;
+            const base = getApiBase();
+            const u = new URL(p, base.endsWith("/") ? base : `${base}/`);
+            if (u.protocol !== "http:" && u.protocol !== "https:") {
+                throw new Error("API 基址必须为 http(s) 地址");
+            }
+            return u.href;
+        }
+
+        /** 与 index 浮窗一致：跳转时保留 ?api= / ?api_base=，便于成果页与主站共用 API 地址 */
+        function edgeFloatNavigateToPage(filename) {
+            if (window.EdgeFloatNav && typeof window.EdgeFloatNav.navigateToPage === "function") {
+                let target = filename;
+                try {
+                    const next = new URL(String(filename || ""), window.location.href);
+                    if (next.pathname.endsWith("/组合结果/index.html") && window.BacktestRunContext) {
+                        const tag = BacktestRunContext.getActiveRunTag();
+                        const label = BacktestRunContext.getActiveRunLabel();
+                        if (tag && !next.searchParams.get("run_tag")) {
+                            next.searchParams.set("run_tag", tag);
+                        }
+                        if (label && !next.searchParams.get("run_label")) {
+                            next.searchParams.set("run_label", label);
+                        }
+                    }
+                    target = next.href;
+                } catch (_) {
+                    target = filename;
+                }
+                window.EdgeFloatNav.navigateToPage(target);
+            }
+        }
+
+        function revokePortfolioImgBlobUrls(img) {
+            if (!img || !(img instanceof HTMLImageElement)) {
+                return;
+            }
+            const s = img.dataset.serverBlobUrl;
+            if (s) {
+                URL.revokeObjectURL(s);
+                delete img.dataset.serverBlobUrl;
+            }
+            const l = img.dataset.localPreviewUrl;
+            if (l) {
+                URL.revokeObjectURL(l);
+                delete img.dataset.localPreviewUrl;
+            }
+        }
+
+        function setPictDropzoneHasImage(panel, has) {
+            const dz = panel && panel.querySelector(".pict-dropzone");
+            if (dz) {
+                dz.classList.toggle("has-image", Boolean(has));
+            }
+        }
+
+        async function assignPortfolioServerPreview(img, fileUrl) {
+            revokePortfolioImgBlobUrls(img);
+            const r = await fetch(fileUrl, { method: "GET", cache: "no-store", mode: "cors" });
+            const hdrCt = (r.headers.get("Content-Type") || "").toLowerCase();
+            if (hdrCt.includes("application/json")) {
+                let msg = `附图拉取失败 (${r.status})`;
+                try {
+                    const j = await r.json();
+                    if (j && j.error && j.error.message) {
+                        msg = j.error.message;
+                    }
+                } catch {
+                    /* ignore */
+                }
+                throw new Error(msg);
+            }
+            if (!r.ok) {
+                throw new Error(`附图拉取失败 (${r.status})`);
+            }
+            const blob = await r.blob();
+            if (!blob || blob.size === 0) {
+                throw new Error("附图内容为空");
+            }
+            const blobType = (blob.type || hdrCt || "").toLowerCase();
+            if (!blobType.startsWith("image/") && blobType !== "application/octet-stream") {
+                throw new Error("附图接口返回的不是图片数据");
+            }
+            const ou = URL.createObjectURL(blob);
+            img.dataset.serverBlobUrl = ou;
+            img.src = ou;
+            img.style.display = "block";
+        }
+
+        async function uploadPortfolioPictFile(runTag, file, panel) {
+            const runTagSafe = String(runTag);
+            const fd = new FormData();
+            fd.append("run_tag", runTagSafe);
+            fd.append("file", file, file.name);
+            const resp = await fetch(apiUrl("/api/backtest/history/attachment"), {
+                method: "POST",
+                cache: "no-store",
+                mode: "cors",
+                body: fd,
+            });
+            const body = await resp.json();
+            if (!resp.ok) {
+                const message = body && body.error && body.error.message ? body.error.message : "上传失败";
+                throw new Error(message);
+            }
+            const input = panel.querySelector(".pict-file-input");
+            if (input) {
+                input.value = "";
+            }
+            await loadPortfolioPictPreview(runTagSafe);
+            return true;
+        }
+
+        function isAllowedPictFile(file) {
+            if (!file || !file.name) {
+                return false;
+            }
+            if (/\.(png|jpe?g|webp)$/i.test(file.name)) {
+                return true;
+            }
+            return Boolean(file.type && file.type.startsWith("image/"));
+        }
+
+        async function handlePictSelectedFile(panel, runTag, file, inputEl) {
+            const img = panel.querySelector(".pict-preview");
+            if (!(img instanceof HTMLImageElement)) {
+                return;
+            }
+            revokePortfolioImgBlobUrls(img);
+            const ou = URL.createObjectURL(file);
+            img.dataset.localPreviewUrl = ou;
+            img.src = ou;
+            img.style.display = "block";
+            setPictDropzoneHasImage(panel, true);
+            try {
+                await uploadPortfolioPictFile(runTag, file, panel);
+            } catch (err) {
+                alert(err instanceof Error ? err.message : "上传失败");
+                revokePortfolioImgBlobUrls(img);
+                img.removeAttribute("src");
+                img.style.display = "none";
+                setPictDropzoneHasImage(panel, false);
+                if (inputEl) {
+                    inputEl.value = "";
+                }
+            }
+        }
+
+        let backtestData = [];
+        let nameFilterText = "";
+        const expandedDetailIds = new Set();
+        const expandedGroupIds = new Set();
+
+        function normalizeNameFilterQuery(raw) {
+            return String(raw || "").trim().toLowerCase();
+        }
+
+        function recordSearchableText(item) {
+            if (!item || typeof item !== "object") {
+                return "";
+            }
+            const sm = metricsSource(item);
+            const cfg = item.config && typeof item.config === "object" ? item.config : {};
+            const parts = [
+                item.strategy_name,
+                item.id,
+                sm["回测名称"],
+                cfg.run_name,
+                cfg.run_name_user_base,
+            ];
+            return parts
+                .filter((x) => x !== undefined && x !== null && String(x).trim() !== "")
+                .map((x) => String(x).toLowerCase())
+                .join(" ");
+        }
+
+        function itemMatchesNameFilter(item, query) {
+            if (!query) {
+                return true;
+            }
+            return recordSearchableText(item).includes(query);
+        }
+
+        function getFilteredBacktestData() {
+            const query = normalizeNameFilterQuery(nameFilterText);
+            if (!query) {
+                return backtestData;
+            }
+            return backtestData.filter((item) => itemMatchesNameFilter(item, query));
+        }
+
+        function updateNameFilterClearVisibility() {
+            if (!nameFilterClear) {
+                return;
+            }
+            nameFilterClear.hidden = !normalizeNameFilterQuery(nameFilterText);
+        }
+
+        function metricsSource(item) {
+            if (item && item.summary && typeof item.summary === "object" && Object.keys(item.summary).length) {
+                return item.summary;
+            }
+            if (item && item.preview && typeof item.preview === "object") {
+                return item.preview;
+            }
+            return {};
+        }
+
+        function findBacktestItem(id) {
+            return backtestData.find((x) => x && x.id === id) || null;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function valueOf(summary, keys, fallback = "--") {
+            for (const key of keys) {
+                const value = summary && summary[key];
+                if (value !== undefined && value !== null && value !== "") {
+                    return value;
+                }
+            }
+            return fallback;
+        }
+
+        function toDisplay(value) {
+            if (value === undefined || value === null || value === "") {
+                return "--";
+            }
+            if (typeof value === "number") {
+                return Number.isFinite(value) ? value.toFixed(2) : "--";
+            }
+            return String(value);
+        }
+
+        function metricValueHtml(value, type = "") {
+            const text = toDisplay(value);
+            const numeric = Number(String(text).replace("%", ""));
+            let colorClass = "";
+            if (Number.isFinite(numeric)) {
+                if (type === "return") {
+                    colorClass = numeric > 0 ? "value-positive" : (numeric < 0 ? "value-negative" : "");
+                } else if (type === "drawdown") {
+                    colorClass = "value-negative";
+                }
+            }
+            return `<span class="metric-value ${colorClass}">${escapeHtml(text)}</span>`;
+        }
+
+        function stripRunNameDatePrefix(text) {
+            return String(text || "").replace(/^(\d{4}_to_\d{4}|\d{6}_to_\d{6}|\d{6}_to_\d{2})/, "");
+        }
+
+        function stripDigitsTitle(text) {
+            return String(text || "")
+                .replace(/\d/g, "")
+                .replace(/_to_/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function stripGroupingTitle(text) {
+            return stripDigitsTitle(stripRunNameDatePrefix(text));
+        }
+
+        function localDayKeyFromMtime(mtimeSec) {
+            const t = Number(mtimeSec);
+            const d = new Date(Number.isFinite(t) ? t * 1000 : Date.now());
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        }
+
+        function parseSummaryNumber(value) {
+            if (value === undefined || value === null || value === "") {
+                return NaN;
+            }
+            if (typeof value === "number") {
+                return Number.isFinite(value) ? value : NaN;
+            }
+            const s = String(value).trim().replace(/,/g, "").replace(/%/g, "");
+            const n = Number(s);
+            return Number.isFinite(n) ? n : NaN;
+        }
+
+        function optunaMetaFromItem(data) {
+            const cfg = data.config || {};
+            const name = String(cfg.run_name || data.strategy_name || "");
+            const m = name.match(/_job([0-9a-f]+)_trial\d+$/i);
+            if (m) {
+                return { isOptuna: true, jobId: m[1], rawName: name };
+            }
+            if (/_trial\d+$/i.test(name)) {
+                return { isOptuna: true, jobId: null, legacyBase: name.replace(/_trial\d+$/i, "").trim(), rawName: name };
+            }
+            return { isOptuna: false, rawName: name };
+        }
+
+        function groupKeyForItem(data) {
+            const day = localDayKeyFromMtime(data.mtime);
+            const om = optunaMetaFromItem(data);
+            if (om.isOptuna) {
+                if (om.jobId) {
+                    return `OPTUNA|${day}|job:${om.jobId}`;
+                }
+                const legacy = stripGroupingTitle(om.legacyBase || om.rawName || "");
+                return `OPTUNA|${day}|legacy:${legacy || "unknown"}`;
+            }
+            const nameKey = stripGroupingTitle(data.strategy_name || data.id || "");
+            return `DAYNAME|${day}|${nameKey || "unnamed"}`;
+        }
+
+        function meanSkipZeroWithFlags(values) {
+            const nums = values.map(parseSummaryNumber);
+            let hadZero = false;
+            let hadInvalid = false;
+            const usable = [];
+            for (const n of nums) {
+                if (!Number.isFinite(n)) {
+                    hadInvalid = true;
+                    continue;
+                }
+                if (n === 0) {
+                    hadZero = true;
+                    continue;
+                }
+                usable.push(n);
+            }
+            const mean = usable.length ? usable.reduce((a, b) => a + b, 0) / usable.length : NaN;
+            const anomaly = hadZero || hadInvalid || nums.length === 0;
+            return { mean, anomaly, usedCount: usable.length, total: nums.length, hadZero, hadInvalid };
+        }
+
+        function formatAvgMetric(mean, anomaly) {
+            const core = Number.isFinite(mean) ? toDisplay(mean) : "--";
+            const tag = anomaly ? `<span class="anomaly-tag">（异常）</span>` : "";
+            return `${core}${tag}`;
+        }
+
+        function annualReturnRaw(summary) {
+            return valueOf(summary, ["年化收益率 (%)", "累计收益率（扣手续费）"], "");
+        }
+
+        function sharpeRaw(summary) {
+            return valueOf(summary, ["夏普比率"], "");
+        }
+
+        function maxMtimeInGroup(members) {
+            let mx = 0;
+            for (const m of members) {
+                const t = Number(m.mtime) || 0;
+                if (t > mx) {
+                    mx = t;
+                }
+            }
+            return mx;
+        }
+
+        function buildDisplayGroups(items) {
+            const buckets = new Map();
+            for (const item of items) {
+                const k = groupKeyForItem(item);
+                if (!buckets.has(k)) {
+                    buckets.set(k, []);
+                }
+                buckets.get(k).push(item);
+            }
+            const out = [];
+            for (const [key, members] of buckets.entries()) {
+                const sorted = [...members].sort((a, b) => (Number(b.mtime) || 0) - (Number(a.mtime) || 0));
+                const om = optunaMetaFromItem(sorted[0]);
+                const isOptuna = om.isOptuna;
+                const flatten = !isOptuna && sorted.length === 1;
+                if (flatten) {
+                    out.push({ kind: "single", key, item: sorted[0] });
+                } else {
+                    let title = "";
+                    if (isOptuna && om.jobId) {
+                        title = `Optuna 任务 · ${om.jobId}`;
+                    } else if (isOptuna) {
+                        title = `Optuna · ${stripGroupingTitle(om.legacyBase || sorted[0].strategy_name || sorted[0].id)}`;
+                    } else {
+                        title = stripGroupingTitle(sorted[0].strategy_name || sorted[0].id) || "未命名组";
+                    }
+                    const returns = sorted.map((x) => annualReturnRaw(metricsSource(x)));
+                    const sharpes = sorted.map((x) => sharpeRaw(metricsSource(x)));
+                    const retStats = meanSkipZeroWithFlags(returns);
+                    const shStats = meanSkipZeroWithFlags(sharpes);
+                    out.push({
+                        kind: "group",
+                        key,
+                        members: sorted,
+                        isOptuna,
+                        title,
+                        retStats,
+                        shStats,
+                        maxMtime: maxMtimeInGroup(sorted),
+                    });
+                }
+            }
+            out.sort((a, b) => {
+                const ta = a.kind === "single" ? Number(a.item.mtime) || 0 : a.maxMtime;
+                const tb = b.kind === "single" ? Number(b.item.mtime) || 0 : b.maxMtime;
+                return tb - ta;
+            });
+            return out;
+        }
+
+        function stableGroupDomId(key) {
+            let h = 0;
+            const s = String(key);
+            for (let i = 0; i < s.length; i += 1) {
+                h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+            }
+            return `grp_${(h >>> 0).toString(16)}_${s.length}`;
+        }
+
+        function rulesToText(rules, operator) {
+            if (!Array.isArray(rules) || !rules.length) {
+                return "未记录";
+            }
+            const joiner = ` ${String(operator || "AND").toUpperCase()} `;
+            return rules
+                .map((rule) => {
+                    if (typeof rule === "string") {
+                        return rule;
+                    }
+                    if (rule && typeof rule === "object") {
+                        return `${rule.factor || rule.name || "--"} >= ${rule.threshold ?? "--"}`;
+                    }
+                    return String(rule);
+                })
+                .join(joiner);
+        }
+
+        function pickRuleArray(config, summary, configKeys, summaryKeys) {
+            const cfg = config && typeof config === "object" ? config : {};
+            for (const key of configKeys) {
+                const value = cfg[key];
+                if (Array.isArray(value) && value.length) {
+                    return value;
+                }
+            }
+            const sm = summary && typeof summary === "object" ? summary : {};
+            for (const key of summaryKeys) {
+                const value = sm[key];
+                if (Array.isArray(value) && value.length) {
+                    return value;
+                }
+            }
+            return [];
+        }
+
+        function resolveRuleOperator(config, summary, side) {
+            const cfg = config && typeof config === "object" ? config : {};
+            const sm = summary && typeof summary === "object" ? summary : {};
+            const direct = side === "sell"
+                ? (cfg.frontend_sell_operator || cfg.sell_operator)
+                : (cfg.frontend_buy_operator || cfg.buy_operator);
+            if (direct) {
+                const text = String(direct).trim().toLowerCase();
+                return text === "or" ? "OR" : "AND";
+            }
+            const logicKey = side === "sell" ? "卖出组合逻辑" : "买入组合逻辑";
+            const logicText = String(sm[logicKey] || "").toLowerCase();
+            if (logicText.includes(" or ") || logicText.endsWith("(or)")) {
+                return "OR";
+            }
+            if (logicText.includes(" and ") || logicText.includes("(and)")) {
+                return "AND";
+            }
+            return "AND";
+        }
+
+        /** 因子规则面板：兼容 buy_rules 与 frontend_buy_rules（强点模型等）。 */
+        function buildFactorRulesPanelHtml(config, summary) {
+            const cfg = config && typeof config === "object" ? config : {};
+            const sm = summary && typeof summary === "object" ? summary : {};
+            const buyRules = pickRuleArray(
+                cfg,
+                sm,
+                ["buy_rules", "frontend_buy_rules"],
+                ["买入因子"],
+            );
+            const sellRules = pickRuleArray(
+                cfg,
+                sm,
+                ["sell_rules", "frontend_sell_rules"],
+                ["卖出因子"],
+            );
+            const buyOperator = resolveRuleOperator(cfg, sm, "buy");
+            const sellOperator = resolveRuleOperator(cfg, sm, "sell");
+            const runName = String(cfg.run_name || sm["回测名称"] || "").trim();
+            const buyLogic = String(sm["买入组合逻辑"] || "").trim();
+            const sellLogic = String(sm["卖出组合逻辑"] || "").trim();
+            const sellNote = String(cfg.frontend_sell_rules_note || "").trim();
+            const strategyClass = String(cfg.strategy_class || "").trim();
+            const metaLines = [];
+            if (runName) {
+                metaLines.push(`run_name: ${runName}`);
+            }
+            if (strategyClass) {
+                metaLines.push(`strategy_class: ${strategyClass}`);
+            }
+            if (buyLogic) {
+                metaLines.push(`买入组合逻辑: ${buyLogic}`);
+            }
+            if (sellLogic) {
+                metaLines.push(`卖出组合逻辑: ${sellLogic}`);
+            }
+            if (sellNote) {
+                metaLines.push(`说明: ${sellNote}`);
+            }
+            const metaBlock = metaLines.length
+                ? `<div class="detail-item"><span>回测命名与逻辑</span></div>
+                            <div class="code-block">${escapeHtml(metaLines.join("\n"))}</div>`
+                : "";
+            const rulesJson = {
+                buy_rules: buyRules,
+                sell_rules: sellRules,
+                buy_operator: buyOperator,
+                sell_operator: sellOperator,
+            };
+            if (Array.isArray(cfg.template_buy_factors) && cfg.template_buy_factors.length) {
+                rulesJson.template_buy_factors = cfg.template_buy_factors;
+            }
+            if (Array.isArray(cfg.template_sell_factors) && cfg.template_sell_factors.length) {
+                rulesJson.template_sell_factors = cfg.template_sell_factors;
+            }
+            return `
+                        <div class="detail-panel">
+                            <h4>因子规则</h4>
+                            ${metaBlock}
+                            <div class="detail-item"><span>买入因子 (${escapeHtml(buyOperator)}):</span></div>
+                            <div class="code-block">${escapeHtml(rulesToText(buyRules, buyOperator))}</div>
+                            <div class="detail-item" style="margin-top: 0.75rem;"><span>卖出因子 (${escapeHtml(sellOperator)}):</span></div>
+                            <div class="code-block">${escapeHtml(rulesToText(sellRules, sellOperator))}</div>
+                            <div class="detail-item" style="margin-top: 0.75rem;"><span>规则 JSON（回测配置快照）:</span></div>
+                            <div class="code-block">${escapeHtml(JSON.stringify(rulesJson, null, 2))}</div>
+                        </div>`;
+        }
+
+        /** 强买改等模型写入 summary「回测配置」的 strategy_params；结果页原先把「回测配置」整段隐藏，故单独展示。 */
+        function buildStrategyParamsPanelHtml(config) {
+            const sp = config && config.strategy_params;
+            const os = config && config.optuna_search_space;
+            const hasSp = sp && typeof sp === "object" && Object.keys(sp).length > 0;
+            const hasOs = os && typeof os === "object" && Object.keys(os).length > 0;
+            if (!hasSp && !hasOs) {
+                return "";
+            }
+            let body = "";
+            if (hasSp) {
+                body += `<div class="detail-item"><span>strategy_params（止损成本倍数、止盈档位等）</span></div>
+                            <div class="code-block">${escapeHtml(JSON.stringify(sp, null, 2))}</div>`;
+            }
+            if (hasOs) {
+                body += `<div class="detail-item" style="margin-top:0.75rem;"><span>optuna_search_space（参数空间说明）</span></div>
+                            <div class="code-block">${escapeHtml(JSON.stringify(os, null, 2))}</div>`;
+            }
+            return `
+                        <div class="detail-panel">
+                            <h4>止盈止损与策略参数</h4>
+                            ${body}
+                        </div>`;
+        }
+
+        function buildAllMetricsHtml(summary) {
+            const hidden = new Set([
+                "summary_path",
+                "server_time",
+                "backtest_start",
+                "backtest_end",
+                "backtest_end_inclusive",
+                "回测配置",
+                "回测标的",
+                "买入组合逻辑",
+                "卖出组合逻辑",
+                "买入因子",
+                "卖出因子",
+                "已平仓股票表现",
+                "期末持仓股票表现"
+            ]);
+            return Object.entries(summary || {})
+                .filter(([key]) => !hidden.has(key))
+                .map(([key, value]) => `<div class="detail-item"><span>${escapeHtml(key)}:</span> <span>${escapeHtml(toDisplay(value))}</span></div>`)
+                .join("");
+        }
+
+        function renderClosedStockPerformance(items) {
+            if (!Array.isArray(items) || !items.length) {
+                return '<div class="code-block">未记录，需重新回测生成</div>';
+            }
+            const rows = items.map((item) => `
+            <tr>
+                <td>${escapeHtml(item.code || "--")}</td>
+                <td>${escapeHtml(toDisplay(item.realized_return_pct))}</td>
+                <td>${escapeHtml(toDisplay(item.contribution_pct))}</td>
+                <td>${escapeHtml(toDisplay(item.realized_pnl))}</td>
+                <td>${escapeHtml(toDisplay(item.trade_count))}</td>
+                <td>${escapeHtml(toDisplay(item.first_entry_date))}</td>
+                <td>${escapeHtml(toDisplay(item.last_exit_date))}</td>
+            </tr>
+        `).join("");
+            return `
+            <div class="stock-performance-wrap">
+                <table class="stock-performance-table">
+                    <thead>
+                        <tr>
+                            <th>代码</th>
+                            <th>收益率</th>
+                            <th>收益贡献占比</th>
+                            <th>已实现盈亏</th>
+                            <th>交易次数</th>
+                            <th>首次买入</th>
+                            <th>最后卖出</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+        }
+
+        function renderOpenStockPerformance(items) {
+            if (!Array.isArray(items) || !items.length) {
+                return '<div class="code-block">期末无持仓，或旧回测未记录</div>';
+            }
+            const rows = items.map((item) => `
+            <tr>
+                <td>${escapeHtml(item.code || "--")}</td>
+                <td>${escapeHtml(toDisplay(item.unrealized_return_pct))}</td>
+                <td>${escapeHtml(toDisplay(item.contribution_pct))}</td>
+                <td>${escapeHtml(toDisplay(item.weight_pct))}</td>
+                <td>${escapeHtml(toDisplay(item.market_value))}</td>
+                <td>${escapeHtml(toDisplay(item.position_size))}</td>
+                <td>${escapeHtml(toDisplay(item.close))}</td>
+            </tr>
+        `).join("");
+            return `
+            <div class="stock-performance-wrap">
+                <table class="stock-performance-table">
+                    <thead>
+                        <tr>
+                            <th>代码</th>
+                            <th>收益率</th>
+                            <th>收益贡献占比</th>
+                            <th>持仓占总资产比</th>
+                            <th>市值</th>
+                            <th>数量</th>
+                            <th>收盘价</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+        }
+
+        const HISTORY_PAGE_SIZE = 100;
+        const HISTORY_PAGE_DELAY_MS = 500;
+
+        async function fetchBacktestHistoryPage(limit, offset) {
+            const qs = new URLSearchParams();
+            qs.set("limit", String(limit));
+            qs.set("offset", String(offset));
+            const resp = await fetch(apiUrl(`/api/backtest/history?${qs.toString()}`), {
+                method: "GET",
+                cache: "no-store",
+                mode: "cors",
+            });
+            const body = await resp.json();
+            if (!resp.ok) {
+                const message = body && body.error && body.error.message ? body.error.message : "回测历史读取失败";
+                throw new Error(message);
+            }
+            return {
+                items: Array.isArray(body.items) ? body.items : [],
+                meta: body.meta && typeof body.meta === "object" ? body.meta : {},
+            };
+        }
+
+        async function deleteBacktestHistory(runTag) {
+            const resp = await fetch(apiUrl("/api/backtest/history/delete"), {
+                method: "POST",
+                cache: "no-store",
+                mode: "cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ run_tag: runTag }),
+            });
+            const body = await resp.json();
+            if (!resp.ok) {
+                const message = body && body.error && body.error.message ? body.error.message : "删除失败";
+                throw new Error(message);
+            }
+            return body;
+        }
+
+        async function fetchBacktestHistoryDetail(runTag) {
+            const resp = await fetch(
+                apiUrl(`/api/backtest/history/detail?run_tag=${encodeURIComponent(runTag)}`),
+                { method: "GET", cache: "no-store", mode: "cors" }
+            );
+            const body = await resp.json();
+            if (!resp.ok) {
+                const message = body && body.error && body.error.message ? body.error.message : "回测详情读取失败";
+                throw new Error(message);
+            }
+            return body;
+        }
+
+        function findPortfolioPictPanel(runTag) {
+            return Array.from(document.querySelectorAll(".portfolio-pict-panel")).find(
+                (p) => p.getAttribute("data-run-tag") === runTag
+            );
+        }
+
+        async function loadPortfolioPictPreview(runTag) {
+            const panel = findPortfolioPictPanel(runTag);
+            const img = panel ? panel.querySelector(".pict-preview") : null;
+            const input = panel ? panel.querySelector(".pict-file-input") : null;
+            if (!img || !panel) {
+                return;
+            }
+            if (input && input.files && input.files.length > 0) {
+                return;
+            }
+            try {
+                const metaUrl = apiUrl(`/api/backtest/history/attachment/meta?run_tag=${encodeURIComponent(runTag)}`);
+                const r = await fetch(metaUrl, { method: "GET", cache: "no-store", mode: "cors" });
+                const body = await r.json();
+                if (!r.ok) {
+                    revokePortfolioImgBlobUrls(img);
+                    img.removeAttribute("src");
+                    img.style.display = "none";
+                    setPictDropzoneHasImage(panel, false);
+                    return;
+                }
+                if (body && body.has_attachment) {
+                    const ts = Number(body.updated_at) || 0;
+                    const fileUrl = apiUrl(`/api/backtest/history/attachment/file?run_tag=${encodeURIComponent(runTag)}&t=${ts}`);
+                    await assignPortfolioServerPreview(img, fileUrl);
+                    setPictDropzoneHasImage(panel, true);
+                } else {
+                    revokePortfolioImgBlobUrls(img);
+                    img.removeAttribute("src");
+                    img.style.display = "none";
+                    setPictDropzoneHasImage(panel, false);
+                }
+            } catch {
+                revokePortfolioImgBlobUrls(img);
+                img.removeAttribute("src");
+                img.style.display = "none";
+                setPictDropzoneHasImage(panel, false);
+            }
+        }
+
+        function buildCardDetailsHtml(data) {
+            const summary = data.summary || {};
+            const config = data.config || summary["回测配置"] || {};
+            const codes = Array.isArray(config.codes)
+                ? config.codes
+                : (Array.isArray(summary["回测标的"]) ? summary["回测标的"] : []);
+            const closedStockPerformance = Array.isArray(summary["已平仓股票表现"]) ? summary["已平仓股票表现"] : [];
+            const openStockPerformance = Array.isArray(summary["期末持仓股票表现"]) ? summary["期末持仓股票表现"] : [];
+            const strategyParamsPanel = buildStrategyParamsPanelHtml(config);
+            return `
+                        <div class="detail-panel portfolio-pict-panel" style="grid-column: 1 / -1;" data-run-tag="${escapeHtml(data.id)}">
+                            <h4>组合附图</h4>
+                            <div class="pict-dropzone" data-run-tag="${escapeHtml(data.id)}">
+                                <input type="file" class="pict-file-input" accept="image/png,image/jpeg,image/webp" title="点击或拖入图片" />
+                                <div class="pict-dropzone-placeholder">
+                                    <span class="pict-dropzone-text">请插入图片</span>
+                                </div>
+                                <div class="pict-dropzone-frame">
+                                    <img class="pict-preview" alt="组合附图" />
+                                    <button type="button" class="pict-remove-link">移除</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-panel">
+                            <h4>回测信息</h4>
+                            <div class="detail-item"><span>回测区间:</span> <span>${escapeHtml(valueOf(summary, ["回测开始日期", "backtest_start"]))} 至 ${escapeHtml(valueOf(summary, ["回测结束日期", "backtest_end"]))}</span></div>
+                            <div class="detail-item detail-item-block">
+                                <span>回测标的:</span>
+                                <div class="detail-list-block">${escapeHtml(codes.length ? codes.join(", ") : "未记录")}</div>
+                            </div>
+                            <div class="detail-item"><span>summary:</span> <span>${escapeHtml(data.summary_path || "--")}</span></div>
+                        </div>
+                        ${buildFactorRulesPanelHtml(config, summary)}
+                        ${strategyParamsPanel}
+                        <div class="detail-panel">
+                            <h4>详细指标</h4>
+                            ${buildAllMetricsHtml(summary)}
+                        </div>
+                        <div class="detail-panel">
+                            <h4>保存文件</h4>
+                            <div class="code-block">${escapeHtml(JSON.stringify(data.saved_paths || {}, null, 2))}</div>
+                        </div>
+                        <div class="detail-panel">
+                            <h4>已平仓股票表现</h4>
+                            ${renderClosedStockPerformance(closedStockPerformance)}
+                        </div>
+                        <div class="detail-panel">
+                            <h4>期末持仓股票表现</h4>
+                            ${renderOpenStockPerformance(openStockPerformance)}
+                        </div>
+                    `;
+        }
+
+        function createRecordCardElement(data, nested) {
+            const sm = metricsSource(data);
+            const annualReturn = valueOf(sm, ["年化收益率 (%)", "累计收益率（扣手续费）"]);
+            const sharpe = valueOf(sm, ["夏普比率"]);
+            const maxDrawdown = valueOf(sm, ["最大回撤 (%)"]);
+            const downsideRatio = valueOf(sm, ["log((Rp-Rb)/下半方差（P）)"]);
+
+            const card = document.createElement("div");
+            card.className = nested ? "record-card record-card-nested" : "record-card";
+            card.id = `card-${data.id}`;
+            card.innerHTML = `
+                <div class="card-summary" onclick="toggleDetails('${escapeHtml(data.id)}')">
+                    <div class="summary-info">
+                        <div>
+                            <div class="strategy-name">${escapeHtml(data.strategy_name || data.id)}</div>
+                            <div class="metric-label" style="margin-top: 4px;">任务 ID: ${escapeHtml(data.task_time || data.id)}</div>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">年化收益</span>
+                            ${metricValueHtml(annualReturn, "return")}
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">夏普</span>
+                            ${metricValueHtml(sharpe)}
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">最大回撤</span>
+                            ${metricValueHtml(maxDrawdown, "drawdown")}
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">log((Rp-Rb)/下半方差（P）)</span>
+                            ${metricValueHtml(downsideRatio)}
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button type="button" class="btn-select-run" onclick="selectRunTag(event, '${escapeHtml(data.id)}', '${escapeHtml(data.strategy_name || data.id)}')">选择该组</button>
+                        <button type="button" class="btn-delete" onclick="deleteRecord(event, '${escapeHtml(data.id)}')">删除</button>
+                    </div>
+                </div>
+
+                <div class="card-details" id="details-${escapeHtml(data.id)}">
+                    <div class="details-content">
+                        <p class="detail-lazy-hint">点击摘要展开后，将单独请求并加载本条完整回测数据（因子、指标表、持仓明细等）。</p>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function updateRecordCountDuringLoad(loaded, total) {
+            const query = normalizeNameFilterQuery(nameFilterText);
+            if (query) {
+                recordCount.textContent = `筛选「${nameFilterText.trim()}」：后台加载 ${loaded} / ${total} 条…`;
+                return;
+            }
+            recordCount.textContent = `已加载 ${loaded} / ${total} 条，后台继续拉取…`;
+        }
+
+        function restoreExpandedCardsAfterRender() {
+            for (const gid of expandedGroupIds) {
+                const el = document.getElementById(`details-group-${gid}`);
+                if (el) {
+                    el.classList.add("open");
+                }
+            }
+            for (const id of expandedDetailIds) {
+                const detailsEl = document.getElementById(`details-${id}`);
+                if (!detailsEl) {
+                    continue;
+                }
+                detailsEl.classList.add("open");
+                const slot = detailsEl.querySelector(".details-content");
+                const item = findBacktestItem(id);
+                if (!slot || !item) {
+                    continue;
+                }
+                const hasFullSummary =
+                    item.summary && typeof item.summary === "object" && Object.keys(item.summary).length > 0;
+                const alreadyRendered = Boolean(slot.querySelector(".portfolio-pict-panel"));
+                if (hasFullSummary && !alreadyRendered) {
+                    slot.innerHTML = buildCardDetailsHtml(item);
+                    void loadPortfolioPictPreview(id);
+                }
+            }
+        }
+
+        function renderCards() {
+            container.querySelectorAll("img.pict-preview").forEach((el) => {
+                if (el instanceof HTMLImageElement) {
+                    revokePortfolioImgBlobUrls(el);
+                }
+            });
+            container.innerHTML = "";
+
+            const filteredData = getFilteredBacktestData();
+            const query = normalizeNameFilterQuery(nameFilterText);
+            const groups = buildDisplayGroups(filteredData);
+            const nGroups = groups.filter((g) => g.kind === "group").length;
+            const visibleRecords = groups.reduce((n, g) => {
+                return n + (g.kind === "single" ? 1 : g.members.length);
+            }, 0);
+
+            if (backtestData.length === 0) {
+                recordCount.textContent = "共 0 条回测记录";
+                emptyState.style.display = "block";
+                emptyState.querySelector("h3").textContent = "暂无回测数据";
+                emptyState.querySelector("p").textContent = "请运行您的策略引擎生成新的回测报告。";
+                return;
+            }
+
+            if (groups.length === 0) {
+                recordCount.textContent = query
+                    ? `筛选「${nameFilterText.trim()}」：0 / ${backtestData.length} 条`
+                    : "共 0 条回测记录";
+                emptyState.style.display = "block";
+                emptyState.querySelector("h3").textContent = "无匹配记录";
+                emptyState.querySelector("p").textContent = query
+                    ? `没有名称包含「${nameFilterText.trim()}」的回测，请修改关键词或清除筛选。`
+                    : "请运行您的策略引擎生成新的回测报告。";
+                return;
+            }
+
+            emptyState.style.display = "none";
+            emptyState.querySelector("h3").textContent = "暂无回测数据";
+            emptyState.querySelector("p").textContent = "请运行您的策略引擎生成新的回测报告。";
+
+            const countCore =
+                nGroups > 0
+                    ? `${visibleRecords} 条 · ${groups.length} 个展示单元（含 ${nGroups} 个合并组）`
+                    : `${visibleRecords} 条回测记录`;
+            recordCount.textContent = query
+                ? `筛选「${nameFilterText.trim()}」：${countCore} / 共 ${backtestData.length} 条`
+                : `共 ${countCore}`;
+
+            for (const g of groups) {
+                if (g.kind === "single") {
+                    container.appendChild(createRecordCardElement(g.item, false));
+                    continue;
+                }
+                const gid = stableGroupDomId(g.key);
+                const day = localDayKeyFromMtime(g.members[0].mtime);
+                const wrap = document.createElement("div");
+                wrap.className = "record-card record-card-group";
+                wrap.id = `card-${gid}`;
+                const retHtml = formatAvgMetric(g.retStats.mean, g.retStats.anomaly);
+                const shHtml = formatAvgMetric(g.shStats.mean, g.shStats.anomaly);
+                wrap.innerHTML = `
+                <div class="card-summary" onclick="toggleDetailsGroup('${escapeHtml(gid)}')">
+                    <div class="summary-info summary-info-group">
+                        <div>
+                            <div class="strategy-name">${escapeHtml(g.title)}</div>
+                            <div class="group-summary-meta">${escapeHtml(day)} · ${g.members.length} 条${g.isOptuna ? " · Optuna" : ""}</div>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">平均收益</span>
+                            <span class="metric-value">${retHtml}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">平均夏普</span>
+                            <span class="metric-value">${shHtml}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-delete" onclick="deleteGroup(event, '${escapeHtml(gid)}')">删除整组</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-details" id="details-group-${escapeHtml(gid)}">
+                    <div class="group-children-wrap"></div>
+                </div>
+            `;
+                const childWrap = wrap.querySelector(".group-children-wrap");
+                for (const m of g.members) {
+                    childWrap.appendChild(createRecordCardElement(m, true));
+                }
+                container.appendChild(wrap);
+            }
+            refreshActiveRunBadge();
+            applyActiveCardHighlight();
+            restoreExpandedCardsAfterRender();
+        }
+
+        window.toggleDetailsGroup = function (gid) {
+            const detailsEl = document.getElementById(`details-group-${gid}`);
+            if (!detailsEl) {
+                return;
+            }
+            const willOpen = !detailsEl.classList.contains("open");
+            detailsEl.classList.toggle("open");
+            if (willOpen) {
+                expandedGroupIds.add(gid);
+            } else {
+                expandedGroupIds.delete(gid);
+            }
+        };
+
+        window.deleteGroup = async function (event, gid) {
+            event.stopPropagation();
+            const wrap = document.getElementById(`card-${gid}`);
+            if (!wrap) {
+                return;
+            }
+            const ids = Array.from(wrap.querySelectorAll(".record-card-nested")).map((el) => el.id.replace(/^card-/, ""));
+            if (!ids.length) {
+                return;
+            }
+            if (!confirm(`确定删除该组共 ${ids.length} 条回测记录？`)) {
+                return;
+            }
+            try {
+                for (const id of ids) {
+                    await deleteBacktestHistory(id);
+                }
+                backtestData = backtestData.filter((item) => !ids.includes(item.id));
+                for (const id of ids) {
+                    expandedDetailIds.delete(id);
+                }
+                expandedGroupIds.delete(gid);
+                renderCards();
+            } catch (err) {
+                alert(err instanceof Error ? err.message : "删除失败");
+            }
+        };
+
+        window.toggleDetails = async function (id) {
+            const detailsEl = document.getElementById(`details-${id}`);
+            if (!detailsEl) {
+                return;
+            }
+            if (detailsEl.classList.contains("open")) {
+                detailsEl.classList.remove("open");
+                expandedDetailIds.delete(id);
+                return;
+            }
+            detailsEl.classList.add("open");
+            expandedDetailIds.add(id);
+            const slot = detailsEl.querySelector(".details-content");
+            const item = findBacktestItem(id);
+            if (!slot || !item) {
+                return;
+            }
+
+            const hasFullSummary =
+                item.summary && typeof item.summary === "object" && Object.keys(item.summary).length > 0;
+            const alreadyRendered = Boolean(slot.querySelector(".portfolio-pict-panel"));
+
+            if (!hasFullSummary) {
+                slot.innerHTML = '<p class="detail-loading">正在加载详情…</p>';
+                try {
+                    const body = await fetchBacktestHistoryDetail(id);
+                    if (!body || !body.item) {
+                        throw new Error("详情数据无效");
+                    }
+                    Object.assign(item, body.item);
+                } catch (err) {
+                    slot.innerHTML = `<p class="detail-error">${escapeHtml(err instanceof Error ? err.message : "加载失败")}</p>`;
+                    return;
+                }
+                if (!detailsEl.classList.contains("open")) {
+                    return;
+                }
+                slot.innerHTML = buildCardDetailsHtml(item);
+            } else if (!alreadyRendered) {
+                slot.innerHTML = buildCardDetailsHtml(item);
+            }
+
+            void loadPortfolioPictPreview(id);
+        };
+
+        window.deleteRecord = async function (event, id) {
+            event.stopPropagation();
+            if (!confirm(`确定要删除回测记录 ${id} 吗？`)) {
+                return;
+            }
+            try {
+                await deleteBacktestHistory(id);
+                if (window.BacktestRunContext && BacktestRunContext.getActiveRunTag() === id) {
+                    BacktestRunContext.clearActiveRun();
+                }
+                backtestData = backtestData.filter((item) => item.id !== id);
+                expandedDetailIds.delete(id);
+                renderCards();
+            } catch (err) {
+                alert(err instanceof Error ? err.message : "删除失败");
+            }
+        };
+
+        if (nameFilterInput) {
+            nameFilterInput.addEventListener("input", () => {
+                nameFilterText = nameFilterInput.value;
+                updateNameFilterClearVisibility();
+                renderCards();
+            });
+            nameFilterInput.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    nameFilterText = "";
+                    nameFilterInput.value = "";
+                    updateNameFilterClearVisibility();
+                    renderCards();
+                }
+            });
+        }
+        if (nameFilterClear) {
+            nameFilterClear.addEventListener("click", () => {
+                nameFilterText = "";
+                if (nameFilterInput) {
+                    nameFilterInput.value = "";
+                    nameFilterInput.focus();
+                }
+                updateNameFilterClearVisibility();
+                renderCards();
+            });
+        }
+
+        async function init() {
+            refreshActiveRunBadge();
+            recordCount.textContent = "正在读取回测历史（首批）...";
+            try {
+                backtestData = [];
+                const first = await fetchBacktestHistoryPage(HISTORY_PAGE_SIZE, 0);
+                backtestData.push(...first.items);
+                const total =
+                    typeof first.meta.total === "number" ? first.meta.total : backtestData.length;
+                let nextOff =
+                    typeof first.meta.next_offset === "number"
+                        ? first.meta.next_offset
+                        : backtestData.length;
+                updateNameFilterClearVisibility();
+                renderCards();
+                if (total > 0 && backtestData.length < total) {
+                    updateRecordCountDuringLoad(backtestData.length, total);
+                }
+
+                const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+                while (nextOff < total) {
+                    await sleep(HISTORY_PAGE_DELAY_MS);
+                    try {
+                        const page = await fetchBacktestHistoryPage(HISTORY_PAGE_SIZE, nextOff);
+                        if (page.items.length === 0) {
+                            break;
+                        }
+                        backtestData.push(...page.items);
+                        nextOff =
+                            typeof page.meta.next_offset === "number"
+                                ? page.meta.next_offset
+                                : nextOff + HISTORY_PAGE_SIZE;
+                        updateNameFilterClearVisibility();
+                        updateRecordCountDuringLoad(backtestData.length, total);
+                    } catch (pageErr) {
+                        console.error(pageErr);
+                        recordCount.textContent = `已加载 ${backtestData.length} / ${total} 条（后续分页失败）`;
+                        break;
+                    }
+                }
+                updateNameFilterClearVisibility();
+                renderCards();
+            } catch (err) {
+                recordCount.textContent = "读取失败";
+                emptyState.style.display = "block";
+                emptyState.querySelector("h3").textContent = "回测历史读取失败";
+                emptyState.querySelector("p").textContent = err instanceof Error ? err.message : "请检查 API 服务是否运行。";
+            }
+        }
+
+        container.addEventListener("dragover", (e) => {
+            const dz = e.target instanceof Element ? e.target.closest(".pict-dropzone") : null;
+            if (!dz) {
+                return;
+            }
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            dz.classList.add("drag-over");
+        });
+
+        container.addEventListener("dragleave", (e) => {
+            const dz = e.target instanceof Element ? e.target.closest(".pict-dropzone") : null;
+            if (!dz) {
+                return;
+            }
+            const rel = e.relatedTarget;
+            if (rel instanceof Node && dz.contains(rel)) {
+                return;
+            }
+            dz.classList.remove("drag-over");
+        });
+
+        container.addEventListener("drop", async (e) => {
+            const dz = e.target instanceof Element ? e.target.closest(".pict-dropzone") : null;
+            if (!dz) {
+                return;
+            }
+            e.preventDefault();
+            dz.classList.remove("drag-over");
+            const panel = dz.closest(".portfolio-pict-panel");
+            const runTag = panel && panel.getAttribute("data-run-tag");
+            if (!panel || !runTag) {
+                return;
+            }
+            const files = e.dataTransfer && e.dataTransfer.files;
+            if (!files || !files[0]) {
+                return;
+            }
+            const file = files[0];
+            if (!isAllowedPictFile(file)) {
+                alert("仅支持 png / jpg / jpeg / webp");
+                return;
+            }
+            await handlePictSelectedFile(panel, runTag, file, panel.querySelector(".pict-file-input"));
+        });
+
+        container.addEventListener("change", async (e) => {
+            const t = e.target;
+            if (!(t instanceof HTMLInputElement) || !t.classList.contains("pict-file-input")) {
+                return;
+            }
+            const panel = t.closest(".portfolio-pict-panel");
+            const runTag = panel && panel.getAttribute("data-run-tag");
+            if (!panel || !runTag) {
+                return;
+            }
+            const file = t.files && t.files[0];
+            if (!file) {
+                return;
+            }
+            if (!isAllowedPictFile(file)) {
+                alert("仅支持 png / jpg / jpeg / webp");
+                t.value = "";
+                return;
+            }
+            await handlePictSelectedFile(panel, runTag, file, t);
+        });
+
+        container.addEventListener("click", async (e) => {
+            const t = e.target;
+            if (!(t instanceof Element)) {
+                return;
+            }
+
+            const remove = t.closest(".pict-remove-link");
+            if (remove) {
+                e.preventDefault();
+                e.stopPropagation();
+                const panel = remove.closest(".portfolio-pict-panel");
+                const runTag = panel && panel.getAttribute("data-run-tag");
+                if (!panel || !runTag) {
+                    return;
+                }
+                if (!confirm("确定移除该条回测记录的组合附图？")) {
+                    return;
+                }
+                const img = panel.querySelector(".pict-preview");
+                try {
+                    const resp = await fetch(apiUrl("/api/backtest/history/attachment"), {
+                        method: "DELETE",
+                        cache: "no-store",
+                        mode: "cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ run_tag: runTag }),
+                    });
+                    const body = await resp.json();
+                    if (!resp.ok) {
+                        const message = body && body.error && body.error.message ? body.error.message : "移除失败";
+                        throw new Error(message);
+                    }
+                    if (img instanceof HTMLImageElement) {
+                        revokePortfolioImgBlobUrls(img);
+                        img.removeAttribute("src");
+                        img.style.display = "none";
+                    }
+                    setPictDropzoneHasImage(panel, false);
+                    const input = panel.querySelector(".pict-file-input");
+                    if (input) {
+                        input.value = "";
+                    }
+                } catch (err) {
+                    alert(err instanceof Error ? err.message : "移除失败");
+                }
+                return;
+            }
+
+            const dz = t.closest(".pict-dropzone");
+            if (dz) {
+                const inp = dz.querySelector(".pict-file-input");
+                if (inp) {
+                    inp.click();
+                }
+            }
+        });
+
+        void init();
+        initEdgeFloatHud({ pageId: "results", onNavigate: edgeFloatNavigateToPage });
+    </script>
+
+</body>
+
+</html>

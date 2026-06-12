@@ -1,0 +1,378 @@
+/* 仅舆情面页（body.page-sentiment） */
+
+body.page-sentiment .sentiment-toolbar .code-input-wrap,
+body.page-sentiment .code-input-wrap {
+    position: relative;
+    overflow: visible;
+    z-index: 5;
+}
+
+body.page-sentiment .code-input-wrap .suggestions {
+    z-index: 300;
+}
+
+body.page-sentiment .sentiment-chart-stub,
+body.page-sentiment #chart-container,
+body.page-sentiment #splitter-signal,
+body.page-sentiment #signal-chart-wrap,
+body.page-sentiment #splitter-center-v,
+body.page-sentiment #center-bottom-panel {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+body.page-sentiment .sentiment-toolbar label[for="interval-select"],
+body.page-sentiment .sentiment-toolbar #auto-refresh-label {
+    display: none !important;
+}
+
+body.page-sentiment #center-column .chart-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+body.page-sentiment .chart-toolbar.sentiment-toolbar {
+    display: none !important;
+}
+
+body.page-sentiment .sentiment-content {
+    flex: 1 1 auto;
+    min-height: 200px;
+    overflow: auto;
+    padding: 12px 14px 16px;
+    color: #d1d4dc;
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+    background: #131722;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.page-sentiment .sentiment-maintenance {
+    margin: 0;
+    font-size: clamp(48px, 10vw, 96px);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    user-select: none;
+}
+
+body.page-sentiment .sentiment-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line, #2b2b43);
+}
+
+body.page-sentiment .sentiment-head-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+body.page-sentiment .sentiment-head-meta {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+body.page-sentiment .sentiment-prose {
+    margin: 0 0 16px 0;
+    padding: 10px 12px;
+    border-left: 3px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+body.page-sentiment .sentiment-section {
+    margin-bottom: 18px;
+}
+
+body.page-sentiment .sentiment-section-title {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+body.page-sentiment .sentiment-kv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px 12px;
+}
+
+body.page-sentiment .sentiment-kv-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1px solid var(--line, #2b2b43);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.page-sentiment .sentiment-kv-label {
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+body.page-sentiment .sentiment-kv-value {
+    color: #f3f4f6;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+body.page-sentiment .sentiment-kv-value.positive {
+    color: #f87171;
+}
+
+body.page-sentiment .sentiment-kv-value.negative {
+    color: #34d399;
+}
+
+body.page-sentiment .sentiment-kv-value.neutral {
+    color: #fbbf24;
+}
+
+body.page-sentiment .sentiment-news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.page-sentiment .sentiment-news-item {
+    padding: 10px 12px;
+    border: 1px solid var(--line, #2b2b43);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.page-sentiment .sentiment-news-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+body.page-sentiment .sentiment-news-time {
+    color: #6b7280;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+body.page-sentiment .sentiment-news-source {
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+body.page-sentiment .sentiment-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+body.page-sentiment .sentiment-tag.positive {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+body.page-sentiment .sentiment-tag.negative {
+    background: rgba(52, 211, 153, 0.12);
+    color: #6ee7b7;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+body.page-sentiment .sentiment-tag.neutral {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fcd34d;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+body.page-sentiment .sentiment-news-title {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+body.page-sentiment .sentiment-news-snippet {
+    margin: 6px 0 0 0;
+    color: #9ca3af;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+body.page-sentiment .sentiment-table-wrap {
+    overflow: auto;
+    border: 1px solid var(--line, #2b2b43);
+    border-radius: 4px;
+}
+
+body.page-sentiment .sentiment-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+body.page-sentiment .sentiment-table th,
+body.page-sentiment .sentiment-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--line, #2b2b43);
+    text-align: left;
+    white-space: nowrap;
+}
+
+body.page-sentiment .sentiment-table th {
+    position: sticky;
+    top: 0;
+    background: #1e222d;
+    color: #9ca3af;
+    font-weight: 500;
+    z-index: 1;
+}
+
+body.page-sentiment .sentiment-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.page-sentiment .sentiment-table td.num {
+    text-align: right;
+}
+
+body.page-sentiment .sentiment-event-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line, #2b2b43);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+body.page-sentiment .sentiment-event-list li {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line, #2b2b43);
+    font-size: 12px;
+}
+
+body.page-sentiment .sentiment-event-list li:last-child {
+    border-bottom: none;
+}
+
+body.page-sentiment .sentiment-event-date {
+    color: #6b7280;
+    font-variant-numeric: tabular-nums;
+}
+
+body.page-sentiment .sentiment-event-text {
+    color: #d1d4dc;
+    line-height: 1.45;
+}
+
+body.page-sentiment .sentiment-note {
+    margin: 8px 0 0 0;
+    color: #6b7280;
+    font-size: 11px;
+}
+
+body.page-sentiment .sentiment-side-block {
+    margin-bottom: 14px;
+}
+
+body.page-sentiment .sentiment-side-block:last-child {
+    margin-bottom: 0;
+}
+
+body.page-sentiment .sentiment-side-title {
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+body.page-sentiment .sentiment-side-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.page-sentiment .sentiment-side-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+}
+
+body.page-sentiment .sentiment-side-list li span:first-child {
+    color: #9ca3af;
+}
+
+body.page-sentiment .sentiment-side-list li span:last-child {
+    color: #e5e7eb;
+    font-variant-numeric: tabular-nums;
+}
+
+body.page-sentiment .sentiment-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.page-sentiment .sentiment-keyword {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid #3a3f4a;
+    background: #1e222d;
+    color: #d1d4dc;
+    font-size: 11px;
+}
+
+body.page-sentiment .sentiment-side-prose {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+body.page-sentiment .sentiment-alert {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.08);
+    color: #fcd34d;
+}
+
+body.page-sentiment .sentiment-alert:last-child {
+    margin-bottom: 0;
+}

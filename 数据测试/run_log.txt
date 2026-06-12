@@ -1,0 +1,33 @@
+
+===== 2026-06-01 14:18:37 =====
+run_subscribe_all.py 启动
+
+===== 2026-06-01 14:19:15 =====
+subscribe_tick_by_id: ok, rows=25, file=subscribe_tick_by_id.csv
+
+===== 2026-06-01 14:19:50 =====
+subscribe_kline_by_id: ok, rows=6, file=subscribe_kline_by_id.csv
+
+===== 2026-06-01 14:20:25 =====
+subscribe_trans_and_order_by_id: empty, rows=0, file=subscribe_trans_and_order_by_id.csv
+
+===== 2026-06-01 14:21:00 =====
+subscribe_tick_by_type: ok, rows=24, file=subscribe_tick_by_type.csv
+
+===== 2026-06-01 14:21:35 =====
+subscribe_kline_by_type: ok, rows=8, file=subscribe_kline_by_type.csv
+
+===== 2026-06-01 14:22:10 =====
+subscribe_trans_and_order_by_type: empty, rows=0, file=subscribe_trans_and_order_by_type.csv
+
+===== 2026-06-01 14:22:45 =====
+subscribe_derived: empty, rows=0, file=subscribe_derived.csv
+[2026-06-01 14:37:32] run_subscribe_market_1min.py 启动 run_tag=20260601_143732, universe=5287 只
+[2026-06-01 14:38:41] part01: rows=5297, elapsed=60s, total_kept=5297, file=market_1min_kline_20260601_143732_part01.csv
+[2026-06-01 14:39:40] part02: rows=5287, elapsed=120s, total_kept=10584, file=market_1min_kline_20260601_143732_part02.csv
+[2026-06-01 14:40:41] part03: rows=5282, elapsed=180s, total_kept=15866, file=market_1min_kline_20260601_143732_part03.csv
+[2026-06-01 14:41:41] part04: rows=5291, elapsed=240s, total_kept=21157, file=market_1min_kline_20260601_143732_part04.csv
+[2026-06-01 14:42:40] tail part05: rows=5288, file=market_1min_kline_20260601_143732_part05.csv
+[2026-06-01 14:42:41] done all_rows=26445, file=market_1min_kline_20260601_143732_all.csv
+[2026-06-01 14:44:12] run_subscribe_market_tick.py 启动 run_tag=20260601_144412, universe=5287 只
+[2026-06-01 14:46:26] done tick rows=203006, file=market_tick_20260601_144412.csv

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总买入信号 / 总买入信号改 — 逻辑流程图</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: #000000;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #333333;
+      margin: 0 0 28px;
+      line-height: 1.5;
+    }
+    .diagram-wrap {
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      padding: 24px 16px;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .note {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: #222222;
+      line-height: 1.6;
+      border-top: 1px solid #dddddd;
+      padding-top: 16px;
+    }
+    .note strong {
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>总买入信号 / 总买入信号改 — 逻辑流程</h1>
+    <p class="subtitle">
+      来源：<code>ZXW因子/总买入信号_独立全量.py</code> ·
+      <strong>总买入信号改</strong> = 总买入信号 ∧ 筹码单峰优
+    </p>
+
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart TD
+    A["MAC总 &gt; 0"] --> B["base: 三件套 AND"]
+    C["KDJ: J &lt; 30"] --> B
+    D["抄底总分 &gt; 0"] --> B
+    B --> E{"有成交量筹码?"}
+    E -->|是| F["raw = 1 + 集中总加分 + 筹码峰加分"]
+    E -->|否| G["raw 最多 = 1"]
+    F --> H["总买入信号: raw &gt;= 2"]
+    G --> I["总买入信号 = 0"]
+    H --> J["筹码单峰优 &gt; 0"]
+    J --> K["总买入信号改 = 1"]
+      </pre>
+    </div>
+
+    <div class="note">
+      <strong>说明：</strong>无成交量或无法计算筹码结构时，raw 最高为 1，总买入信号恒为 0。
+      总买入信号改在总买入信号为 1 的前提下，还要求筹码单峰优（收盘价 ≥ C33×0.98 等条件）成立。
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        background: "#ffffff",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#000000",
+        lineColor: "#000000",
+        secondaryColor: "#f5f5f5",
+        tertiaryColor: "#ffffff",
+        mainBkg: "#ffffff",
+        nodeBorder: "#000000",
+        clusterBkg: "#ffffff",
+        titleColor: "#000000",
+        edgeLabelBackground: "#ffffff",
+        nodeTextColor: "#000000",
+        textColor: "#000000",
+        labelTextColor: "#000000",
+        loopTextColor: "#000000",
+        noteTextColor: "#000000",
+        actorTextColor: "#000000",
+        signalTextColor: "#000000",
+        sequenceNumberColor: "#000000"
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+  </script>
+</body>
+</html>

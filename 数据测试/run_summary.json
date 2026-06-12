@@ -1,0 +1,44 @@
+[
+  {
+    "case": "subscribe_tick_by_id",
+    "status": "ok",
+    "rows": 25,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_tick_by_id.csv"
+  },
+  {
+    "case": "subscribe_kline_by_id",
+    "status": "ok",
+    "rows": 6,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_kline_by_id.csv"
+  },
+  {
+    "case": "subscribe_trans_and_order_by_id",
+    "status": "empty",
+    "rows": 0,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_trans_and_order_by_id.csv"
+  },
+  {
+    "case": "subscribe_tick_by_type",
+    "status": "ok",
+    "rows": 24,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_tick_by_type.csv"
+  },
+  {
+    "case": "subscribe_kline_by_type",
+    "status": "ok",
+    "rows": 8,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_kline_by_type.csv"
+  },
+  {
+    "case": "subscribe_trans_and_order_by_type",
+    "status": "empty",
+    "rows": 0,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_trans_and_order_by_type.csv"
+  },
+  {
+    "case": "subscribe_derived",
+    "status": "empty",
+    "rows": 0,
+    "file": "C:\\Users\\Administrator\\Desktop\\python_venv\\数据测试\\subscribe_derived.csv"
+  }
+]

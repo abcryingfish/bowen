@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>组合回测内嵌</title>
+    <link rel="stylesheet" href="../shared/chart_board.css">
+    <link rel="stylesheet" href="../组合结果/result_print_light.css">
+    <script src="../shared/lightweight-charts.standalone.production.js"></script>
+    <script>
+        (function () {
+            const sp = new URLSearchParams(window.location.search);
+            const embed = sp.get("embed") === "1";
+            const portfolio = sp.get("portfolio") === "1" || sp.get("result") === "1";
+            if (!embed && !portfolio) {
+                document.documentElement.classList.add("index-embed-guard");
+            }
+        })();
+    </script>
+    <style>
+        html.index-embed-guard body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #131722;
+            color: #d1d4dc;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        .index-embed-guard-msg {
+            text-align: center;
+            max-width: 420px;
+            padding: 24px;
+            line-height: 1.6;
+        }
+        .index-embed-guard-msg a {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="index-embed-guard-panel" class="index-embed-guard-msg" hidden>
+        <p>此页面仅供组合回测内嵌使用。</p>
+        <p>请从 <a href="../量化因子/index.html">量化因子</a> 进入看板。</p>
+    </div>
+    <div id="index-embed-app" hidden>
+        <div class="page-header" id="page-header">
+            <div class="page-header-title">回测组合结果</div>
+            <div id="header-tabs-container" class="header-center-tabs" style="grid-column: 3 / 4;">
+                <div class="header-tab active">量化因子</div>
+            </div>
+            <div id="page-clock" class="page-clock page-header-clock">Time: --</div>
+        </div>
+        <div class="workspace">
+            <div id="main-layout" class="layout">
+                <aside id="left-panel" class="left-panel">
+                    <div id="watchlist-cards" class="watchlist-cards"></div>
+                </aside>
+                <div id="splitter-left" class="splitter-v" title="拖拽调整左侧宽度"></div>
+                <div id="center-column" class="center-column">
+                    <div class="chart-wrap">
+                        <div class="chart-toolbar">
+                            <div id="standard-code-input-wrap" class="code-input-wrap">
+                                <input id="code-input" class="field" type="text" value="000000.YKRS" placeholder="code">
+                                <ul id="code-suggestions" class="suggestions"></ul>
+                            </div>
+                            <label class="field" for="interval-select">周期:
+                                <select id="interval-select" class="field" style="border:0;padding:0 0 0 4px;min-height:auto;background:transparent;">
+                                    <option value="1day">1day</option>
+                                </select>
+                            </label>
+                            <div id="ykrs-curve-select-wrap" class="code-input-wrap ykrs-curve-select-wrap">
+                                <select id="ykrs-curve-select" class="field" aria-label="组合曲线">
+                                    <option value="000000.YKRS">资产组合曲线</option>
+                                    <option value="0000000.YKRS">持有现金曲线</option>
+                                    <option value="000001.YKRS">等权持仓曲线</option>
+                                </select>
+                            </div>
+                            <div id="portfolio-extra-select-wrap" class="code-input-wrap portfolio-extra-select-wrap">
+                                <select id="portfolio-extra-select" class="field" aria-label="指数叠加">
+                                    <option value="">指数叠加…</option>
+                                </select>
+                            </div>
+                            <div id="portfolio-extra-day-select-wrap" class="code-input-wrap portfolio-extra-day-select-wrap">
+                                <button id="portfolio-extra-day-toggle" type="button" class="field btn portfolio-field--day" aria-pressed="false">切换风格</button>
+                            </div>
+                        </div>
+                        <div id="chart-container"></div>
+                        <div id="portfolio-chart-legend" class="portfolio-chart-legend" aria-label="曲线图例" hidden></div>
+                    </div>
+                    <div id="splitter-signal" class="splitter-h"></div>
+                    <div id="signal-chart-wrap" class="signal-chart-wrap">
+                        <div class="signal-chart-caption">
+                            <span id="signal-caption-title">信号: --</span>
+                            <span id="signal-caption-ohlcv" class="signal-caption-ohlcv">O: -- H: -- L: -- C: -- V: --</span>
+                        </div>
+                        <div id="signal-chart-container" class="signal-chart-container"></div>
+                    </div>
+                    <div id="splitter-center-v" class="splitter-h"></div>
+                    <div id="center-bottom-panel" class="center-bottom-panel"></div>
+                </div>
+                <div id="splitter-right" class="splitter-v"></div>
+                <aside id="right-panel" class="side-panel">
+                    <div id="right-panel-body" class="right-panel-body"></div>
+                </aside>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const sp = new URLSearchParams(window.location.search);
+            const embed = sp.get("embed") === "1";
+            const portfolio = sp.get("portfolio") === "1" || sp.get("result") === "1";
+            const guard = document.getElementById("index-embed-guard-panel");
+            const app = document.getElementById("index-embed-app");
+            if (!embed && !portfolio) {
+                if (guard) guard.hidden = false;
+                return;
+            }
+            if (app) app.hidden = false;
+            window.PAGE_VIEW = "embed";
+            const scripts = [
+                "../shared/backtest_run_context.js",
+                "../shared/chart_board_core.js",
+                "../shared/chart_board_backtest.js",
+                "../量化因子/board_quant.js",
+                "../形态面/board_morph.js",
+                "../shared/chart_board_boot.js",
+            ];
+            let i = 0;
+            function loadNext() {
+                if (i >= scripts.length) return;
+                const el = document.createElement("script");
+                el.src = scripts[i++];
+                el.onload = loadNext;
+                document.body.appendChild(el);
+            }
+            loadNext();
+        })();
+    </script>
+</body>
+</html>

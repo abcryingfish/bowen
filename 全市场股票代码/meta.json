@@ -1,0 +1,12 @@
+{
+  "updated_at": "2026-06-11T21:54:18",
+  "count": 5291,
+  "listing_date_from": "2010-01-01",
+  "listing_date_to": "2026-06-11",
+  "listing_states": [
+    "上市交易",
+    "终止上市"
+  ],
+  "source_parquet": "D:\\database\\stock_basic_data_daily",
+  "source_api": "xtquant.get_stock_list_in_sector"
+}

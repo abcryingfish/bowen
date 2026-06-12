@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAC总 + 逃顶总分 + J值超买因子 — 逻辑流程图</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    .page {
+      max-width: 1024px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: #000000;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #333333;
+      margin: 0 0 28px;
+      line-height: 1.5;
+    }
+    .diagram-wrap {
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      padding: 24px 16px;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .note {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: #222222;
+      line-height: 1.65;
+      border-top: 1px solid #dddddd;
+      padding-top: 16px;
+    }
+    .note strong {
+      color: #000000;
+    }
+    .note ul {
+      margin: 8px 0 0;
+      padding-left: 1.25rem;
+    }
+    .note li {
+      margin: 4px 0;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88em;
+      background: #f0f0f0;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>MAC总 + 逃顶总分 + J值超买因子 — 卖出组合逻辑</h1>
+    <p class="subtitle">
+      前端「卖出因子」三因子 <strong>AND</strong> 组合 · 宽表列分别为
+      <code>mac_total</code>、<code>top_escape_score</code>、<code>j_overbought_factor</code> ·
+      回测命名常见「卖K线顶_MAC总_J值超买因子」
+    </p>
+
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart TD
+    subgraph S1["① MAC总 mac_total"]
+        M1["MACD因子包 · DIF/DEA/MAC 与背离弧顶"]
+        M1 --> M2{"mac_total 分级"}
+        M2 --> M3["4: 底背离∧(红柱或金叉)"]
+        M2 --> M4["3: 红柱且近7日有金叉"]
+        M2 --> M5["2: 金叉或红柱"]
+        M2 --> M6["1: 底背离或顶背离"]
+        M3 --> M7["MAC总 &gt; 0 → 信号=1"]
+        M4 --> M7
+        M5 --> M7
+        M6 --> M7
+    end
+
+    subgraph S2["② 逃顶总分 top_escape_score"]
+        T1["抄底因子包 · K线顶 kline_top"]
+        T1 --> T2["相对顶 + 绝对顶 合成 K线顶"]
+        T2 --> T3["逃顶总分 = K线顶（连续分值）"]
+        T3 --> T4["逃顶总分 &gt; 0 → 信号=1"]
+    end
+
+    subgraph S3["③ J值超买因子 j_overbought_factor"]
+        J1["KDJ: J = 3K − 2D"]
+        J1 --> J2["J &gt; 70"]
+        J2 --> J3["J值超买因子 = 1"]
+    end
+
+    M7 --> D["三者均 &gt; 0（逻辑 AND）"]
+    T4 --> D
+    J3 --> D
+    D --> E["卖出组合信号 = 1"]
+    E --> F["前端: 卖K线顶 ∧ MAC总 ∧ J值超买"]
+      </pre>
+    </div>
+
+    <div class="note">
+      <strong>组合公式（前端 AND 语义）：</strong>
+      <code>(mac_total&gt;0) × (top_escape_score&gt;0) × (j_overbought_factor&gt;0)</code>，任一为 0 则组合为 0。
+      <ul>
+        <li><strong>MAC总</strong>（<code>MACD因子.py</code>）：MAC 综合分级；组合里只要求 &gt;0（含底背离、顶背离、金叉、红柱等任一档）。</li>
+        <li><strong>逃顶总分</strong>（<code>抄底因子.py</code>）：镜像「K线底」的<strong>K线顶</strong>结构得分；&gt;0 表示当日有逃顶/K线顶信号（「卖K线顶」即指此列）。</li>
+        <li><strong>J值超买因子</strong>（<code>KDJ因子.py</code>）：J 高于 70 记为 1，表示超买区。</li>
+        <li><strong>与「总卖出信号+逃顶总分+J值超买因子」的区别</strong>：后者第一路是 <code>总卖出信号</code>（布林带下穿上轨 + 20日新高占比走弱，<code>总卖出信号.py</code>），<strong>不是</strong> MAC总；本图是 MAC总 版三因子卖点。</li>
+        <li><strong>与 ZXW因子 的关系</strong>：ZXW = (RSI死叉∧RSI超买) <strong>OR</strong> (逃顶总分∧J超买)；本组合为<strong>三路 AND</strong>，且含 MAC总，条件更严。</li>
+        <li><strong>回测用法</strong>：放入「卖出因子」区且逻辑为 AND 时，合成 <code>strong_sell_signal</code>（强点止盈）或作为 <code>sell_combo_signal</code> 子规则，取决于所选模型。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        background: "#ffffff",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#000000",
+        lineColor: "#000000",
+        secondaryColor: "#f5f5f5",
+        tertiaryColor: "#ffffff",
+        mainBkg: "#ffffff",
+        nodeBorder: "#000000",
+        clusterBkg: "#ffffff",
+        titleColor: "#000000",
+        edgeLabelBackground: "#ffffff",
+        nodeTextColor: "#000000",
+        textColor: "#000000",
+        labelTextColor: "#000000",
+        loopTextColor: "#000000",
+        noteTextColor: "#000000"
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+  </script>
+</body>
+</html>

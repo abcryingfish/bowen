@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>五日内六级 — 逻辑流程图</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    .page {
+      max-width: 1024px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: #000000;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #333333;
+      margin: 0 0 28px;
+      line-height: 1.5;
+    }
+    .diagram-wrap {
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      padding: 24px 16px;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .note {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: #222222;
+      line-height: 1.65;
+      border-top: 1px solid #dddddd;
+      padding-top: 16px;
+    }
+    .note strong {
+      color: #000000;
+    }
+    .note ul {
+      margin: 8px 0 0;
+      padding-left: 1.25rem;
+    }
+    .note li {
+      margin: 4px 0;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88em;
+      background: #f0f0f0;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>五日内六级 — 逻辑流程</h1>
+    <p class="subtitle">
+      来源：<code>ZXW因子/通达信强底信号.py</code> · 通达信公式
+      <code>五日内六级: FINDHIGH(超强底,0,5,1)&gt;=1</code> ·
+      存库列 <code>tdx_five_day_level6</code> ·
+      前端因子目录「买入信号」分组（<code>factor_catalog.json</code>）
+    </p>
+
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart TD
+    subgraph PRE["前置"]
+        P0["BARSCOUNT ≥ 250（有效 K 线数）"]
+        P1["需要成交量 V（集中总、筹码峰）"]
+    end
+
+    subgraph E["① E · MAC总信号 tdx_signal_e"]
+        E1["MACD因子 · mac_total &gt; 0"]
+    end
+
+    subgraph K["② K · K线底信号 tdx_signal_k"]
+        K1["抄底因子 · kline_bottom（= 抄底总分）&gt; 0"]
+    end
+
+    subgraph A["③ A · 集中总信号 tdx_signal_a"]
+        A1["筹码结构因子 · concentration_total_score &gt; 0"]
+    end
+
+    subgraph B["④ B · 筹码峰信号 tdx_signal_b"]
+        B1["筹码结构因子 · chip_peak_score &gt; 0"]
+    end
+
+    subgraph I["⑤ I · 均线类信号 tdx_signal_i"]
+        I1["均线因子 · ma_class_zxw &gt; 0"]
+    end
+
+    subgraph R["⑥ R · KDJ超卖R信号 tdx_signal_r"]
+        R1["KDJ因子 · r_condition（J &lt; 30）&gt; 0"]
+    end
+
+    P0 --> SB
+    P1 --> A1
+    P1 --> B1
+    E1 --> SB
+    K1 --> SB
+    A1 --> SB
+    B1 --> SB
+    I1 --> SB
+    R1 --> SB
+
+    SB["超强底 tdx_super_strong_bottom = 1<br/>E ∧ K ∧ A ∧ B ∧ I ∧ R"]
+
+    SB --> WIN["近 5 个交易日 rolling max(超强底) ≥ 1"]
+    WIN --> OUT["五日内六级 tdx_five_day_level6 = 1"]
+
+    SB -.->|对照| QD["强底 tdx_strong_bottom<br/>(E+A+B+I)≥3 ∧ K ∧ R"]
+      </pre>
+    </div>
+
+    <div class="note">
+      <strong>「六级」含义：</strong>指<strong>超强底</strong>当日必须同时满足的六路信号（E/K/A/B/I/R），不是 K 线底的 1～6 档。
+      <ul>
+        <li><strong>五日内六级</strong>：近 5 个交易日内<strong>至少出现过 1 次</strong>超强底；当日六路不必全部再亮。</li>
+        <li><strong>超强底</strong>：六路<strong>全部</strong> &gt; 0，且 BARSCOUNT ≥ 250。</li>
+        <li><strong>强底</strong>（相关因子）：E/A/B/I 四路中至少 3 路 &gt; 0，且 K、R 成立；条件弱于超强底。</li>
+        <li><strong>前端</strong>（<code>index.html</code> / <code>market_data_service.py</code>）：因子名「五日内六级」映射宽表列 <code>tdx_five_day_level6</code>；子信号列为 <code>tdx_signal_e/k/a/b/i/r</code>。</li>
+        <li><strong>与总买入信号的区别</strong>：总买入信号走 <code>总买入信号_独立全量.py</code>（MAC + KDJ + 抄底 + 筹码加分，raw≥2）；五日内六级走通达信强底口径，以<strong>超强底 + 5 日窗口</strong>为准。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        background: "#ffffff",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#000000",
+        lineColor: "#000000",
+        secondaryColor: "#f5f5f5",
+        tertiaryColor: "#ffffff",
+        mainBkg: "#ffffff",
+        nodeBorder: "#000000",
+        clusterBkg: "#ffffff",
+        titleColor: "#000000",
+        edgeLabelBackground: "#ffffff",
+        nodeTextColor: "#000000",
+        textColor: "#000000",
+        labelTextColor: "#000000",
+        loopTextColor: "#000000",
+        noteTextColor: "#000000"
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+  </script>
+</body>
+</html>

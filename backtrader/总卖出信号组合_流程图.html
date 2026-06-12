@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总卖出信号+逃顶总分+J值超买因子 — 逻辑流程图</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    .page {
+      max-width: 1024px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: #000000;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #333333;
+      margin: 0 0 28px;
+      line-height: 1.5;
+    }
+    .diagram-wrap {
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      padding: 24px 16px;
+      overflow-x: auto;
+    }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .note {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: #222222;
+      line-height: 1.65;
+      border-top: 1px solid #dddddd;
+      padding-top: 16px;
+    }
+    .note strong {
+      color: #000000;
+    }
+    .note ul {
+      margin: 8px 0 0;
+      padding-left: 1.25rem;
+    }
+    .note li {
+      margin: 4px 0;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88em;
+      background: #f0f0f0;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>总卖出信号 + 逃顶总分 + J值超买因子 — 逻辑流程</h1>
+    <p class="subtitle">
+      来源：<code>ZXW因子/总卖出信号测试.py</code> · 存库列
+      <code>total_sell_signal__top_escape_score__j_overbought_factor</code> ·
+      宽表映射 <code>sell_combo_signal</code>（<strong>卖点组合</strong>，非买点）
+    </p>
+
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart TD
+    subgraph S1["① 总卖出信号 total_sell_signal"]
+        A1["下穿上布林带 cross_down_boll_upper = 1"]
+        A2["20日新高占比 ≤ 前一日"]
+        A1 --> A3["总卖出信号 = 1"]
+        A2 --> A3
+    end
+
+    subgraph S2["② 逃顶总分 top_escape_score"]
+        B1["抄底因子包 · 逃顶 K 线评分 kline_top"]
+        B1 --> B2["逃顶总分 &gt; 0"]
+    end
+
+    subgraph S3["③ J值超买因子 j_overbought_factor"]
+        C1["KDJ: J = 3K − 2D"]
+        C1 --> C2["J &gt; 70 → 超买 = 1"]
+    end
+
+    A3 --> D["三者均 &gt; 0（逻辑 AND）"]
+    B2 --> D
+    C2 --> D
+    D --> E["组合因子 = 1"]
+    E --> F["中文名: 总卖出信号+逃顶总分+J值超买因子"]
+      </pre>
+    </div>
+
+    <div class="note">
+      <strong>组合公式（代码）：</strong>
+      <code>(总卖出&gt;0) × (逃顶总分&gt;0) × (J超买&gt;0)</code>，数值 &gt;0 二值化为 1，否则 0。
+      <ul>
+        <li><strong>总卖出信号</strong>（<code>总卖出信号.py</code>）：布林带下穿上轨延长信号，且 20 日新高占比不变或走弱。</li>
+        <li><strong>逃顶总分</strong>（<code>抄底因子.py</code>）：连续分值，组合里只要求 &gt;0（当天有正逃顶得分）。</li>
+        <li><strong>J值超买因子</strong>（<code>KDJ因子.py</code>）：J 线高于 70 为 1。</li>
+        <li>与单独宽表列 <code>total_sell_signal</code> 不同：后者仅含「①」，不含逃顶与 J 超买。</li>
+        <li>强点模型若放入<strong>卖出因子</strong>区 → 参与 <code>strong_sell_signal</code>（止盈）；放入买入区则参与 <code>strong_buy_signal</code>。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        background: "#ffffff",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#000000",
+        lineColor: "#000000",
+        secondaryColor: "#f5f5f5",
+        tertiaryColor: "#ffffff",
+        mainBkg: "#ffffff",
+        nodeBorder: "#000000",
+        clusterBkg: "#ffffff",
+        titleColor: "#000000",
+        edgeLabelBackground: "#ffffff",
+        nodeTextColor: "#000000",
+        textColor: "#000000",
+        labelTextColor: "#000000",
+        loopTextColor: "#000000",
+        noteTextColor: "#000000"
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis"
+      }
+    });
+  </script>
+</body>
+</html>

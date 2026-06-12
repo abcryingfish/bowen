@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总买入信号 — 构成说明</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fafafa; color: #111; font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.55; }
+    .page { max-width: 920px; margin: 0 auto; padding: 28px 22px 56px; }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; font-weight: 650; }
+    h2 { font-size: 1.1rem; margin: 28px 0 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    .meta { font-size: 0.88rem; color: #444; margin-bottom: 22px; }
+    .meta code { background: #eee; padding: 1px 6px; border-radius: 4px; font-size: 0.86em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 12px 0; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; }
+    .note { background: #fff8e6; border: 1px solid #e6c200; padding: 12px 14px; border-radius: 6px; margin: 16px 0; font-size: 0.92rem; }
+    ul { margin: 8px 0; padding-left: 1.35em; }
+    li { margin: 4px 0; }
+    .formula { font-family: Consolas, monospace; background: #fff; border: 1px solid #ddd; padding: 10px 12px; border-radius: 6px; font-size: 0.88rem; overflow-x: auto; margin: 10px 0; }
+    a { color: #0366d6; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>前端「总买入信号」由什么构成</h1>
+    <p class="meta">
+      口径与实盘因子库一致；实现源码：<code>ZXW因子/总买入信号_独立全量.py</code>
+      · 函数 <code>build_total_buy_signal_bundle</code><br />
+      宽表列名：<code>total_buy_signal</code> · 可视化映射：<code>可视化/market_data_service.py</code> → 「总买入信号」
+    </p>
+
+    <h2>一、主干逻辑（三件事同时成立）</h2>
+    <p>先定义「基础三合一」布尔条件 <strong>base</strong>：</p>
+    <table>
+      <thead>
+        <tr><th>前端常用名 / 口径</th><th>英文名 / 字段</th><th>何为「有信号」</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>MAC总</strong>（D 类）</td>
+          <td><code>mac_total</code></td>
+          <td><code>mac_total &gt; 0</code>（0～4 档综合得分里有任意非零档）</td>
+        </tr>
+        <tr>
+          <td><strong>KDJ信号</strong>（J 超卖）</td>
+          <td><code>r_condition</code></td>
+          <td>J &lt; 30（源码与 KDJ bundle 一致）</td>
+        </tr>
+        <tr>
+          <td><strong>抄底总分</strong></td>
+          <td><code>bottom_fishing_score</code></td>
+          <td><code>bottom_fishing_score &gt; 0</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="formula">base_signal = (mac_total &gt; 0) ∧ (r_condition 为 True) ∧ (bottom_fishing_score &gt; 0)</div>
+    <p>来源子模块：<code>MACD因子.build_d_class_factor_bundle</code>、<code>KDJ因子.build_kdj_factor_bundle</code>、<code>抄底因子.build_bottom_fishing_factor_bundle</code>。</p>
+
+    <h2>二、筹码加分（仅在能算筹码时）</h2>
+    <p>当同时具备 <strong>成交量矩阵 V</strong> 且能加载 <strong>筹码结构因子</strong> 时，在 <strong>base 已为真</strong> 的前提下，对中间<strong>原始分</strong> <code>raw_total_buy_signal</code> 最多再加 2 分：</p>
+    <table>
+      <thead>
+        <tr><th>条件</th><th>因子列</th><th>加分</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>集中总评分 &gt; 0（筹码集中度综合评分）</td>
+          <td><code>concentration_total_score</code> · 前端常称 <strong>集中总</strong> 一脉</td>
+          <td>在满足 base 的当日 +1</td>
+        </tr>
+        <tr>
+          <td>筹码峰评分 &gt; 0（筹码峰赋值）</td>
+          <td><code>chip_peak_score</code></td>
+          <td>在满足 base 的当日再 +1</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>筹码由 <code>筹码结构因子.build_chip_structure_factor_bundle</code> 计算（需 OHLCV + 换手率等；本 bundle 内调用参数含 <code>window_days=100</code>, <code>grid_size=600</code>, <code>history_decay=0.95</code>）。</p>
+
+    <h2>三、原始分与最终「总买入信号」</h2>
+    <ul>
+      <li>令 <code>raw_total_buy_signal</code>：先由 base 得 1 或未触发得 0；若筹码分支生效，再在 base 为真时按需 +1/+1。</li>
+      <li>理论上 <strong>raw ∈ {0,1,2,3}</strong>（无筹码时只靠 base，raw 只会是 0 或 1）。</li>
+      <li><strong>总买入信号</strong>（<code>total_buy_signal</code>）：<strong><code>raw_total_buy_signal ≥ 2</code> 则为 1，否则为 0</strong>。</li>
+    </ul>
+    <div class="formula">total_buy_signal = 1 ⇔ raw_total_buy_signal ≥ 2</div>
+
+    <div class="note">
+      <strong>重要边界：</strong>若无成交量或筹码 bundle 不可用，筹码两项加分不会发生，此时 raw 最高为 <strong>1</strong>，则 <strong>总买入信号恒为 0</strong>。详见仓库内说明页 <code>backtrader/models/总买入信号改_流程图.html</code> 底部注释。
+    </div>
+
+    <h2>四、与「总买入信号改」「总买入超强底」</h2>
+    <table>
+      <thead>
+        <tr><th>输出</th><th>宽表列</th><th>规则摘要</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>总买入信号改</td>
+          <td><code>total_buy_signal_adjusted</code></td>
+          <td><code>total_buy_signal &gt; 0</code> 且 <strong>筹码单峰优</strong>成立：<code>single_peak_best &gt; 0</code>（与前端「筹码单峰优」同链路的单峰最佳状态）</td>
+        </tr>
+        <tr>
+          <td>总买入超强底</td>
+          <td><code>super_strong_bottom</code></td>
+          <td>源码侧与「总买入信号改」当前为<strong>同一条件</strong>（均为总买入信号 ∧ 筹码单峰优）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>五、与其它信号的区别（便于对照）</h2>
+    <p><strong>五日内六级 / 通达信超强底</strong>走 <code>ZXW因子/通达信强底信号.py</code>：六路 MAC总信号、K线底信号、集中总信号、筹码峰信号、均线类信号、KDJ超卖 R 等与「总买入信号」的 MAC+KDJ+抄底+筹码加权<strong>不是同一套合成式</strong>。</p>
+    <p>回测<strong>强点模型</strong>里前端自选「买入因子」合成的是 <code>strong_buy_signal</code>，再<strong>写入</strong>宽表列 <code>total_buy_signal</code> 供 feed 对齐（参见 <code>signal_data.merge_strong_buy_signal</code>），语义以<strong>所选因子组合</strong>为准，与因子库自带的「总买入信号」公式可并存于不同产品线。</p>
+
+    <p style="font-size:0.88rem;color:#555;margin-top:32px;">
+      文档生成说明：内容与 <code>总买入信号_独立全量.py</code> 中 <code>build_total_buy_signal_bundle</code> docstring 及实现保持一致；明细分级（如 MAC总 0～4 档）参见 <code>因子分类/因子说明.md</code>。
+    </p>
+  </div>
+</body>
+</html>

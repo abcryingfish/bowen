@@ -1,0 +1,8 @@
+{
+  "plugins": {
+    "superpowers": {
+      "enabled": true
+    }
+  },
+  "_comment_agent": "规则见 .cursor/rules/agent-run-everything.mdc；IDE 侧还需 Settings → Agents → Auto-Run → Run Everything"
+}

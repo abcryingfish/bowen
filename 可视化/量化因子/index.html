@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化因子 - イカロス看板</title>
+    <link rel="stylesheet" href="../shared/chart_board.css?v=tv-day-minute-20260610">
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+</head>
+
+<body>
+    <div class="page-header" id="page-header">
+        <div class="page-header-title">イカロス的量化系统</div>
+        <nav id="header-tabs-container" class="header-center-tabs" style="grid-column: 3 / 4;" aria-label="页面导航">
+            <a class="header-tab active" href="../量化因子/index.html">量化因子</a>
+            <a class="header-tab" href="../形态面/index.html">形态面</a>
+            <a class="header-tab" href="../舆情面/index.html">舆情面</a>
+            <a class="header-tab" href="../基本面/index.html">基本面</a>
+        </nav>
+        <div id="page-clock" class="page-clock page-header-clock">Time: --</div>
+    </div>
+
+    <div class="workspace">
+        <div id="main-layout" class="layout">
+            <aside id="left-panel" class="left-panel">
+                <div id="watchlist-cards" class="watchlist-cards">
+                    <div class="watchlist-detail">点击“加入自选股”后，会在这里显示股票卡片</div>
+                </div>
+            </aside>
+            <div id="splitter-left" class="splitter-v" title="拖拽调整左侧宽度"></div>
+
+            <div id="center-column" class="center-column">
+                <div class="chart-wrap">
+                    <div class="chart-toolbar">
+                        <div id="standard-code-input-wrap" class="code-input-wrap">
+                            <input id="code-input" class="field" type="text" value="301469.SZ"
+                                placeholder="请输入 code（如 301469.SZ）">
+                            <ul id="code-suggestions" class="suggestions"></ul>
+                        </div>
+                        <label class="field" for="interval-select">
+                            周期
+                            <select id="interval-select" class="field"
+                                style="border: 0; padding: 0 0 0 4px; min-height: auto; background: transparent;">
+                                <option value="1min">1min</option>
+                                <option value="1day">1day</option>
+                            </select>
+                        </label>
+                        <label class="field" for="adjust-mode-select">
+                            复权
+                            <select id="adjust-mode-select" class="field"
+                                style="border: 0; padding: 0 0 0 4px; min-height: auto; background: transparent;">
+                                <option value="qfq">前复权</option>
+                                <option value="hfq">后复权</option>
+                                <option value="none">不复权</option>
+                            </select>
+                        </label>
+                        <span id="auto-refresh-label" class="field status-ok">自动刷新: 开启（30秒）</span>
+                        <button id="btn-add-watch-current" class="field btn" type="button">加入自选股</button>
+                        <details id="export-factor-details" class="export-filter-details">
+                            <summary id="export-factor-summary" class="field export-filter-summary">筛选: 未选择</summary>
+                            <select id="export-factor-select" class="export-factor-select" size="10"></select>
+                        </details>
+                        <button id="btn-export-symbols" class="field btn" type="button">输出标的</button>
+                        <button id="param-traverse-toggle" type="button" class="field btn param-traverse-toggle"
+                            aria-pressed="false" title="参数遍历">参数遍历</button>
+                        <div id="signal-type-toggles" class="signal-type-toggles" role="group" aria-label="信号槽位筛选">
+                            <button type="button"
+                                class="field btn param-traverse-toggle signal-type-toggle param-traverse-toggle-on"
+                                data-signal-type="strong_buy" aria-pressed="true" title="显示强买信号">
+                                <span class="signal-type-toggle-text">
+                                    <span class="signal-type-toggle-label">强买</span>
+                                    <span class="signal-type-toggle-bound"></span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                class="field btn param-traverse-toggle signal-type-toggle param-traverse-toggle-on"
+                                data-signal-type="weak_buy" aria-pressed="true" title="显示弱买信号">
+                                <span class="signal-type-toggle-text">
+                                    <span class="signal-type-toggle-label">弱买</span>
+                                    <span class="signal-type-toggle-bound"></span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                class="field btn param-traverse-toggle signal-type-toggle param-traverse-toggle-on"
+                                data-signal-type="fundamental_buy" aria-pressed="true" title="显示基本面买点">
+                                <span class="signal-type-toggle-text">
+                                    <span class="signal-type-toggle-label">基本面买点</span>
+                                    <span class="signal-type-toggle-bound"></span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                class="field btn param-traverse-toggle signal-type-toggle param-traverse-toggle-on"
+                                data-signal-type="weak_sell" aria-pressed="true" title="显示弱卖信号">
+                                <span class="signal-type-toggle-text">
+                                    <span class="signal-type-toggle-label">弱卖</span>
+                                    <span class="signal-type-toggle-bound"></span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                class="field btn param-traverse-toggle signal-type-toggle param-traverse-toggle-on"
+                                data-signal-type="fundamental_sell" aria-pressed="true" title="显示基本面卖点">
+                                <span class="signal-type-toggle-text">
+                                    <span class="signal-type-toggle-label">基本面卖点</span>
+                                    <span class="signal-type-toggle-bound"></span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="chart-container"></div>
+                </div>
+                <div id="splitter-signal" class="splitter-h" title="拖拽调整副图高度"></div>
+                <div id="signal-chart-wrap" class="signal-chart-wrap">
+                    <div class="signal-chart-caption">
+                        <span id="signal-caption-title">信号: --</span>
+                        <span id="signal-caption-ohlcv" class="signal-caption-ohlcv">O: -- H: -- L: -- C: -- V: --</span>
+                    </div>
+                    <div id="signal-chart-container" class="signal-chart-container"></div>
+                </div>
+                <div id="splitter-center-v" class="splitter-h" title="拖拽调整中间下区高度"></div>
+                <div id="center-bottom-panel" class="center-bottom-panel"></div>
+            </div>
+
+            <div id="splitter-right" class="splitter-v" title="拖拽调整右侧宽度"></div>
+            <aside id="right-panel" class="side-panel">
+                <div id="right-panel-body" class="right-panel-body">
+                    <div class="factor-snapshot-header">
+                        <h3 class="factor-snapshot-head">
+                            <span id="factor-snapshot-head-title">因子</span>
+                            <span id="factor-snapshot-head-extra" class="factor-snapshot-head-extra"></span>
+                        </h3>
+                        <div class="factor-snapshot-header-actions">
+                            <div id="factor-snapshot-tools" class="factor-snapshot-tools">
+                                <span id="factor-snapshot-filter-wrap" class="factor-snapshot-filter-wrap">
+                                    <button type="button" id="factor-snapshot-filter-btn"
+                                        class="factor-snapshot-filter-btn" title="按关键词筛选组名或因子名"
+                                        aria-label="筛选因子">筛选</button>
+                                    <div id="factor-snapshot-filter-popover" class="factor-snapshot-filter-popover" hidden>
+                                        <input type="search" id="factor-snapshot-filter-input"
+                                            class="factor-snapshot-filter-input" placeholder="组名 / 因子名..."
+                                            autocomplete="off">
+                                    </div>
+                                </span>
+                                <button type="button" id="factor-snapshot-couple-btn" class="factor-snapshot-couple-btn"
+                                    title="因子耦合" aria-label="因子耦合">因子耦合</button>
+                            </div>
+                            <button id="factor-clear-btn" class="factor-snapshot-clear-btn" type="button">清空</button>
+                        </div>
+                    </div>
+                    <div id="factor-snapshot-list" class="factor-snapshot-list"></div>
+                </div>
+                <div id="right-panel-model-overlay" class="right-panel-model-overlay" aria-hidden="true">
+                    <div class="right-panel-model-overlay-header">
+                        <span id="right-panel-model-overlay-title" class="right-panel-model-overlay-title"></span>
+                    </div>
+                    <div id="right-panel-model-overlay-body" class="right-panel-model-overlay-body"></div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600"
+                aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script>window.PAGE_VIEW = "quant";</script>
+    <script defer src="../shared/backtest_run_context.js"></script>
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="../shared/chart_board_core.js?v=minute-unadjusted-prev-close-20260610"></script>
+    <script defer src="../shared/chart_board_backtest.js"></script>
+    <script defer src="./board_quant.js?v=signal-history-backfill-20260609"></script>
+    <script defer src="../shared/chart_board_boot.js"></script>
+</body>
+
+</html>

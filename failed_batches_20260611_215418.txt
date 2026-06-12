@@ -1,0 +1,5 @@
+batch_num=1,start_date=2026-06-03,codes=['000004.SZ'],error=批次部分股票未返回数据
+batch_num=2,start_date=2026-06-03,codes=['001331.SZ'],error=批次部分股票未返回数据
+batch_num=3,start_date=2026-06-03,codes=['002731.SZ', '002808.SZ'],error=批次部分股票未返回数据
+batch_num=4,start_date=2026-06-03,codes=['002898.SZ', '300029.SZ'],error=批次部分股票未返回数据
+batch_num=11,start_date=2026-06-03,codes=['688121.SH'],error=批次部分股票未返回数据

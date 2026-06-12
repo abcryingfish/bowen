@@ -1,0 +1,266 @@
+/* ?????? 外层 + 注入 iframe 的打印白底主题（仅 result 页启用） */
+
+html.result-print-light,
+html.result-print-light body {
+    background: #ffffff !important;
+    color: #1e293b !important;
+}
+
+html.result-print-light .boot-hint {
+    color: #64748b !important;
+}
+
+html.result-print-light .edge-float-hud {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    box-shadow:
+        0 0 0 1px rgba(148, 163, 184, 0.35),
+        0 2px 8px rgba(15, 23, 42, 0.12) !important;
+}
+
+html.result-print-light .edge-float-menu {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+html.result-print-light .edge-float-menu-item {
+    color: #334155 !important;
+}
+
+html.result-print-light .edge-float-menu-item:hover,
+html.result-print-light .edge-float-menu-item:focus-visible {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* iframe 内 index 组合页白底 */
+html.portfolio-print-light {
+    --bg: #ffffff;
+    --panel: #f8fafc;
+    --line: #cbd5e1;
+    --text: #1e293b;
+    --muted: #64748b;
+    --ok: #0f766e;
+    --warn: #b45309;
+    --err: #b91c1c;
+}
+
+html.portfolio-print-light,
+html.portfolio-print-light body {
+    background: #ffffff !important;
+    color: #1e293b !important;
+}
+
+html.portfolio-print-light .page-header-title,
+html.portfolio-print-light .page-header-clock,
+html.portfolio-print-light .left-panel,
+html.portfolio-print-light .right-panel,
+html.portfolio-print-light .center-bottom-panel,
+html.portfolio-print-light .center-bottom-box,
+html.portfolio-print-light .backtest-rule-box,
+html.portfolio-print-light .backtest-symbol-box,
+html.portfolio-print-light .factor-snapshot-panel,
+html.portfolio-print-light .morph-panel,
+html.portfolio-print-light .watchlist-card {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+}
+
+html.portfolio-print-light .header-center-tabs {
+    background: #f8fafc !important;
+}
+
+html.portfolio-print-light .header-tab {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .header-tab:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+html.portfolio-print-light .header-tab.active {
+    background: #ffffff !important;
+    color: #1d4ed8 !important;
+    border-top-color: #2563eb !important;
+}
+
+html.portfolio-print-light .field,
+html.portfolio-print-light .btn,
+html.portfolio-print-light select.field,
+html.portfolio-print-light input.field,
+html.portfolio-print-light textarea.field {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .btn:hover {
+    border-color: #94a3b8 !important;
+    background: #f8fafc !important;
+}
+
+html.portfolio-print-light .chart-toolbar,
+html.portfolio-print-light .signal-chart-wrap,
+html.portfolio-print-light .signal-chart-caption {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .portfolio-chart-legend {
+    background: rgba(255, 255, 255, 0.58) !important;
+    color: #1e293b !important;
+    border-color: rgba(203, 213, 225, 0.85) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+html.portfolio-print-light .chart-legend-item {
+    color: #334155 !important;
+}
+
+html.portfolio-print-light .center-bottom-backtest-label,
+html.portfolio-print-light .center-bottom-backtest-sep,
+html.portfolio-print-light .backtest-rule-empty,
+html.portfolio-print-light .factor-hint,
+html.portfolio-print-light .page-clock {
+    color: #64748b !important;
+}
+
+html.portfolio-print-light .backtest-rule-item,
+html.portfolio-print-light .backtest-rule-header,
+html.portfolio-print-light .factor-snapshot-head,
+html.portfolio-print-light h3,
+html.portfolio-print-light label {
+    color: #1e293b !important;
+}
+
+html.portfolio-print-light .factor-snapshot-head-extra,
+html.portfolio-print-light #factor-snapshot-head-extra {
+    color: #1e293b !important;
+}
+
+html.portfolio-print-light .splitter-v,
+html.portfolio-print-light .splitter-h {
+    background: #e2e8f0 !important;
+}
+
+html.portfolio-print-light #chart-container,
+html.portfolio-print-light #signal-chart-container {
+    background: #ffffff !important;
+}
+
+/* 默认：白底按钮；开启打印风：深色按钮 */
+html.portfolio-print-light #portfolio-extra-day-toggle.field.btn {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.portfolio-print-light #portfolio-extra-day-toggle.field.btn.is-on {
+    background: #1e293b !important;
+    border-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+}
+
+html.portfolio-print-light #portfolio-extra-day-toggle.field.btn.is-on:hover {
+    background: #0f172a !important;
+    border-color: #020617 !important;
+}
+
+html.portfolio-print-light .summary-card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .summary-card-label,
+html.portfolio-print-light .summary-panel-note,
+html.portfolio-print-light .position-snapshot-table-header,
+html.portfolio-print-light .position-snapshot-detail-label,
+html.portfolio-print-light .position-snapshot-contribution,
+html.portfolio-print-light .position-snapshot-active-label,
+html.portfolio-print-light .position-snapshot-empty {
+    color: #64748b !important;
+}
+
+html.portfolio-print-light .summary-card-value,
+html.portfolio-print-light .position-snapshot-detail-title,
+html.portfolio-print-light .position-snapshot-cell {
+    color: #1e293b !important;
+}
+
+html.portfolio-print-light .position-snapshot-detail-value,
+html.portfolio-print-light .position-snapshot-cell--number,
+html.portfolio-print-light .position-snapshot-active-value {
+    color: #1d4ed8 !important;
+}
+
+html.portfolio-print-light .position-snapshot-detail {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item.active {
+    border-color: #2563eb !important;
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28) !important;
+    background: #eff6ff !important;
+}
+
+html.portfolio-print-light .position-snapshot-item.active::before {
+    opacity: 1;
+}
+
+html.portfolio-print-light .position-snapshot-item--pos {
+    border-color: rgba(220, 38, 38, 0.75) !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.15) !important;
+    background: #fff1f2 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item--pos.active {
+    border-color: #dc2626 !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.25) !important;
+    background: #ffe4e6 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item--neg {
+    border-color: rgba(5, 150, 105, 0.75) !important;
+    box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.15) !important;
+    background: #ecfdf5 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item--neg.active {
+    border-color: #059669 !important;
+    box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.25) !important;
+    background: #d1fae5 !important;
+}
+
+html.portfolio-print-light .position-snapshot-item--flat {
+    border-color: #94a3b8 !important;
+    background: #f8fafc !important;
+}
+
+@media print {
+    html.result-print-light,
+    html.result-print-light body {
+        background: #ffffff !important;
+    }
+}
+
+/* 无法访问 iframe 文档时的兜底：整页反色近似白底 */
+html.result-print-light #portfolio-frame.result-print-light-iframe-fallback {
+    filter: invert(1) hue-rotate(180deg) saturate(0.92);
+}

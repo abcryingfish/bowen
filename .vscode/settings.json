@@ -1,0 +1,26 @@
+{
+    "editor.rulers":  [
+                          88,
+                          120
+                      ],
+    "python.terminal.activateEnvironment":  true,
+    "editor.formatOnSave":  true,
+    "python.terminal.activateEnvInCurrentTerminal":  true,
+    "python.defaultInterpreterPath":  "c:\\Users\\Administrator\\Desktop\\python_venv\\.venv\\Scripts\\python.exe",
+    "workbench.editorAssociations":  {
+                                         "*.ipynb":  "jupyter-notebook"
+                                     },
+    "jupyter.showCellStatusBar":  "visible",
+    "jupyter.askForKernelRestart":  false,
+    "notebook.globalToolbar":  true,
+    "jupyter.kernels.excludePythonEnvironments":  [
+
+                                                  ],
+    "notebook.lineNumbers":  "on",
+    "files.exclude":  {
+                          "**/__pycache__":  true,
+                          "**/.pyc":  true
+                      },
+    "python.analysis.typeCheckingMode":  "basic",
+    "python.analysis.autoImportCompletions":  true
+}

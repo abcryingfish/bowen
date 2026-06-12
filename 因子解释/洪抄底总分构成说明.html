@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>洪抄底总分 — 逻辑说明</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fafafa; color: #111; font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.55; }
+    .page { max-width: 920px; margin: 0 auto; padding: 28px 22px 56px; }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; font-weight: 650; }
+    h2 { font-size: 1.1rem; margin: 28px 0 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    .meta { font-size: 0.88rem; color: #444; margin-bottom: 22px; }
+    .meta code { background: #eee; padding: 1px 6px; border-radius: 4px; font-size: 0.86em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 12px 0; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; }
+    .note { background: #fff8e6; border: 1px solid #e6c200; padding: 12px 14px; border-radius: 6px; margin: 16px 0; font-size: 0.92rem; }
+    ul { margin: 8px 0; padding-left: 1.35em; }
+    .formula { font-family: Consolas, monospace; background: #fff; border: 1px solid #ddd; padding: 10px 12px; border-radius: 6px; font-size: 0.88rem; overflow-x: auto; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>前端「洪抄底总分」逻辑</h1>
+    <p class="meta">
+      源码：<code>ZXW因子/洪抄底.py</code> · <code>build_bottom_fishing_factor_bundle</code><br />
+      输出列：<code>hong_bottom_fishing_score</code>（对内由 <code>bottom_fishing_score</code> 加前缀 <code>hong_</code>）<br />
+      前端映射：<code>可视化/market_data_service.py</code> · 「洪抄底总分」→ <code>hong_bottom_fishing_score</code>
+    </p>
+
+    <h2>一、与「抄底总分」(K线底) 的差异</h2>
+    <p><strong>洪抄底总分</strong>与主线 <strong>抄底总分</strong>（<code>抄底因子.py</code>，即 K线底）<strong>不是同一套公式</strong>：洪版用「多级低点窗口 + 自上次见底以来的反弹幅度」判定，输出为 <strong>0、0.5、1、2、3</strong> 离散分；不涉及 K线底1/2、S笔反K 等通达信式合成。</p>
+
+    <h2>二、五类「洪底」触发（当日是否创新低相对窗口）</h2>
+    <p>对低价 <code>L</code>，与上一日各周期最低比较；并要求历史根数足够（避免冷启动假信号）：</p>
+    <table>
+      <thead>
+        <tr><th>内部名</th><th>条件（简化）</th><th>最少上市 K 线数</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>mini_bottom</code> 洪迷你底</td><td><code>L ≤ REF(LLV(L,7), 1)</code></td><td>≥ 8</td></tr>
+        <tr><td><code>small_bottom</code> 洪小底</td><td><code>L ≤ REF(LLV(L,20), 1)</code></td><td>≥ 21</td></tr>
+        <tr><td><code>major_bottom</code> 洪大底</td><td><code>L ≤ REF(LLV(L,200), 1)</code></td><td>≥ 201</td></tr>
+        <tr><td><code>near_historical_bottom</code> 洪近历史大底</td><td><code>L ≤ REF(LLV(L,400), 1)</code></td><td>≥ 401</td></tr>
+        <tr><td><code>historical_bottom</code> 洪历史大底</td><td><code>L ≤ REF(LLV(L,1000), 1)</code></td><td>≥ 1001</td></tr>
+      </tbody>
+    </table>
+
+    <h2>三、「反弹幅度」与有效状态 active</h2>
+    <p>对每一类底，在给定信号序列上：</p>
+    <ul>
+      <li>用 <code>BARSLAST(信号)</code> 定位<strong>最近一次</strong>该类见底日。</li>
+      <li>取该日的信号低价 <code>last_low</code>；从该股价段起至高，算 <strong>rise = (HHV(H, BARSLAST+1) − last_low) / last_low</strong>（自见底以来最高价相对最低价的最大反弹比例）。</li>
+      <li>仅在「已累计出现过该类信号」的位置上参与后续判定；并要求 <strong>rise &lt; 0.20（20%）</strong>，表示见底后<strong>尚未大幅反弹离开低价区</strong>，该类记为 <code>*_active</code>。</li>
+    </ul>
+    <p>五类均套用同一反弹阈值：<code>&lt; 20%</code>。</p>
+
+    <h2>四、互斥优先级与洪抄底总分</h2>
+    <p>在当日格点上，从上到下<strong>只做一档</strong>（先匹配者不向下覆盖）：</p>
+    <ol style="margin:8px 0;padding-left:1.35em;">
+      <li><strong>洪历史大底</strong> active → <strong>3</strong></li>
+      <li>否则若 <strong>洪近历史大底</strong> active → <strong>2</strong></li>
+      <li>否则若 <strong>洪大底</strong> active → <strong>1</strong></li>
+      <li>否则若 <strong>洪小底</strong> active → <strong>1</strong></li>
+      <li>否则若 <strong>洪迷你底</strong> active → <strong>0.5</strong></li>
+      <li>否则 → <strong>0</strong></li>
+    </ol>
+    <div class="formula">hong_bottom_fishing_score = 上表分值；且 base_score ≤ 0 时写 0（本实现中未出现负分）</div>
+
+    <h2>五、默认回看（增量/切片）</h2>
+    <p><code>get_factor_lookback_config()</code> 声明：整包约需 <strong>1100</strong> 日级别上下文；<code>hong_bottom_fishing_score</code> 与 <code>hong_historical_bottom</code> 的 lookback 同为 <strong>1100</strong>（见文件内 <code>FACTOR_LOOKBACK_DAYS</code>）。</p>
+
+    <div class="note">
+      <strong>实现备注：</strong>本文件中的 <code>_build_double_bottom_signal</code>（双底形态搜索）在 <code>ZXW因子/洪抄底.py</code> 的 bundle <strong>未调用</strong>，当前「洪抄底总分」<strong>不</strong>含双底模块。若需「洪 + 双底」合成，见 <code>ZXW因子/自己的抄底逻辑/洪抄底.py</code> 等分支。
+    </div>
+
+    <p style="font-size:0.88rem;color:#555;margin-top:28px;">
+      对照阅读：<a href="./抄底总分构成说明.html">抄底总分（K线底）</a> · <a href="./总买入信号构成说明.html">总买入信号</a>（总买入用的是主线抄底总分，不是洪版）。
+    </p>
+  </div>
+</body>
+</html>

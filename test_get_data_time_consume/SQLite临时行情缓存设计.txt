@@ -1,0 +1,280 @@
+SQLite 临时行情缓存设计
+=======================
+
+目标
+----
+用 SQLite 做当天/近期临时行情缓存，路径建议：
+
+D:\database\temp_today_data\market_cache_YYYY-MM-DD.sqlite
+
+长期历史数据仍然继续使用 parquet：
+
+D:\database\stock_basic_data_mins
+D:\database\stock_basic_data_daily
+
+SQLite 只负责盘中热数据：
+
+1. 保存 get_full_tick 获取到的当前快照。
+2. 用 lastPrice 拼接秒级序列。
+3. 聚合生成当天临时分钟线。
+4. 生成当天临时日线。
+5. 保存最后一次盘口数据，供前端展示。
+
+
+数据来源字段
+------------
+get_full_tick 返回字段里当前关注：
+
+code        股票代码
+timetag     行情时间，例如 20260611 14:43:26
+lastPrice   当前价格
+open        当日开盘价
+high        当日最高价
+low         当日最低价
+lastClose   昨收价
+amount      成交额
+volume      成交量，百股/手口径
+pvolume     成交量，股数口径
+askPrice    卖价五档
+bidPrice    买价五档
+askVol      卖量五档
+bidVol      买量五档
+
+暂时不重点使用：
+
+stockStatus
+openInt
+settlementPrice
+lastSettlementPrice
+
+
+推荐表结构
+----------
+
+1. tick_1s
+
+用途：保存每只股票每秒最后一次快照，用于拼分钟线。
+
+CREATE TABLE tick_1s (
+    htsc_code TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    last_price REAL,
+    amount REAL,
+    volume REAL,
+    pvolume REAL,
+    PRIMARY KEY (htsc_code, ts)
+);
+
+写入规则：
+
+- ts 转成秒级时间，例如 2026-06-11 14:43:26。
+- 同一股票同一秒多次写入，保留最后一次。
+- 使用 INSERT ... ON CONFLICT(htsc_code, ts) DO UPDATE。
+
+
+2. latest_quote
+
+用途：保存每只股票最后一次快照，给前端展示当前价和盘口。
+
+CREATE TABLE latest_quote (
+    htsc_code TEXT PRIMARY KEY,
+    ts TEXT NOT NULL,
+    last_price REAL,
+    open REAL,
+    high REAL,
+    low REAL,
+    last_close REAL,
+    amount REAL,
+    volume REAL,
+    pvolume REAL,
+    ask_price TEXT,
+    bid_price TEXT,
+    ask_vol TEXT,
+    bid_vol TEXT,
+    updated_at TEXT NOT NULL
+);
+
+说明：
+
+- ask_price、bid_price、ask_vol、bid_vol 用 JSON 字符串保存。
+- 这张表只保留每只股票最后一条记录，约 5000 多行，体积很小。
+
+
+3. today_daily_bar
+
+用途：生成当天临时日线，前端最后一天优先使用这里的数据。
+
+CREATE TABLE today_daily_bar (
+    htsc_code TEXT PRIMARY KEY,
+    trading_day TEXT NOT NULL,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL,
+    last_close REAL,
+    amount REAL,
+    volume REAL,
+    pvolume REAL,
+    updated_at TEXT NOT NULL
+);
+
+字段映射：
+
+open       = open
+high       = high
+low        = low
+close      = lastPrice
+last_close = lastClose
+amount     = amount
+volume     = volume
+pvolume    = pvolume
+
+
+4. cache_meta
+
+用途：记录缓存状态。
+
+CREATE TABLE cache_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT
+);
+
+可记录：
+
+trading_day
+source
+last_update_time
+stock_count
+
+
+推荐索引
+--------
+
+CREATE INDEX idx_tick_1s_code_ts ON tick_1s(htsc_code, ts);
+CREATE INDEX idx_tick_1s_ts ON tick_1s(ts);
+CREATE INDEX idx_today_daily_day ON today_daily_bar(trading_day);
+
+
+分钟线聚合思路
+--------------
+
+从 tick_1s 按分钟聚合：
+
+- time   = ts floor 到分钟
+- open   = 该分钟第一秒价格
+- high   = 该分钟最高 last_price
+- low    = 该分钟最低 last_price
+- close  = 该分钟最后一秒价格
+- amount = 该分钟最后 amount - 该分钟最早 amount
+- volume = 该分钟最后 volume - 该分钟最早 volume
+- pvolume = 该分钟最后 pvolume - 该分钟最早 pvolume
+
+示例 SQL：
+
+WITH base AS (
+    SELECT
+        htsc_code,
+        substr(ts, 1, 16) || ':00' AS minute_time,
+        ts,
+        last_price,
+        amount,
+        volume,
+        pvolume,
+        FIRST_VALUE(last_price) OVER (
+            PARTITION BY htsc_code, substr(ts, 1, 16)
+            ORDER BY ts
+        ) AS open,
+        LAST_VALUE(last_price) OVER (
+            PARTITION BY htsc_code, substr(ts, 1, 16)
+            ORDER BY ts
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+        ) AS close
+    FROM tick_1s
+)
+SELECT
+    htsc_code,
+    minute_time AS time,
+    MAX(open) AS open,
+    MAX(last_price) AS high,
+    MIN(last_price) AS low,
+    MAX(close) AS close,
+    MAX(amount) - MIN(amount) AS amount,
+    MAX(volume) - MIN(volume) AS volume,
+    MAX(pvolume) - MIN(pvolume) AS pvolume
+FROM base
+GROUP BY htsc_code, minute_time;
+
+
+口径注意
+--------
+
+volume 和 pvolume 都建议先保留：
+
+- volume 通常是百股/手口径。
+- pvolume 通常是股数口径。
+
+后续要和历史分钟 parquet 对齐时，再确认历史库里的 volume 到底采用哪个口径。
+
+
+写入策略
+--------
+
+建议批量事务写入，不要每条单独 commit。
+
+每轮 get_full_tick 后：
+
+1. 遍历 5000 多只沪深A股。
+2. 写入 tick_1s，按 htsc_code + ts upsert。
+3. 写入 latest_quote，按 htsc_code upsert。
+4. 写入 today_daily_bar，按 htsc_code upsert。
+
+
+清理策略
+--------
+
+推荐每天一个 SQLite 文件：
+
+D:\database\temp_today_data\market_cache_2026-06-11.sqlite
+
+优点：
+
+- 不容易误删。
+- 方便回看当天盘中缓存。
+- 不需要在同一个 db 里混多天数据。
+
+如果使用固定文件 today_market_cache.sqlite，则程序启动时检查 trading_day：
+
+- 如果不是今天，清空 tick_1s、latest_quote、today_daily_bar。
+- 或先归档旧文件再新建。
+
+
+前端/数据读取建议
+-----------------
+
+盘中读取：
+
+历史 parquet + SQLite 临时数据拼接。
+
+分钟线：
+
+- 历史分钟从 D:\database\stock_basic_data_mins 读取。
+- 当天最新分钟从 SQLite tick_1s 聚合。
+
+日线：
+
+- 历史日线从 D:\database\stock_basic_data_daily 读取。
+- 最后一天优先使用 SQLite today_daily_bar。
+
+收盘后：
+
+- 可以重新下载官方日线/分钟线。
+- 官方数据写入 parquet 后，SQLite 当天缓存可归档或删除。
+
+
+结论
+----
+
+SQLite 做热数据缓存，parquet 做冷历史归档。
+
+不要用 SQLite 替代长期历史库；它更适合当天实时数据、秒级快照、盘口最后状态和临时日线/分钟线。

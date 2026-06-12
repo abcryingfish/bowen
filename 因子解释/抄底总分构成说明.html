@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>抄底总分 — 构成说明</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fafafa; color: #111; font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.55; }
+    .page { max-width: 920px; margin: 0 auto; padding: 28px 22px 56px; }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; font-weight: 650; }
+    h2 { font-size: 1.1rem; margin: 28px 0 12px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    .meta { font-size: 0.88rem; color: #444; margin-bottom: 22px; }
+    .meta code { background: #eee; padding: 1px 6px; border-radius: 4px; font-size: 0.86em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 12px 0; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; }
+    .note { background: #fff8e6; border: 1px solid #e6c200; padding: 12px 14px; border-radius: 6px; margin: 16px 0; font-size: 0.92rem; }
+    ul { margin: 8px 0; padding-left: 1.35em; }
+    li { margin: 4px 0; }
+    .formula { font-family: Consolas, monospace; background: #fff; border: 1px solid #ddd; padding: 10px 12px; border-radius: 6px; font-size: 0.88rem; overflow-x: auto; margin: 10px 0; }
+    a { color: #0366d6; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>前端「抄底总分」由什么构成</h1>
+    <p class="meta">
+      源码：<code>ZXW因子/抄底因子.py</code> · <code>build_bottom_fishing_factor_bundle</code><br />
+      宽表列：<code>bottom_fishing_score</code> · 可视化映射：<code>可视化/market_data_service.py</code> → 「抄底总分」<br />
+      说明文档摘要：<code>因子分类/因子说明.md</code> → 「K线底」「抄底总分」
+    </p>
+
+    <h2>一、与 K 线底的关系（最重要）</h2>
+    <p>在源码中，<strong>抄底总分逐格等于 K 线底</strong>：</p>
+    <div class="formula">bottom_fishing_score = kline_bottom   （同一张 DataFrame 的拷贝）</div>
+    <p>因此：数值含义、分级规则、与子条件的关系<strong>全部按「K线底」理解即可</strong>。「有抄底信号」在总买入链路里一般指 <strong><code>bottom_fishing_score &gt; 0</code></strong>（等价于 K 线底 &gt; 0）。</p>
+
+    <h2>二、分数档位（给用户看的刻度）</h2>
+    <p>经过 <code>_kline_12_tdx_to_user_scale</code> 映射后，呈现为 <strong>0～4</strong>：<strong>4 最强、1 最弱有效档、0 无信号</strong>（通达信内侧先按 1=最强～4=最弱 嵌套打分，再映为本地刻度）。</p>
+    <table>
+      <thead>
+        <tr><th>值</th><th>含义</th><th>与结构的关系（简述）</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>4</strong></td>
+          <td>最强</td>
+          <td>双路合成后，对应上一「K底」落在 <strong>历史大底</strong> 档（需同时满足 <code>K底要求</code> 与 <code>K底来要求</code> 相关窗口内的结构判定）</td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td>较强</td>
+          <td>对应 <strong>五年底</strong> 档</td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td>中等</td>
+          <td>对应 <strong>两年底</strong> 档</td>
+        </tr>
+        <tr>
+          <td><strong>1</strong></td>
+          <td>较弱</td>
+          <td>对应 <strong>年内底</strong> 或 <strong>年内双底</strong> 档</td>
+        </tr>
+        <tr>
+          <td><strong>0</strong></td>
+          <td>无信号</td>
+          <td>K 线底 1 / K 线底 2 在两路打分上均未给出有效分级</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>三、两路打分再合成（K线底1 + K线底2）</h2>
+    <ol style="margin:8px 0;padding-left:1.35em;">
+      <li><strong>K线底1（相对）：</strong>当 <strong><code>k_bottom_requirement</code></strong> 成立时（现价相对「上一 K底」满足的相对低顶条件），用 <code>_tdx_kline_12_score</code> 按上一 K底的类型（历史/五年/两年/年内或年内双底）嵌套赋值。</li>
+      <li><strong>K线底2（绝对）：</strong>当 <strong><code>k_bottom_arrival_requirement</code></strong> 成立时（价格回到上一 K底附近；年内双底分支用 250 日收盘规则），同样用 <code>_tdx_kline_12_score</code> 分档。</li>
+      <li><strong>通达信式合成（在映射到用户刻度之前）：</strong>记两路通达信刻度为 <code>kb1</code>、<code>kb2</code>。若 <code>kb1×kb2=0</code>，取 <strong>MAX</strong>；否则取 <strong>MIN</strong>。再执行 <code>用户分 = 5 - 通达信分</code>（0 保持 0）。</li>
+    </ol>
+    <p>含义：仅一路有信号时取较强那路；两路同时有信号时取<strong>更保守</strong>的一档（通达信刻度上取 MIN，映射后仍体现为结构档位的折中）。</p>
+
+    <h2>四、底层依赖（概念层，非逐行公式）</h2>
+    <ul>
+      <li><strong>多周期低点结构：</strong>如 <code>historical_bottom</code>（上市足够长且 L 为历史新低）、<code>five_year_bottom</code>、<code>two_year_bottom</code>、<code>yearly_bottom</code>、<code>yearly_double_bottom</code>（含价比/K 笔长度等过滤器）等。</li>
+      <li><strong>S 笔反 K 等量价结构：</strong><code>upper_stroke_reverse_k</code>、<code>lower_stroke_reverse_k</code> 等与 K 顶/底计时、BARSLAST 引用相关；与 P 类量性（阳线/阴线形态拆分）同属 bundle 前半段铺垫。</li>
+      <li><strong>K 底事件并集：</strong><code>k_bottom = historical | five_year | two_year | yearly_bottom | yearly_double_bottom</code>，用于 BARSLAST 取「上一 K底」那根。</li>
+      <li><strong>镜像因子：</strong>同文件内另有 <strong>逃顶总分</strong> <code>top_escape_score</code> = <code>kline_top</code>（高点结构镜像），与抄底总分<strong>不构成加和</strong>。</li>
+    </ul>
+
+    <div class="note">
+      <strong>注意：</strong>仓库内另有 <code>ZXW因子/洪抄底.py</code> 等变种实现，字段名可能也叫 <code>bottom_fishing_score</code>；与「洪抄底总分」「总买入默认链路」对齐时请以<strong>实际加载的 bundle</strong>为准。主线总买入使用的是 <code>抄底因子.build_bottom_fishing_factor_bundle</code>（或可导入时对外的同名封装）。
+    </div>
+
+    <p style="font-size:0.88rem;color:#555;margin-top:32px;">
+      延伸阅读：仓库内<a href="./总买入信号构成说明.html">总买入信号构成说明</a>（抄底总分是其三条基础门闸之一）。
+    </p>
+  </div>
+</body>
+</html>

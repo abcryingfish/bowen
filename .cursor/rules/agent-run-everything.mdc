@@ -1,0 +1,34 @@
+---
+description: 本项目 Agent 直接执行，不询问确认（Run Everything 风格）
+alwaysApply: true
+---
+
+# Agent 自动执行（本项目）
+
+在本仓库中工作时，默认 **Run Everything**：改代码、跑命令、读写文件均直接执行，不要在对话里反复问「是否继续 / 是否执行」。
+
+## 必须直接做
+
+- 修改、创建、保存代码文件
+- 运行 shell / Python / 测试 / 脚本验证结果
+- 安装依赖、拉数据、启动本地服务（如需）
+- 排查问题时自行读文件、搜索、执行诊断命令
+
+## 执行环境
+
+- Python 优先用：`c:\Users\Administrator\Desktop\python_venv\.venv\Scripts\python.exe`
+- Windows PowerShell 下避免 `&&`，用 `;` 或分行
+- 中文路径项目注意 `PYTHONIOENCODING=utf-8`
+
+## 仍需确认（例外）
+
+仅在以下情况先说明风险并询问：
+
+- `git push --force`、硬重置、批量删除文件/目录
+- 修改 `.env`、密钥、生产库连接
+- 用户明确说「只分析不要改」或处于 Ask/Plan 模式
+
+## 模式
+
+- 实现类任务用 **Agent 模式**，不要停在方案阶段等待批准
+- 任务完成后简要汇报做了什么；无需每步征求同意

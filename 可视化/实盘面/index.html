@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实盘面 - 股票看板</title>
+    <link rel="stylesheet" href="../shared/chart_board.css">
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="./live_board.css">
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="page-live-board">
+    <div class="page-header" id="page-header"></div>
+
+    <div class="workspace live-workspace">
+        <main class="live-shell">
+            <section class="live-grid" id="live-grid" aria-label="实盘股票宫格"></section>
+        </main>
+    </div>
+
+    <div id="live-focus-overlay" class="live-focus-overlay" aria-hidden="true">
+        <div class="live-focus-backdrop"></div>
+        <div class="live-focus-dialog" role="dialog" aria-modal="true" aria-labelledby="live-focus-title">
+            <div class="live-focus-body">
+                <div class="live-focus-main">
+                    <div class="live-focus-heading">
+                        <div id="live-focus-title" class="live-focus-title">--</div>
+                        <div id="live-focus-subtitle" class="live-focus-subtitle">--</div>
+                    </div>
+                    <div id="live-trade-panel" class="live-trade-panel" aria-label="交易操作">
+                        <div class="live-trade-actions">
+                            <button class="live-trade-action is-buy" type="button" data-trade-side="buy">买</button>
+                            <button class="live-trade-action is-sell" type="button" data-trade-side="sell">卖</button>
+                        </div>
+                        <div class="live-trade-summary">
+                            <span id="live-trade-position">仓位 --</span>
+                            <span id="live-trade-price">参考价 --</span>
+                        </div>
+                    </div>
+                    <div id="live-trade-ticket" class="live-trade-ticket" aria-hidden="true">
+                        <div class="live-trade-ticket-head">
+                            <div>
+                                <div id="live-trade-ticket-side" class="live-trade-ticket-side">买入</div>
+                                <div id="live-trade-ticket-symbol" class="live-trade-ticket-symbol">--</div>
+                            </div>
+                            <button id="live-trade-ticket-close" class="live-trade-ticket-close" type="button" aria-label="关闭交易框">x</button>
+                        </div>
+                        <div class="live-trade-field">
+                            <label for="live-trade-position-input">目标仓位</label>
+                            <div class="live-trade-input-row">
+                                <input id="live-trade-position-input" class="live-trade-position-input" type="number" min="0" max="100" step="1" value="25">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        <div class="live-trade-quick" aria-label="快捷仓位">
+                            <button type="button" data-trade-preset="10">10%</button>
+                            <button type="button" data-trade-preset="25">25%</button>
+                            <button type="button" data-trade-preset="50">50%</button>
+                            <button type="button" data-trade-preset="100">满仓</button>
+                        </div>
+                        <div class="live-trade-metrics">
+                            <div>
+                                <span>可用资金</span>
+                                <strong id="live-trade-cash">--</strong>
+                            </div>
+                            <div>
+                                <span>预估金额</span>
+                                <strong id="live-trade-amount">--</strong>
+                            </div>
+                            <div>
+                                <span>预估股数</span>
+                                <strong id="live-trade-shares">--</strong>
+                            </div>
+                        </div>
+                        <button id="live-trade-submit" class="live-trade-submit" type="button">模拟提交</button>
+                    </div>
+                    <div id="live-focus-chart" class="live-focus-chart"></div>
+                    <div id="live-focus-state" class="live-focus-state">加载中...</div>
+                </div>
+                <div class="live-focus-signal-wrap">
+                    <div id="live-focus-signal-chart" class="live-focus-signal-chart"></div>
+                    <div id="live-focus-signal-state" class="live-focus-signal-state">副图加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600" aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="./live_board.js"></script>
+</body>
+</html>
