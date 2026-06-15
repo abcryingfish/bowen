@@ -428,6 +428,28 @@ function getFactorSnapshotPanelElements() {
     };
 }
 
+function isRightPanelSnapshotSurfaceActive() {
+    return currentRightTabName === "量化因子" || (
+        shouldUseBacktestPositionSnapshotPanel()
+        && currentRightTabName === COMBINED_HEADER_TAB_LABEL
+    );
+}
+
+function getBacktestPositionSnapshotHandlers() {
+    const handlers = window.BacktestPositionSnapshotHandlers || {};
+    return {
+        renderStatus: typeof handlers.renderStatus === "function"
+            ? handlers.renderStatus
+            : renderBacktestPositionSnapshotStatus,
+        render: typeof handlers.render === "function"
+            ? handlers.render
+            : renderBacktestPositionSnapshotToRightPanel,
+        fetch: typeof handlers.fetch === "function"
+            ? handlers.fetch
+            : fetchBacktestPositionSnapshot,
+    };
+}
+
 let factorSnapshotListClickBound = false;
 function bindFactorSnapshotListInteractions() {
     const { listEl } = getFactorSnapshotPanelElements();
@@ -1388,7 +1410,7 @@ async function clearExtraActiveFactors() {
 }
 
 function scheduleFactorSnapshotForRightPanel(timeValue, immediate = false) {
-    if (currentRightTabName !== "量化因子") {
+    if (!isRightPanelSnapshotSurfaceActive()) {
         return;
     }
     if (currentInterval !== "1day") {
@@ -1410,6 +1432,7 @@ function scheduleFactorSnapshotForRightPanel(timeValue, immediate = false) {
     }
 
     if (shouldUseBacktestPositionSnapshotPanel()) {
+        const positionHandlers = getBacktestPositionSnapshotHandlers();
         const renderedKey = currentCode + "|" + normalizedTs + "|position";
         if (renderedKey === lastRenderedSnapshotKey) {
             return;
@@ -1419,10 +1442,10 @@ function scheduleFactorSnapshotForRightPanel(timeValue, immediate = false) {
         if (cached) {
             if (cached && cached.no_data) {
                 currentFactorSnapshotTime = normalizedTs;
-                renderBacktestPositionSnapshotStatus("status updated");
+                positionHandlers.renderStatus("status updated");
                 return;
             }
-            renderBacktestPositionSnapshotToRightPanel(cached, normalizedTs);
+            positionHandlers.render(cached, normalizedTs);
             return;
         }
         if (isRightPanelSnapshotRequestPaused()) {
@@ -1430,30 +1453,30 @@ function scheduleFactorSnapshotForRightPanel(timeValue, immediate = false) {
         }
         const run = async () => {
             if (!getSelectedRunTag()) {
-                renderBacktestPositionSnapshotStatus("");
+                positionHandlers.renderStatus("");
                 return;
             }
             const reqSeq = ++snapshotRequestSeq;
-            renderBacktestPositionSnapshotStatus("");
+            positionHandlers.renderStatus("");
             try {
-                const payload = await fetchBacktestPositionSnapshot(currentCode, normalizedTs);
+                const payload = await positionHandlers.fetch(currentCode, normalizedTs);
                 if (reqSeq !== snapshotRequestSeq) {
                     return;
                 }
                 if (payload && payload.no_data) {
                     rightPanelSnapshotCache.set(cacheKey, payload);
                     pauseRightPanelSnapshotRequestsForInteraction();
-                    renderBacktestPositionSnapshotStatus("status updated");
+                    positionHandlers.renderStatus("status updated");
                     return;
                 }
                 rightPanelSnapshotCache.set(cacheKey, payload);
-                renderBacktestPositionSnapshotToRightPanel(payload, normalizedTs);
+                positionHandlers.render(payload, normalizedTs);
             } catch (err) {
                 if (reqSeq !== snapshotRequestSeq) {
                     return;
                 }
                 const message = err instanceof Error ? err.message : "组合持仓快照获取失败";
-                renderBacktestPositionSnapshotStatus("status updated");
+                positionHandlers.renderStatus("status updated");
             }
         };
 
@@ -2368,8 +2391,6 @@ function getSignalTypeToggleState() {
 window.getSignalTypeToggleState = getSignalTypeToggleState;
 window.getSignalSlotBindings = () => ({ ...signalSlotBindings });
 window.ChartBoardView = { id: "quant", label: "量化因子" };
-
-
 
 
 

@@ -29,6 +29,7 @@ if hasattr(sys.stderr, "reconfigure"):
 DEFAULT_SECTOR_NAME = "沪深A股"
 DEFAULT_INTERVAL_SECONDS = 3.0
 DEFAULT_SNAPSHOT_INTERVAL_SECONDS = 60.0
+REALTIME_STOP_TIME = (15, 5)
 
 
 class SnapshotFlushWorker:
@@ -228,6 +229,12 @@ def write_tick_batch(
     }
 
 
+def is_after_realtime_stop_time(now: datetime | None = None) -> bool:
+    current = now or datetime.now()
+    hour, minute = REALTIME_STOP_TIME
+    return (current.hour, current.minute) >= (hour, minute)
+
+
 def run_loop(
     db_path: Path,
     stock_list: list[str],
@@ -298,6 +305,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     db_path = Path(args.db_path) if str(args.db_path).strip() else today_cache_path()
+    if is_after_realtime_stop_time():
+        print("[OK] 当前时间已到 15:05 后，实时行情写入脚本自动退出。")
+        return
+
     if args.codes:
         stock_list = sorted({normalize_code(code) for code in args.codes if str(code).strip()})
     else:

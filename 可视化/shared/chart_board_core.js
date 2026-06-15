@@ -489,6 +489,8 @@ const RIGHT_PANEL_TAB_CONTENT = {
             `
 };
 
+RIGHT_PANEL_TAB_CONTENT[COMBINED_HEADER_TAB_LABEL] = RIGHT_PANEL_TAB_CONTENT[PRIMARY_RIGHT_PANEL_TAB_KEY];
+
 const RIGHT_PANEL_SNAPSHOT_DEBOUNCE_MS = 120;
 const SIGNAL_SERIES_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#a855f7", "#ef4444", "#14b8a6", "#eab308", "#ec4899"];
 
@@ -1220,7 +1222,9 @@ let currentCode = PAGE_BOOT.code || "301469.SZ";
 let currentInterval = "1day";
 let currentAdjustMode = "qfq";
 const PORTFOLIO_MAIN_CURVE_CODE = "000000.YKRS";
+const CASH_CURVE_CODE = "0000000.YKRS";
 const BENCHMARK_CURVE_CODE = "000001.YKRS";
+const YKRS_CURVE_PICKER_CODES = [PORTFOLIO_MAIN_CURVE_CODE, CASH_CURVE_CODE, BENCHMARK_CURVE_CODE];
 const CURVE_LINE_CODES = new Set([PORTFOLIO_MAIN_CURVE_CODE, BENCHMARK_CURVE_CODE]);
 const POSITION_SNAPSHOT_CODES = new Set([PORTFOLIO_MAIN_CURVE_CODE]);
 let barsCache = [];
@@ -1261,13 +1265,22 @@ let currentFactorSnapshotTime = null;
 let currentFactorSnapshotPayload = null;
 let lastRenderedSnapshotKey = "";
 let snapshotRequestSeq = 0;
+let snapshotDebounceTimer = null;
 let rightPanelSnapshotCache = new Map();
 let currentBacktestPositionSnapshot = null;
 let currentBacktestPositionHoverCode = "";
 let backtestOrderItems = [];
+let backtestSummaryRequestSeq = 0;
+let ykrsDailyBarWindowCached = null;
+let ykrsDailyBarWindowCacheUntil = 0;
+let ykrsDailyBarWindowCachedRunTag = "";
 let selectedPortfolioIndexCode = "";
 let minuteOffscreenPruneTimer = null;
 let historyPrefetchDebounceTimer = null;
+let rightPanelSnapshotInteractionId = 0;
+let rightPanelSnapshotPausedInteractionId = -1;
+let suppressFactorSnapshotClickUntil = 0;
+let suppressSignalSlotClickUntil = 0;
 let clearCodeInputOnNextEdit = false;
 let codeSuggestTimer = null;
 let codeSuggestItems = [];
@@ -1275,7 +1288,120 @@ let activeSuggestionIndex = -1;
 async function loadBacktestModelsCatalog() { }
 async function refreshBacktestOrderMarkers() { }
 function applyBacktestOrderMarkers() { }
-function renderBacktestPositionSnapshotToRightPanel(_snapshot, _targetTs) { }
+function renderBacktestPositionSnapshotStatus(text) {
+    const headExtraEl = document.getElementById("factor-snapshot-head-extra");
+    const listEl = document.getElementById("factor-snapshot-list");
+    if (!headExtraEl || !listEl) {
+        return;
+    }
+    setFactorSnapshotFilterUiVisible(false);
+    currentFactorSnapshotPayload = null;
+    currentBacktestPositionSnapshot = null;
+    currentBacktestPositionHoverCode = "";
+    lastRenderedSnapshotKey = "";
+    headExtraEl.textContent = text;
+    listEl.innerHTML = "";
+    updateExportFactorOptions();
+}
+
+function renderBacktestPositionSnapshotToRightPanel(snapshot, targetTs) {
+    const headExtraEl = document.getElementById("factor-snapshot-head-extra");
+    const listEl = document.getElementById("factor-snapshot-list");
+    if (!headExtraEl || !listEl) {
+        return;
+    }
+    setFactorSnapshotFilterUiVisible(false);
+    currentFactorSnapshotPayload = null;
+    currentBacktestPositionSnapshot = snapshot && typeof snapshot === "object" ? snapshot : null;
+    const showTs = Number.isFinite(Number(targetTs)) ? Number(targetTs) : Number(snapshot && snapshot.time);
+    currentFactorSnapshotTime = Number.isFinite(showTs) ? showTs : null;
+    lastRenderedSnapshotKey = `${currentCode}|${Number.isFinite(currentFactorSnapshotTime) ? currentFactorSnapshotTime : "na"}|position`;
+    const items = Array.isArray(snapshot && snapshot.items) ? snapshot.items : [];
+    const displayDate = String(snapshot && snapshot.date ? snapshot.date : formatLocalDateTime(showTs)).trim();
+    headExtraEl.textContent = `日期: ${displayDate || "--"} | 持仓数: ${items.length}`;
+
+    if (!items.length) {
+        currentBacktestPositionHoverCode = "";
+        listEl.innerHTML = '<div class="position-snapshot-empty">该日无持仓记录</div>';
+        updateExportFactorOptions();
+        return;
+    }
+
+    const selectedItem = items.find((item) => String(item && item.code || "") === currentBacktestPositionHoverCode) || items[0];
+    currentBacktestPositionHoverCode = String(selectedItem && selectedItem.code || "");
+    const detailFields = [
+        ["持仓数量", formatPositionSnapshotNumber(selectedItem.position_size, 2)],
+        ["持仓均价", formatPositionSnapshotNumber(selectedItem.position_price, 2)],
+        ["收盘价", formatPositionSnapshotNumber(selectedItem.close, 2)],
+        ["持仓市值", formatPositionSnapshotNumber(selectedItem.market_value, 2)],
+        ["仓位占比", formatPositionSnapshotPercent(selectedItem.weight_pct)],
+        ["浮动盈亏", formatPositionSnapshotNumber(selectedItem.unrealized_pnl, 2)],
+    ];
+    const detailHtml = detailFields
+        .map(([label, value]) => (
+            `<div class="position-snapshot-detail-item">` +
+            `<span class="position-snapshot-detail-label">${escapeHtml(label)}</span>` +
+            `<span class="position-snapshot-detail-value">${escapeHtml(value)}</span>` +
+            `</div>`
+        ))
+        .join("");
+    const rowsHtml = items.map((item) => {
+        const itemCode = String(item && item.code || "");
+        const itemCodeDisplay = formatPositionSnapshotCode(itemCode);
+        const isActiveItem = itemCode === currentBacktestPositionHoverCode;
+        const activeClass = isActiveItem ? " active" : "";
+        const dailyPnlPct = Number(item && item.daily_pnl_pct);
+        const weightPct = Number(item && item.weight_pct);
+        const trendClass = Number.isFinite(dailyPnlPct)
+            ? (dailyPnlPct > 0 ? " position-snapshot-item--pos" : (dailyPnlPct < 0 ? " position-snapshot-item--neg" : " position-snapshot-item--flat"))
+            : " position-snapshot-item--flat";
+        const fillWidth = Number.isFinite(weightPct)
+            ? `${Math.max(0, Math.min(100, weightPct * 100))}%`
+            : "0%";
+        const fillColor = Number.isFinite(dailyPnlPct)
+            ? (dailyPnlPct > 0 ? "rgba(239, 83, 80, 0.18)" : (dailyPnlPct < 0 ? "rgba(38, 166, 154, 0.18)" : "rgba(107, 156, 255, 0.16)"))
+            : "rgba(107, 156, 255, 0.16)";
+        const contributionHtml = isActiveItem
+            ? (
+                `<span class="position-snapshot-contribution" style="text-align:right;">收益贡献</span>` +
+                `<span class="position-snapshot-active-label" style="text-align:right;">股票代码</span>` +
+                `<span class="position-snapshot-active-label" style="text-align:right;">当日盈亏</span>` +
+                `<span class="position-snapshot-active-label" style="text-align:right;">仓位占比</span>` +
+                `<span class="position-snapshot-active-value">${escapeHtml(formatPositionSnapshotPercent(item && item.contribution_pct))}</span>` +
+                `<span class="position-snapshot-active-value">${escapeHtml(itemCodeDisplay)}</span>` +
+                `<span class="position-snapshot-active-value" style="text-align:right;">${escapeHtml(formatPositionSnapshotPercent(item && item.daily_pnl_pct))}</span>` +
+                `<span class="position-snapshot-active-value" style="text-align:right;">${escapeHtml(formatPositionSnapshotPercent(item && item.weight_pct))}</span>`
+            )
+            : "";
+        return (
+            `<div class="position-snapshot-item${activeClass}${trendClass}" data-position-code="${escapeHtml(itemCode)}" style="--position-fill-width:${fillWidth}; --position-fill-color:${fillColor};">` +
+            (isActiveItem
+                ? contributionHtml
+                : (
+                    `<span class="position-snapshot-cell">${escapeHtml(itemCodeDisplay)}</span>` +
+                    `<span class="position-snapshot-cell position-snapshot-cell--number">${escapeHtml(formatPositionSnapshotPercent(item && item.daily_pnl_pct))}</span>` +
+                    `<span class="position-snapshot-cell position-snapshot-cell--number">${escapeHtml(formatPositionSnapshotPercent(item && item.weight_pct))}</span>`
+                )) +
+            `</div>`
+        );
+    }).join("");
+    listEl.innerHTML =
+        `<div class="position-snapshot-wrap">` +
+        `<div class="position-snapshot-detail">` +
+        `<div class="position-snapshot-detail-title">${escapeHtml(currentBacktestPositionHoverCode || "---")}</div>` +
+        `<div class="position-snapshot-detail-grid">${detailHtml}</div>` +
+        `</div>` +
+        `<div class="position-snapshot-table">` +
+        `<div class="position-snapshot-table-header">` +
+        `<span>代码</span>` +
+        `<span style="text-align:right;">当日盈亏比</span>` +
+        `<span style="text-align:right;">仓位占比</span>` +
+        `</div>` +
+        rowsHtml +
+        `</div>` +
+        `</div>`;
+    updateExportFactorOptions();
+}
 function shouldUseBacktestPositionSnapshotPanel(codeValue = currentCode) {
     return POSITION_SNAPSHOT_CODES.has(normalizeCodeValue(codeValue));
 }
@@ -1284,8 +1410,55 @@ function getBacktestRangeFromSummary(_summary) { return null; }
 async function fetchBacktestOrders(_code, _fromTs, _toTs) { return []; }
 function buildBacktestOrderMarkers(_items) { return []; }
 function buildBacktestOrderMarkerText(_item) { return ""; }
-async function fetchBacktestPositionSnapshot() { return null; }
-function renderBacktestPositionSnapshotStatus(_text) { }
+async function fetchBacktestPositionSnapshot(code, timeTs) {
+    const params = new URLSearchParams({
+        code,
+        time: String(timeTs)
+    });
+    appendRunTagParam(params);
+    const url = `${API_BASE_URL}/api/backtest/positions/snapshot?${params.toString()}`;
+    const resp = await fetch(url, { method: "GET", cache: "no-store" });
+    const body = await resp.json();
+    if (!resp.ok) {
+        if (isNoDataErrorResponse(resp.status, body)) {
+            return { no_data: true, items: [], time: timeTs };
+        }
+        const message = body && body.error && body.error.message ? body.error.message : "组合持仓快照获取失败";
+        throw new Error(message);
+    }
+    return body && typeof body === "object" ? body : { no_data: true, items: [], time: timeTs };
+}
+async function refreshPortfolioPositionSnapshotPanel(timeTs = null) {
+    if (!PAGE_BOOT.allowYkrsCurve || !shouldUseBacktestPositionSnapshotPanel()) {
+        return;
+    }
+    if (!document.getElementById("factor-snapshot-list")) {
+        renderRightPanelByTab(COMBINED_HEADER_TAB_LABEL);
+    }
+    let targetTs = Number(timeTs);
+    if (!Number.isFinite(targetTs)) {
+        targetTs = Number(lastBarTime);
+    }
+    if (!Number.isFinite(targetTs)) {
+        const params = new URLSearchParams({
+            code: currentCode,
+            interval: "1day",
+            adjust: "none",
+            limit: "1",
+        });
+        appendRunTagParam(params);
+        const resp = await fetch(`${API_BASE_URL}/api/market/bars?${params.toString()}`, { method: "GET", cache: "no-store" });
+        const body = await resp.json();
+        const bars = Array.isArray(body && body.bars) ? body.bars : [];
+        targetTs = bars.length ? Number(bars[bars.length - 1].time) : NaN;
+    }
+    if (!Number.isFinite(targetTs)) {
+        renderBacktestPositionSnapshotStatus("");
+        return;
+    }
+    const payload = await fetchBacktestPositionSnapshot(currentCode, targetTs);
+    renderBacktestPositionSnapshotToRightPanel(payload, targetTs);
+}
 function refreshOptunaControlsVisibility() { }
 /* --- view stubs (board_*.js 瑕嗙洊) --- */
 async function backfillMorphSignalsForRange(_fromTs, _toTs) { }
@@ -1315,7 +1488,83 @@ async function refreshSignalData(_isInitialLoad = false) { }
 async function refreshSlotBoundSignalData(_isInitialLoad = false) { }
 function renderQuantSignalData() { signalSeries.setData([]); syncSignalChartViewportFromMain(); }
 function restoreQuantFactorUi() { }
-function scheduleFactorSnapshotForRightPanel(_timeValue, _immediate = false) { }
+function scheduleFactorSnapshotForRightPanel(timeValue, immediate = false) {
+    if (!shouldUseBacktestPositionSnapshotPanel()) {
+        return;
+    }
+    const isPositionSnapshotTab = currentRightTabName === COMBINED_HEADER_TAB_LABEL
+        || currentRightTabName === PRIMARY_RIGHT_PANEL_TAB_KEY;
+    if (!isPositionSnapshotTab) {
+        return;
+    }
+    if (currentInterval !== "1day") {
+        renderBacktestPositionSnapshotStatus("组合持仓快照仅在 1day 周期显示");
+        return;
+    }
+    const normalizedTs = normalizeTimeToSeconds(timeValue !== undefined && timeValue !== null ? timeValue : lastBarTime);
+    if (!Number.isFinite(normalizedTs)) {
+        renderBacktestPositionSnapshotStatus("");
+        return;
+    }
+    const renderedKey = currentCode + "|" + normalizedTs + "|position";
+    if (renderedKey === lastRenderedSnapshotKey) {
+        return;
+    }
+    const cacheKey = "position|" + currentCode + "|" + normalizedTs;
+    const cached = rightPanelSnapshotCache.get(cacheKey);
+    if (cached) {
+        if (cached && cached.no_data) {
+            currentFactorSnapshotTime = normalizedTs;
+            renderBacktestPositionSnapshotStatus("status updated");
+            return;
+        }
+        renderBacktestPositionSnapshotToRightPanel(cached, normalizedTs);
+        return;
+    }
+    if (isRightPanelSnapshotRequestPaused()) {
+        return;
+    }
+    const run = async () => {
+        if (!getSelectedRunTag()) {
+            renderBacktestPositionSnapshotStatus("");
+            return;
+        }
+        const reqSeq = ++snapshotRequestSeq;
+        renderBacktestPositionSnapshotStatus("");
+        try {
+            const payload = await fetchBacktestPositionSnapshot(currentCode, normalizedTs);
+            if (reqSeq !== snapshotRequestSeq) {
+                return;
+            }
+            if (payload && payload.no_data) {
+                rightPanelSnapshotCache.set(cacheKey, payload);
+                pauseRightPanelSnapshotRequestsForInteraction();
+                renderBacktestPositionSnapshotStatus("status updated");
+                return;
+            }
+            rightPanelSnapshotCache.set(cacheKey, payload);
+            renderBacktestPositionSnapshotToRightPanel(payload, normalizedTs);
+        } catch (err) {
+            if (reqSeq !== snapshotRequestSeq) {
+                return;
+            }
+            renderBacktestPositionSnapshotStatus("status updated");
+        }
+    };
+
+    if (snapshotDebounceTimer) {
+        clearTimeout(snapshotDebounceTimer);
+        snapshotDebounceTimer = null;
+    }
+    if (immediate) {
+        void run();
+        return;
+    }
+    snapshotDebounceTimer = setTimeout(() => {
+        snapshotDebounceTimer = null;
+        void run();
+    }, RIGHT_PANEL_SNAPSHOT_DEBOUNCE_MS);
+}
 function setFactorSnapshotFilterUiVisible(_visible) { }
 async function toggleFactorActiveState(_factorName) { }
 function updateExportFactorOptions() { }
@@ -5478,7 +5727,9 @@ document.addEventListener("pointercancel", (event) => endFactorSnapshotDrag(even
 document.addEventListener("pointercancel", (event) => endFactorGroupDrag(event));
 
 rightPanel.addEventListener("click", async (event) => {
-    if (currentRightTabName !== "量化因子") {
+    const isPositionSnapshotTab = shouldUseBacktestPositionSnapshotPanel()
+        && currentRightTabName === COMBINED_HEADER_TAB_LABEL;
+    if (currentRightTabName !== "量化因子" && !isPositionSnapshotTab) {
         return;
     }
     if (Date.now() < suppressFactorSnapshotClickUntil) {
@@ -5544,7 +5795,12 @@ rightPanel.addEventListener("click", async (event) => {
 });
 
 rightPanel.addEventListener("mouseover", (event) => {
-    if (currentRightTabName !== "量化因子" || !shouldUseBacktestPositionSnapshotPanel()) {
+    const isPositionSnapshotTab = shouldUseBacktestPositionSnapshotPanel()
+        && currentRightTabName === COMBINED_HEADER_TAB_LABEL;
+    if (currentRightTabName !== "量化因子" && !isPositionSnapshotTab) {
+        return;
+    }
+    if (!shouldUseBacktestPositionSnapshotPanel()) {
         return;
     }
     const positionItem = event.target instanceof Element ? event.target.closest(".position-snapshot-item") : null;
@@ -5662,6 +5918,9 @@ window.ChartBoardBoot = async function ChartBoardBoot() {
     initYkrsCurvePickerOnce();
     if (!isInfoBoardPage()) {
         await refreshBars(true);
+    }
+    if (PAGE_BOOT.allowYkrsCurve) {
+        runBackgroundTask("refreshPortfolioPositionSnapshotPanel", () => refreshPortfolioPositionSnapshotPanel(lastBarTime));
     }
     initPortfolioPrintLightToggleOnce();
     runBackgroundTask("initPortfolioExtraSelectOnce", initPortfolioExtraSelectOnce);

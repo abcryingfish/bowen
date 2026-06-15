@@ -23,6 +23,13 @@ import pandas as pd
 import polars as pl
 from xtquant import xtdata
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+VIS_DIR = ROOT_DIR / "可视化"
+if str(VIS_DIR) not in sys.path:
+    sys.path.append(str(VIS_DIR))
+
+from temp_today_market_cache import today_cache_path  # noqa: E402
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -43,6 +50,7 @@ REQUEST_SLEEP_SECONDS = 0.1
 DEFAULT_MAX_YEAR = 2026
 DEFAULT_END_DATETIME = ""
 LOOKBACK_DAYS = 7
+AFTER_CLOSE_CLEANUP_TIME = (15, 30)
 
 
 def normalize_code(code: str) -> str:
@@ -63,6 +71,25 @@ def format_dt(value: datetime) -> str:
 
 def format_day(value: datetime) -> str:
     return value.strftime("%Y-%m-%d")
+
+
+def is_after_close_cleanup_time(now: datetime | None = None) -> bool:
+    current = now or datetime.now()
+    hour, minute = AFTER_CLOSE_CLEANUP_TIME
+    return (current.hour, current.minute) >= (hour, minute)
+
+
+def cleanup_realtime_sqlite_cache_after_close(now: datetime | None = None) -> list[Path]:
+    if not is_after_close_cleanup_time(now):
+        return []
+    db_path = today_cache_path()
+    deleted_paths: list[Path] = []
+    for path in (db_path, Path(f"{db_path}-wal"), Path(f"{db_path}-shm")):
+        if not path.exists():
+            continue
+        path.unlink()
+        deleted_paths.append(path)
+    return deleted_paths
 
 
 def year_window(year: int, range_start: datetime, range_end: datetime, now: datetime) -> tuple[datetime, datetime]:
@@ -573,6 +600,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    deleted_cache_paths = cleanup_realtime_sqlite_cache_after_close()
+    if deleted_cache_paths:
+        print("盘后清理实时 SQLite 临时缓存:")
+        for path in deleted_cache_paths:
+            print(f"[OK] 已删除: {path}")
+
     base_dir = str(args.base_dir)
     os.makedirs(base_dir, exist_ok=True)
     default_start_date = datetime.strptime(args.default_start, "%Y-%m-%d")

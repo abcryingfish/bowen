@@ -1,19 +1,18 @@
-/* 基本面 — 无 K 线，读取 /api/market/fundamental */
+/* 基本面 — QMT 公司数据原生表浏览 */
 
 (function () {
-    const TAB_KEYS = ["overview", "indicators", "income", "balance", "cashflow"];
-    const TAB_LABELS = {
-        overview: "概览",
-        indicators: "财务指标",
-        income: "利润表",
-        balance: "资产负债表",
-        cashflow: "现金流量表",
-    };
+    const DEFAULT_TABLES = [
+        { key: "Income", label: "利润表" },
+        { key: "Balance", label: "资产负债表" },
+        { key: "CashFlow", label: "现金流量表" },
+        { key: "PershareIndex", label: "主要指标" },
+        { key: "Capital", label: "股本结构" },
+    ];
 
-    let activeTab = "overview";
-    let panelData = null;
+    let activeTable = "Income";
+    let tableSpecs = DEFAULT_TABLES.slice();
+    let summaryData = null;
     let fetchToken = 0;
-    const chartInstances = [];
 
     function escapeHtml(text) {
         return String(text ?? "")
@@ -21,6 +20,25 @@
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
+    }
+
+    function apiBaseUrl() {
+        try {
+            const fromQuery = new URLSearchParams(window.location.search || "").get("apiBase");
+            if (fromQuery) {
+                return fromQuery.trim().replace(/\/+$/, "");
+            }
+        } catch (_err) {
+            /* ignore */
+        }
+        try {
+            if (typeof resolveApiBaseUrl === "function") {
+                return resolveApiBaseUrl();
+            }
+        } catch (_err) {
+            /* ignore */
+        }
+        return "http://127.0.0.1:8000";
     }
 
     function formatNumber(value, digits = 2) {
@@ -34,300 +52,41 @@
         });
     }
 
-    function formatByType(value, format) {
+    function formatValue(value, type) {
         if (value === null || value === undefined || value === "") {
             return "—";
         }
+        if (type === "number") {
+            return formatNumber(value, 4);
+        }
+        return escapeHtml(value);
+    }
+
+    function formatCompactNumber(value) {
         const num = Number(value);
         if (!Number.isFinite(num)) {
-            return escapeHtml(value);
+            return "—";
         }
-        if (format === "percent") {
-            return `${formatNumber(num, 2)}%`;
+        const abs = Math.abs(num);
+        if (abs >= 1e8) {
+            return `${formatNumber(num / 1e8, 2)} 亿`;
         }
-        if (format === "money") {
-            const abs = Math.abs(num);
-            if (abs >= 1e8) {
-                return `${formatNumber(num / 1e8, 2)} 亿`;
-            }
-            if (abs >= 1e4) {
-                return `${formatNumber(num / 1e4, 2)} 万`;
-            }
-            return formatNumber(num, 2);
+        if (abs >= 1e4) {
+            return `${formatNumber(num / 1e4, 2)} 万`;
         }
-        if (format === "ratio") {
-            return formatNumber(num, 2);
-        }
-        return formatNumber(num, 4);
+        return formatNumber(num, 2);
     }
 
-    function destroyCharts() {
-        while (chartInstances.length) {
-            const chart = chartInstances.pop();
-            try {
-                chart.remove();
-            } catch (_err) {
-                /* ignore */
-            }
+    async function fetchJson(path) {
+        const response = await fetch(`${apiBaseUrl()}${path}`, { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok) {
+            const message = payload && payload.error && payload.error.message
+                ? payload.error.message
+                : `请求失败 (${response.status})`;
+            throw new Error(message);
         }
-    }
-
-    function periodLabelToChartTime(label) {
-        const text = String(label || "").trim();
-        const quarter = text.match(/^(\d{4})-Q([1-4])$/i);
-        if (quarter) {
-            const year = quarter[1];
-            const month = String(Number(quarter[2]) * 3).padStart(2, "0");
-            return `${year}-${month}-01`;
-        }
-        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-            return text;
-        }
-        return null;
-    }
-
-    function renderMiniCharts(metrics) {
-        destroyCharts();
-        if (!Array.isArray(metrics) || !metrics.length || typeof LightweightCharts === "undefined") {
-            return;
-        }
-        metrics.forEach((metric) => {
-            const container = document.querySelector(`.fundamental-chart-box[data-metric-key="${metric.key}"]`);
-            if (!container || !Array.isArray(metric.points) || metric.points.length < 2) {
-                return;
-            }
-            const chart = LightweightCharts.createChart(container, {
-                width: container.clientWidth || 280,
-                height: container.clientHeight || 160,
-                layout: {
-                    background: { color: "#1a1f2b" },
-                    textColor: "#9ca3af",
-                },
-                grid: {
-                    vertLines: { color: "rgba(255,255,255,0.04)" },
-                    horzLines: { color: "rgba(255,255,255,0.04)" },
-                },
-                rightPriceScale: { borderVisible: false },
-                timeScale: { borderVisible: false, visible: false },
-                crosshair: { mode: LightweightCharts.CrosshairMode ? LightweightCharts.CrosshairMode.Magnet : 0 },
-            });
-            const series = chart.addSeries(LightweightCharts.LineSeries, {
-                color: "#5b7fd1",
-                lineWidth: 2,
-                priceLineVisible: false,
-                lastValueVisible: true,
-            });
-            const data = metric.points.map((point, index) => {
-                const time = periodLabelToChartTime(point.t) || `2020-01-${String(index + 1).padStart(2, "0")}`;
-                return {
-                    time,
-                    value: Number(point.v),
-                };
-            });
-            series.setData(data);
-            chart.timeScale().fitContent();
-            chartInstances.push(chart);
-        });
-    }
-
-    function renderKvGrid(items) {
-        return `<div class="fundamental-kv-grid">${items.map(([label, value]) => `
-            <div class="fundamental-kv-item">
-                <span class="fundamental-kv-label">${escapeHtml(label)}</span>
-                <span class="fundamental-kv-value">${value}</span>
-            </div>`).join("")}</div>`;
-    }
-
-    function renderOverviewTab(data) {
-        const overview = data.overview;
-        if (!overview || !Array.isArray(overview.kpis) || !overview.kpis.length) {
-            return `<p class="fundamental-prose fundamental-state-msg">暂无概览 KPI 数据。</p>`;
-        }
-        const cards = overview.kpis.map((kpi) => {
-            const yoyHtml = Number.isFinite(Number(kpi.yoy))
-                ? `<span class="fundamental-kpi-yoy ${Number(kpi.yoy) >= 0 ? "up" : "down"}">同比 ${formatByType(kpi.yoy, "percent")}</span>`
-                : "";
-            return `
-                <div class="fundamental-kpi-card">
-                    <div class="fundamental-kpi-label">${escapeHtml(kpi.label)}</div>
-                    <div class="fundamental-kpi-value">${formatByType(kpi.value, kpi.format)}</div>
-                    ${yoyHtml}
-                </div>`;
-        }).join("");
-        return `
-            <section class="fundamental-section">
-                <h3 class="fundamental-section-title">最新报告期关键指标</h3>
-                <div class="fundamental-kpi-row">${cards}</div>
-            </section>`;
-    }
-
-    function renderPeriodMatrixTable(section, emptyLabel) {
-        if (!section || !Array.isArray(section.rows) || !section.rows.length) {
-            return `<p class="fundamental-state-msg">暂无${escapeHtml(emptyLabel)}数据。</p>`;
-        }
-        const fields = section.fields || [];
-        if (!fields.length) {
-            return `<p class="fundamental-state-msg">暂无${escapeHtml(emptyLabel)}数据。</p>`;
-        }
-        const header = `<tr><th>报告期</th>${fields.map((field) => `<th class="num">${escapeHtml(field.label)}</th>`).join("")}</tr>`;
-        const body = section.rows.slice().reverse().map((row) => `
-            <tr>
-                <td>${escapeHtml(row.period_label || row.end_date || "")}</td>
-                ${fields.map((field) => `<td class="num">${formatByType(row[field.key], field.format)}</td>`).join("")}
-            </tr>`).join("");
-        return `
-            <div class="fundamental-table-wrap">
-                <table class="fundamental-table">
-                    <thead>${header}</thead>
-                    <tbody>${body}</tbody>
-                </table>
-            </div>`;
-    }
-
-    function renderIndicatorTable(indicators) {
-        if (!indicators || !Array.isArray(indicators.rows) || !indicators.rows.length) {
-            return `<p class="fundamental-state-msg">暂无财务指标数据。</p>`;
-        }
-        const columns = indicators.columns || [];
-        const header = `<tr><th>报告期</th>${columns.map((col) => `<th class="num">${escapeHtml(col.label)}</th>`).join("")}</tr>`;
-        const body = indicators.rows.slice().reverse().map((row) => `
-            <tr>
-                <td>${escapeHtml(row.period_label || row.end_date || "")}</td>
-                ${columns.map((col) => `<td class="num">${formatByType(row[col.key], col.format)}</td>`).join("")}
-            </tr>`).join("");
-        return `
-            <div class="fundamental-table-wrap">
-                <table class="fundamental-table">
-                    <thead>${header}</thead>
-                    <tbody>${body}</tbody>
-                </table>
-            </div>`;
-    }
-
-    function renderIndicatorCharts(indicators) {
-        const metrics = (indicators && indicators.chart_metrics) || [];
-        if (!metrics.length) {
-            return "";
-        }
-        const boxes = metrics.map((metric) => `
-            <div class="fundamental-chart-card">
-                <div class="fundamental-chart-title">${escapeHtml(metric.label)}</div>
-                <div class="fundamental-chart-box" data-metric-key="${escapeHtml(metric.key)}"></div>
-            </div>`).join("");
-        return `
-            <section class="fundamental-section">
-                <h3 class="fundamental-section-title">历史趋势</h3>
-                <div class="fundamental-chart-grid">${boxes}</div>
-            </section>`;
-    }
-
-    function renderIndicatorsTab(data) {
-        const indicators = data.indicators;
-        return `
-            ${renderIndicatorTable(indicators)}
-            ${renderIndicatorCharts(indicators)}`;
-    }
-
-    function renderStatementTab(statementKey, data) {
-        const section = data.statements && data.statements[statementKey];
-        return renderPeriodMatrixTable(section, TAB_LABELS[statementKey]);
-    }
-
-    function renderTabPanels(data) {
-        return TAB_KEYS.map((key) => `
-            <div class="fundamental-tab-panel ${key === activeTab ? "is-active" : ""}" data-tab-panel="${key}">
-                ${key === "overview" ? renderOverviewTab(data) : ""}
-                ${key === "indicators" ? renderIndicatorsTab(data) : ""}
-                ${key === "income" ? renderStatementTab("income", data) : ""}
-                ${key === "balance" ? renderStatementTab("balance", data) : ""}
-                ${key === "cashflow" ? renderStatementTab("cashflow", data) : ""}
-            </div>`).join("");
-    }
-
-    function renderTabs() {
-        return `
-            <div class="fundamental-tabs" role="tablist">
-                ${TAB_KEYS.map((key) => `
-                    <button type="button" class="fundamental-tab ${key === activeTab ? "is-active" : ""}" data-tab="${key}" role="tab">
-                        ${escapeHtml(TAB_LABELS[key])}
-                    </button>`).join("")}
-            </div>`;
-    }
-
-    function bindTabEvents(main) {
-        main.querySelectorAll(".fundamental-tab").forEach((button) => {
-            button.addEventListener("click", () => {
-                activeTab = button.getAttribute("data-tab") || "overview";
-                main.querySelectorAll(".fundamental-tab").forEach((el) => {
-                    el.classList.toggle("is-active", el.getAttribute("data-tab") === activeTab);
-                });
-                main.querySelectorAll(".fundamental-tab-panel").forEach((el) => {
-                    el.classList.toggle("is-active", el.getAttribute("data-tab-panel") === activeTab);
-                });
-                if (activeTab === "indicators" && panelData) {
-                    requestAnimationFrame(() => renderMiniCharts(panelData.indicators && panelData.indicators.chart_metrics));
-                }
-            });
-        });
-    }
-
-    function renderMainPanel(data) {
-        const main = document.getElementById("fundamental-content");
-        if (!main) {
-            return;
-        }
-        const meta = data.meta || {};
-        const title = meta.name || meta.code || "—";
-        const metaParts = [meta.code, meta.latest_report ? `最新报告 ${meta.latest_report}` : "", meta.data_as_of ? `估值截至 ${meta.data_as_of}` : ""]
-            .filter(Boolean)
-            .join(" · ");
-        main.innerHTML = `
-            <div class="fundamental-head">
-                <h2 class="fundamental-head-title">${escapeHtml(title)}</h2>
-                <span class="fundamental-head-meta">${escapeHtml(metaParts)}</span>
-            </div>
-            ${renderTabs()}
-            <div class="fundamental-tab-panels">${renderTabPanels(data)}</div>`;
-        bindTabEvents(main);
-        if (activeTab === "indicators") {
-            requestAnimationFrame(() => renderMiniCharts(data.indicators && data.indicators.chart_metrics));
-        }
-    }
-
-    function renderSidePanel(data) {
-        const side = document.getElementById("right-panel-body");
-        if (!side) {
-            return;
-        }
-        const meta = data.meta || {};
-        const snap = data.valuation_snapshot || {};
-        side.innerHTML = `
-            <div class="fundamental-side-block">
-                <h3 class="fundamental-side-title">当前标的</h3>
-                <ul class="fundamental-side-list">
-                    <li><span>代码</span><span>${escapeHtml(meta.code || "—")}</span></li>
-                    <li><span>简称</span><span>${escapeHtml(meta.name || snap.name || "—")}</span></li>
-                    <li><span>最新报告</span><span>${escapeHtml(meta.latest_report || "—")}</span></li>
-                </ul>
-            </div>
-            <div class="fundamental-side-block">
-                <h3 class="fundamental-side-title">估值速览</h3>
-                <ul class="fundamental-side-list">
-                    <li><span>PE(TTM)</span><span>${formatByType(snap.pettm, "ratio")}</span></li>
-                    <li><span>PB</span><span>${formatByType(snap.pb, "ratio")}</span></li>
-                    <li><span>PS(TTM)</span><span>${formatByType(snap.psttm, "ratio")}</span></li>
-                    <li><span>总市值</span><span>${formatByType(snap.total_market_val, "money")}</span></li>
-                </ul>
-            </div>
-            <div class="fundamental-side-block">
-                <h3 class="fundamental-side-title">交易速览</h3>
-                <ul class="fundamental-side-list">
-                    <li><span>日期</span><span>${escapeHtml(snap.time || "—")}</span></li>
-                    <li><span>收盘</span><span>${formatByType(snap.close, "ratio")}</span></li>
-                    <li><span>换手率</span><span>${formatByType(snap.turnover_rate, "percent")}</span></li>
-                    <li><span>成交额</span><span>${formatByType(snap.value, "money")}</span></li>
-                </ul>
-            </div>`;
+        return payload;
     }
 
     function renderLoadingState(code) {
@@ -339,7 +98,7 @@
                     <h2 class="fundamental-head-title">加载中</h2>
                     <span class="fundamental-head-meta">${escapeHtml(code)}</span>
                 </div>
-                <p class="fundamental-prose fundamental-state-msg">正在读取基本面数据…</p>`;
+                <p class="fundamental-prose fundamental-state-msg">正在读取 QMT 公司数据…</p>`;
         }
         if (side) {
             side.innerHTML = `<div class="fundamental-side-block"><p class="fundamental-side-prose">加载中…</p></div>`;
@@ -347,8 +106,7 @@
     }
 
     function renderErrorState(code, message) {
-        destroyCharts();
-        panelData = null;
+        summaryData = null;
         const main = document.getElementById("fundamental-content");
         const side = document.getElementById("right-panel-body");
         if (main) {
@@ -369,8 +127,7 @@
     }
 
     function renderEmptyState() {
-        destroyCharts();
-        panelData = null;
+        summaryData = null;
         const main = document.getElementById("fundamental-content");
         const side = document.getElementById("right-panel-body");
         if (main) {
@@ -379,55 +136,165 @@
                     <h2 class="fundamental-head-title">基本面</h2>
                     <span class="fundamental-head-meta">请在上方输入股票代码</span>
                 </div>
-                <p class="fundamental-prose">输入 code 并回车，或从左侧自选股选择，此处将显示估值、财务指标与三表数据。</p>`;
+                <p class="fundamental-prose">输入 code 并回车，或从左侧自选股选择，此处将显示 QMT 原生公司数据。</p>`;
         }
         if (side) {
             side.innerHTML = `
                 <div class="fundamental-side-block">
                     <h3 class="fundamental-side-title">提示</h3>
-                    <p class="fundamental-side-prose">右侧栏显示估值与交易速览。</p>
+                    <p class="fundamental-side-prose">右侧栏显示最新报告期与股本速览。</p>
                 </div>`;
         }
     }
 
-    function apiBaseUrl() {
-        try {
-            if (typeof resolveApiBaseUrl === "function") {
-                return resolveApiBaseUrl();
-            }
-        } catch (_err) {
-            /* ignore */
-        }
-        return "http://127.0.0.1:8000";
+    function renderTabs() {
+        return `
+            <div class="fundamental-tabs" role="tablist">
+                ${tableSpecs.map((item) => `
+                    <button type="button" class="fundamental-tab ${item.key === activeTable ? "is-active" : ""}"
+                        data-table="${escapeHtml(item.key)}" role="tab">
+                        ${escapeHtml(item.label || item.key)}
+                    </button>`).join("")}
+            </div>`;
     }
 
-    async function fetchFundamental(code) {
-        const token = ++fetchToken;
-        destroyCharts();
-        renderLoadingState(code);
-        try {
-            const response = await fetch(`${apiBaseUrl()}/api/market/fundamental?code=${encodeURIComponent(code)}`, {
-                cache: "no-store",
+    function renderTable(payload) {
+        const columns = (payload && payload.columns) || [];
+        const rows = (payload && payload.rows) || [];
+        if (!columns.length || !rows.length) {
+            return `<p class="fundamental-state-msg">暂无${escapeHtml(activeTable)}数据。</p>`;
+        }
+        const header = `<tr>${columns.map((column) => `<th class="${column.type === "number" ? "num" : ""}">${escapeHtml(column.label || column.key)}</th>`).join("")}</tr>`;
+        const body = rows.map((row) => `
+            <tr>
+                ${columns.map((column) => `<td class="${column.type === "number" ? "num" : ""}">${formatValue(row[column.key], column.type)}</td>`).join("")}
+            </tr>`).join("");
+        return `
+            <div class="fundamental-table-wrap">
+                <table class="fundamental-table">
+                    <thead>${header}</thead>
+                    <tbody>${body}</tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderMainShell(tablePayload) {
+        const main = document.getElementById("fundamental-content");
+        if (!main) {
+            return;
+        }
+        const meta = (summaryData && summaryData.meta) || {};
+        const tableMeta = (tablePayload && tablePayload.meta) || {};
+        const title = meta.name || tableMeta.name || meta.code || "—";
+        const metaParts = [
+            meta.code,
+            meta.latest_report ? `最新报告 ${meta.latest_report}` : "",
+            tableMeta.label ? `当前表 ${tableMeta.label}` : "",
+        ].filter(Boolean).join(" · ");
+        main.innerHTML = `
+            <div class="fundamental-head">
+                <h2 class="fundamental-head-title">${escapeHtml(title)}</h2>
+                <span class="fundamental-head-meta">${escapeHtml(metaParts)}</span>
+            </div>
+            ${renderTabs()}
+            <div class="fundamental-tab-panels">
+                <div class="fundamental-tab-panel is-active">
+                    ${renderTable(tablePayload)}
+                </div>
+            </div>`;
+        bindTabEvents(main);
+    }
+
+    function renderSidePanel() {
+        const side = document.getElementById("right-panel-body");
+        if (!side) {
+            return;
+        }
+        const meta = (summaryData && summaryData.meta) || {};
+        const latest = (summaryData && summaryData.latest_by_table) || {};
+        const capital = latest.Capital || {};
+        side.innerHTML = `
+            <div class="fundamental-side-block">
+                <h3 class="fundamental-side-title">当前标的</h3>
+                <ul class="fundamental-side-list">
+                    <li><span>代码</span><span>${escapeHtml(meta.code || "—")}</span></li>
+                    <li><span>简称</span><span>${escapeHtml(meta.name || capital.name || "—")}</span></li>
+                    <li><span>最新报告</span><span>${escapeHtml(meta.latest_report || "—")}</span></li>
+                </ul>
+            </div>
+            <div class="fundamental-side-block">
+                <h3 class="fundamental-side-title">股本速览</h3>
+                <ul class="fundamental-side-list">
+                    <li><span>报告期</span><span>${escapeHtml(capital.report_date || "—")}</span></li>
+                    <li><span>总股本</span><span>${formatCompactNumber(capital.total_capital)}</span></li>
+                    <li><span>流通股本</span><span>${formatCompactNumber(capital.circulating_capital)}</span></li>
+                    <li><span>自由流通股本</span><span>${formatCompactNumber(capital.freeFloatCapital)}</span></li>
+                </ul>
+            </div>`;
+    }
+
+    function bindTabEvents(main) {
+        main.querySelectorAll(".fundamental-tab").forEach((button) => {
+            button.addEventListener("click", () => {
+                const table = button.getAttribute("data-table") || "Income";
+                if (table === activeTable) {
+                    return;
+                }
+                activeTable = table;
+                const code = summaryData && summaryData.meta && summaryData.meta.code;
+                if (code) {
+                    renderCurrentTable(code);
+                }
             });
-            const payload = await response.json();
+        });
+    }
+
+    async function renderCurrentTable(code) {
+        const token = ++fetchToken;
+        try {
+            const payload = await fetchJson(`/api/company/qmt/table?code=${encodeURIComponent(code)}&table=${encodeURIComponent(activeTable)}&limit=12`);
             if (token !== fetchToken) {
                 return;
             }
-            if (!response.ok) {
-                const message = payload && payload.error && payload.error.message
-                    ? payload.error.message
-                    : `请求失败 (${response.status})`;
-                renderErrorState(code, message);
-                return;
-            }
-            panelData = payload;
-            renderMainPanel(payload);
-            renderSidePanel(payload);
+            renderMainShell(payload);
+            renderSidePanel();
         } catch (err) {
             if (token !== fetchToken) {
                 return;
             }
-            renderErrorState(code, err && err.message ? err.message : "网络请求失败");
+            renderErrorState(code, err && err.message ? err.message : "QMT 公司数据读取失败");
+        }
+    }
+
+    async function fetchFundamental(code) {
+        const token = ++fetchToken;
+        renderLoadingState(code);
+        try {
+            const [tablesPayload, summaryPayload] = await Promise.all([
+                fetchJson("/api/company/qmt/tables"),
+                fetchJson(`/api/company/qmt/summary?code=${encodeURIComponent(code)}`),
+            ]);
+            if (token !== fetchToken) {
+                return;
+            }
+            tableSpecs = Array.isArray(tablesPayload.tables) && tablesPayload.tables.length
+                ? tablesPayload.tables
+                : DEFAULT_TABLES.slice();
+            summaryData = summaryPayload;
+            if (!tableSpecs.some((item) => item.key === activeTable)) {
+                activeTable = tableSpecs[0].key;
+            }
+            const tablePayload = await fetchJson(`/api/company/qmt/table?code=${encodeURIComponent(code)}&table=${encodeURIComponent(activeTable)}&limit=12`);
+            if (token !== fetchToken) {
+                return;
+            }
+            renderMainShell(tablePayload);
+            renderSidePanel();
+        } catch (err) {
+            if (token !== fetchToken) {
+                return;
+            }
+            renderErrorState(code, err && err.message ? err.message : "QMT 公司数据读取失败");
         }
     }
 

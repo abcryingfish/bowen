@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import polars as pl
 
@@ -69,6 +70,37 @@ class MinuteDailyPartitionTest(unittest.TestCase):
             paths = minute._collect_scan_parquet_paths(tmp, scan_months=12)
 
             self.assertEqual(paths, [str(day_dir / "merged.parquet").replace("\\", "/")])
+
+    def test_after_close_minute_start_cleans_today_sqlite_files(self) -> None:
+        minute = load_minute_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "market_cache_2026-06-12.sqlite"
+            for path in (db_path, Path(f"{db_path}-wal"), Path(f"{db_path}-shm")):
+                path.write_text("cache", encoding="utf-8")
+
+            with patch.object(minute, "today_cache_path", return_value=db_path):
+                deleted = minute.cleanup_realtime_sqlite_cache_after_close(
+                    now=datetime(2026, 6, 12, 15, 30)
+                )
+
+            self.assertEqual(deleted, [db_path, Path(f"{db_path}-wal"), Path(f"{db_path}-shm")])
+            self.assertFalse(db_path.exists())
+            self.assertFalse(Path(f"{db_path}-wal").exists())
+            self.assertFalse(Path(f"{db_path}-shm").exists())
+
+    def test_before_close_minute_start_keeps_today_sqlite_files(self) -> None:
+        minute = load_minute_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "market_cache_2026-06-12.sqlite"
+            db_path.write_text("cache", encoding="utf-8")
+
+            with patch.object(minute, "today_cache_path", return_value=db_path):
+                deleted = minute.cleanup_realtime_sqlite_cache_after_close(
+                    now=datetime(2026, 6, 12, 15, 29, 59)
+                )
+
+            self.assertEqual(deleted, [])
+            self.assertTrue(db_path.exists())
 
 
 if __name__ == "__main__":

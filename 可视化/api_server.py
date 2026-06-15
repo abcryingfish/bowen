@@ -77,6 +77,11 @@ from market_data_service import (
     get_watchlist_state,
     save_watchlist_state,
 )
+from qmt_company_data_service import (
+    query_qmt_company_summary,
+    query_qmt_company_table,
+    query_qmt_company_tables,
+)
 
 
 def _parse_multipart_form_simple(content_type: str, body: bytes) -> tuple[str | None, bytes | None, str | None]:
@@ -188,7 +193,7 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "service": SERVER_NAME,
                     "server_time": int(time.time()),
-                    "features": ["index_codes", "index_bars", "fundamental", "run_tag_scoped_queries", "watchlist"],
+                    "features": ["index_codes", "index_bars", "fundamental", "qmt_company", "run_tag_scoped_queries", "watchlist"],
                 },
             )
             return
@@ -203,6 +208,18 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/market/fundamental":
             self._handle_market_fundamental(query)
+            return
+
+        if parsed.path == "/api/company/qmt/tables":
+            self._handle_qmt_company_tables(query)
+            return
+
+        if parsed.path == "/api/company/qmt/summary":
+            self._handle_qmt_company_summary(query)
+            return
+
+        if parsed.path == "/api/company/qmt/table":
+            self._handle_qmt_company_table(query)
             return
 
         if parsed.path == "/api/market/index-codes":
@@ -519,6 +536,120 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             result = query_fundamental_panel(code=self._first_query_value(query, "code"))
             self._send_json(HTTPStatus.OK, result)
         except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": {
+                        "code": "INVALID_ARGUMENT",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {
+                    "error": {
+                        "code": "DATA_NOT_FOUND",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "MARKET_DATA_ERROR",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "服务内部错误",
+                        "detail": str(exc),
+                    }
+                },
+            )
+
+    def _handle_qmt_company_tables(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_qmt_company_tables()
+            self._send_json(HTTPStatus.OK, result)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "服务内部错误",
+                        "detail": str(exc),
+                    }
+                },
+            )
+
+    def _handle_qmt_company_summary(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_qmt_company_summary(code=self._first_query_value(query, "code"))
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": {
+                        "code": "INVALID_ARGUMENT",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {
+                    "error": {
+                        "code": "DATA_NOT_FOUND",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "MARKET_DATA_ERROR",
+                        "message": str(exc),
+                    }
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "服务内部错误",
+                        "detail": str(exc),
+                    }
+                },
+            )
+
+    def _handle_qmt_company_table(self, query: dict[str, list[str]]) -> None:
+        try:
+            raw_limit = self._first_query_value(query, "limit")
+            limit = int(raw_limit) if raw_limit else 12
+            result = query_qmt_company_table(
+                code=self._first_query_value(query, "code"),
+                table=self._first_query_value(query, "table"),
+                limit=limit,
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except (ValueError, MarketDataValidationError) as exc:
             self._send_json(
                 HTTPStatus.BAD_REQUEST,
                 {

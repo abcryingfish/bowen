@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import time
+from datetime import datetime
 from unittest.mock import patch
 
 TOOLS_DIR = Path(__file__).resolve().parent
@@ -210,6 +211,42 @@ class RealtimeTickCacheTest(unittest.TestCase):
         self.assertEqual(upsert.call_args.kwargs["write_snapshots"], False)
         self.assertEqual(upsert.call_args.kwargs["write_latest"], True)
         self.assertEqual(stats["queued_snapshot_rows"], 1)
+
+    def test_after_realtime_cutoff_start_skips_realtime_loop(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            ["实时行情写入SQLite.py", "--codes", "600000.SH", "--once"],
+        ), patch.object(
+            realtime_cache,
+            "datetime",
+        ) as fake_datetime, patch.object(
+            realtime_cache,
+            "run_loop",
+        ) as run_loop:
+            fake_datetime.now.return_value = datetime(2026, 6, 12, 15, 5, 0)
+            fake_datetime.strptime.side_effect = datetime.strptime
+            realtime_cache.main()
+
+        run_loop.assert_not_called()
+
+    def test_before_realtime_cutoff_start_runs_realtime_loop(self) -> None:
+        with patch.object(
+            sys,
+            "argv",
+            ["实时行情写入SQLite.py", "--codes", "600000.SH", "--once"],
+        ), patch.object(
+            realtime_cache,
+            "datetime",
+        ) as fake_datetime, patch.object(
+            realtime_cache,
+            "run_loop",
+        ) as run_loop:
+            fake_datetime.now.return_value = datetime(2026, 6, 12, 15, 4, 59)
+            fake_datetime.strptime.side_effect = datetime.strptime
+            realtime_cache.main()
+
+        run_loop.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+stock_num=1070,code=002040.SZ,start_date=2026-06-02,error=返回空数据
+stock_num=3006,code=601608.SH,start_date=2026-06-02,error=返回空数据

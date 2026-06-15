@@ -1290,6 +1290,12 @@
             return body && typeof body === "object" ? body : { no_data: true, items: [], time: timeTs };
         }
 
+        window.BacktestPositionSnapshotHandlers = {
+            renderStatus: renderBacktestPositionSnapshotStatus,
+            render: renderBacktestPositionSnapshotToRightPanel,
+            fetch: fetchBacktestPositionSnapshot,
+        };
+
         async function fetchBacktestOrders(code, fromTs, toTs) {
             const params = new URLSearchParams({
                 code,
