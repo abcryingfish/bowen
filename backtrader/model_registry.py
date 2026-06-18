@@ -11,6 +11,9 @@ from models.zxw_strong_adjusted_only import runner as zxw_strong_adjusted_runner
 from models.zxw_factor_check_only import runner as zxw_factor_check_runner
 from models.zxw_factor_check_no_lookahead import runner as zxw_factor_check_no_lookahead_runner
 from models.zxw_factor_check_dual_assumption import runner as zxw_factor_check_dual_assumption_runner
+from models.zxw_factor_check_profit_threshold_dual_assumption import (
+    runner as zxw_factor_check_profit_threshold_dual_assumption_runner,
+)
 
 ProgressCallback = Callable[[str, int, str], None]
 
@@ -186,6 +189,21 @@ def _doc_zxw_factor_check_dual_assumption() -> str:
     )
 
 
+def _doc_zxw_factor_check_profit_threshold_dual_assumption() -> str:
+    return (
+        "<p><strong>ZXW 组合规则（只为了检验因子策略）（双假设 + 卖出阈值）</strong>"
+        "（<code>FactorCheckProfitThresholdDualAssumptionZxwStrategy</code>）。"
+        "在双假设模型基础上增加基于平均持仓成本的卖出阈值，并保留前端买入/卖出因子合成。</p>"
+        "<p><strong>卖出阈值</strong>：当前收盘价 &gt; 平均持仓成本×<strong>200%</strong> 时清仓；"
+        "当前收盘价 &gt; 平均持仓成本×<strong>150%</strong> 且 &lt; 平均持仓成本×<strong>200%</strong> 时卖出约一半，且每轮持仓只执行一次。</p>"
+        "<p><strong>买入锁定</strong>：半仓卖出后，只要该标的仍有持仓，就禁止强买与现金等额补仓；"
+        "等该标的清仓后重置状态，后续重新出现买入信号时才允许再买。</p>"
+        "<p><strong>其余</strong>：去前视；单日 <code>|收盘/昨收−1| &gt; 9.8%</code> 当天不可买卖；"
+        "<code>strong_buy_signal≥1</code> 尽量买到 2%；<code>strong_sell_signal≥1</code> 无条件清仓；不做子集穷举。</p>"
+        "<p><strong>前端</strong>：须同时配置买入因子与卖出因子（各至少 1 个）。</p>"
+    )
+
+
 def _doc_zxw_strong_adjusted() -> str:
     return (
         "<p><strong>ZXW 组合规则（只采用强点交易策略）</strong>（<code>StrongAdjustedZxwStrategy</code>）。"
@@ -261,6 +279,14 @@ REGISTRY: dict[str, ModelEntry] = {
         uses_frontend_buy_sell_rules=True,
         run=zxw_factor_check_dual_assumption_runner.run,
     ),
+    "zxw_factor_check_profit_threshold_dual_assumption": ModelEntry(
+        id="zxw_factor_check_profit_threshold_dual_assumption",
+        title="ZXW组合规则(只为了检验因子策略（双假设）+卖出阈值)",
+        description_html=_doc_zxw_factor_check_profit_threshold_dual_assumption(),
+        web_runnable=True,
+        uses_frontend_buy_sell_rules=True,
+        run=zxw_factor_check_profit_threshold_dual_assumption_runner.run,
+    ),
     "zxw_init_10pct_snapshot": ModelEntry(
         id="zxw_init_10pct_snapshot",
         title="4-28 初始10%硬仓位（命名快照）",
@@ -300,6 +326,7 @@ def list_models_public() -> list[dict[str, Any]]:
         "zxw_factor_check_only",
         "zxw_factor_check_no_lookahead",
         "zxw_factor_check_dual_assumption",
+        "zxw_factor_check_profit_threshold_dual_assumption",
         "zxw_init_10pct_snapshot",
         "configurable_signal_rules",
     ]

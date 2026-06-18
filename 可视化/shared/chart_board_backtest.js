@@ -312,6 +312,7 @@
                 mid === "zxw_factor_check_only"
                 || mid === "zxw_factor_check_no_lookahead"
                 || mid === "zxw_factor_check_dual_assumption"
+                || mid === "zxw_factor_check_profit_threshold_dual_assumption"
             )) {
                 row.style.display = "none";
                 return;
@@ -534,7 +535,8 @@
             const isFactorCheck =
                 adopt_model === "zxw_factor_check_only"
                 || adopt_model === "zxw_factor_check_no_lookahead"
-                || adopt_model === "zxw_factor_check_dual_assumption";
+                || adopt_model === "zxw_factor_check_dual_assumption"
+                || adopt_model === "zxw_factor_check_profit_threshold_dual_assumption";
             if (isFactorCheck) {
                 if (paramTraverseSwitchOn) {
                     throw new Error("因子检验模型不支持参数遍历，请关闭参数遍历开关");
@@ -724,6 +726,26 @@
                 return "";
             }
             return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+
+        function isValidYyyyMmDd(value) {
+            const text = String(value || "").trim();
+            const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) {
+                return false;
+            }
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            if (month < 1 || month > 12 || day < 1 || day > 31) {
+                return false;
+            }
+            const dt = new Date(Date.UTC(year, month - 1, day));
+            return (
+                dt.getUTCFullYear() === year &&
+                dt.getUTCMonth() === month - 1 &&
+                dt.getUTCDate() === day
+            );
         }
 
         function handleCenterRunBacktestClick() {

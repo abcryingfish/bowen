@@ -882,7 +882,7 @@ class BuyAndHoldBenchmarkStrategy(bt.Strategy):
         self.daily_value_log = []
         self._initialized = False
 
-    def nextstart(self) -> None:
+    def _initialize_once(self) -> None:
         if self._initialized:
             return
         valid_datas = [d for d in self.datas if len(d) > 0 and np.isfinite(float(d.close[0])) and float(d.close[0]) > 0]
@@ -893,6 +893,15 @@ class BuyAndHoldBenchmarkStrategy(bt.Strategy):
         for d in valid_datas:
             self.order_target_value(data=d, target=investable_value * target_weight)
         self._initialized = True
+
+    def prenext(self) -> None:
+        self._initialize_once()
+
+    def nextstart(self) -> None:
+        self._initialize_once()
+
+    def next(self) -> None:
+        self._initialize_once()
 
     def notify_cashvalue(self, cash: float, value: float) -> None:
         if len(self) <= 0:
