@@ -283,6 +283,8 @@ const INTERVAL_CONFIG = {
 const CODE_SUGGESTION_LIMIT = 5;
 const WATCHLIST_STORAGE_KEY = "quant_watchlist_v1";
 const WATCHLIST_SYNC_DEBOUNCE_MS = 800;
+const WATCHLIST_PRICE_CACHE_TTL_MS = 60 * 1000;
+const WATCHLIST_PRICE_MAX_CONCURRENT_REQUESTS = 2;
 const VIEW_STORAGE_KEY = "quant_last_view_v1";
 const FACTOR_STORAGE_KEY = "quant_selected_factor_v1";
 const FACTOR_GROUP_EXPAND_STORAGE_KEY = "quant_factor_group_expand_v1";
@@ -1246,6 +1248,7 @@ let selectedWatchCode = "";
 let watchlistCodes = ["301469.SZ"];
 let watchlistPriceMap = new Map();
 let watchlistSyncTimer = null;
+let watchlistPriceRefreshInFlight = null;
 let factorNames = [];
 let factorGroups = [];
 let factorCoreNames = [];
@@ -4364,7 +4367,7 @@ async function hydrateWatchlistFromServer() {
 async function fetchLatestPriceForCode(code) {
     const nowTs = alignToCurrentInterval(Math.floor(Date.now() / 1000));
     const fromTs = nowTs - getIntervalConfig().latestPriceLookbackSeconds;
-    const payload = await fetchBars(code, fromTs, nowTs, null, { allowNotFound: true });
+    const payload = await fetchBars(code, fromTs, nowTs, null, { allowNotFound: true, limit: 1 });
     const bars = Array.isArray(payload.bars) ? payload.bars : [];
     if (!bars.length) {
         return null;
@@ -4375,6 +4378,45 @@ async function fetchLatestPriceForCode(code) {
         price: Number(latest.close),
         time: Number(latest.time)
     };
+}
+
+function touchWatchlistPrice(code, price, timeValue) {
+    const normalized = String(code || "").trim().toUpperCase();
+    const priceValue = Number(price);
+    const barTime = Number(timeValue);
+    if (!normalized || !Number.isFinite(priceValue) || !Number.isFinite(barTime)) {
+        return;
+    }
+    watchlistPriceMap.set(normalized, {
+        code: normalized,
+        price: priceValue,
+        time: barTime,
+        fetchedAt: Date.now()
+    });
+}
+
+function isWatchlistPriceFresh(code, nowMs = Date.now()) {
+    const normalized = String(code || "").trim().toUpperCase();
+    const info = watchlistPriceMap.get(normalized);
+    if (!info) {
+        return false;
+    }
+    const fetchedAt = Number(info.fetchedAt);
+    return Number.isFinite(fetchedAt) && nowMs - fetchedAt < WATCHLIST_PRICE_CACHE_TTL_MS;
+}
+
+async function runLimitedConcurrency(items, limit, worker) {
+    const queue = Array.isArray(items) ? items.slice() : [];
+    const workerCount = Math.max(1, Math.min(Number(limit) || 1, queue.length));
+    let nextIndex = 0;
+    async function runOne() {
+        while (nextIndex < queue.length) {
+            const item = queue[nextIndex];
+            nextIndex += 1;
+            await worker(item);
+        }
+    }
+    await Promise.all(Array.from({ length: workerCount }, runOne));
 }
 
 function renderWatchlist() {
@@ -4429,50 +4471,70 @@ function renderWatchlist() {
 }
 
 async function refreshWatchlistPrices() {
+    if (document.visibilityState !== "visible") {
+        return;
+    }
+    if (watchlistPriceRefreshInFlight) {
+        return watchlistPriceRefreshInFlight;
+    }
+    watchlistPriceRefreshInFlight = (async () => {
     const normalizedCurrent = String(currentCode || "").trim().toUpperCase();
     if (barsCache.length > 0) {
         const latest = barsCache[barsCache.length - 1];
         const latestClose = Number(latest && latest.close);
         const latestTime = Number(latest && latest.time);
         if (Number.isFinite(latestClose) && Number.isFinite(latestTime)) {
-            watchlistPriceMap.set(normalizedCurrent, {
-                code: normalizedCurrent,
-                price: latestClose,
-                time: latestTime
-            });
+            touchWatchlistPrice(normalizedCurrent, latestClose, latestTime);
         }
     } else if (normalizedCurrent) {
         try {
             const data = await fetchLatestPriceForCode(normalizedCurrent);
             if (data) {
-                watchlistPriceMap.set(normalizedCurrent, data);
+                touchWatchlistPrice(normalizedCurrent, data.price, data.time);
             }
         } catch (_err) {
             // 淇℃伅椤垫棤 K 绾跨紦瀛樻椂浠嶅皾璇曟媺褰撳墠 code 鐜颁环
         }
     }
-    const tasks = watchlistCodes.map(async (code) => {
+    const nowMs = Date.now();
+    const pendingCodes = [];
+    for (const code of watchlistCodes) {
         const normalized = String(code || "").trim().toUpperCase();
         if (!normalized) {
-            return;
+            continue;
         }
         if (
             normalized === normalizedCurrent
             && watchlistPriceMap.has(normalized)
         ) {
-            return;
+            continue;
         }
-        try {
-            const data = await fetchLatestPriceForCode(code);
-            if (data) {
-                watchlistPriceMap.set(code, data);
+        if (isWatchlistPriceFresh(normalized, nowMs)) {
+            continue;
+        }
+        pendingCodes.push(normalized);
+    }
+    await runLimitedConcurrency(
+        pendingCodes,
+        WATCHLIST_PRICE_MAX_CONCURRENT_REQUESTS,
+        async (code) => {
+            try {
+                const data = await fetchLatestPriceForCode(code);
+                if (data) {
+                    touchWatchlistPrice(code, data.price, data.time);
+                }
+            } catch (err) {
+                // 保留已有价格，避免单个 code 失败影响整个列表。
             }
-        } catch (err) {
-            // 保留已有价格，避免单个 code 失败影响整个列表。
         }
-    });
-    await Promise.all(tasks);
+    );
     renderWatchlist();
+    })();
+    try {
+        await watchlistPriceRefreshInFlight;
+    } finally {
+        watchlistPriceRefreshInFlight = null;
+    }
 }
 
 function hideCodeSuggestions() {
@@ -5573,6 +5635,9 @@ function startAutoRefresh() {
     countdownValue = AUTO_REFRESH_SECONDS;
 
     refreshTimer = setInterval(async () => {
+        if (document.visibilityState !== "visible") {
+            return;
+        }
         if (isSwitchingCode || isRequesting) {
             return;
         }

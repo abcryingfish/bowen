@@ -605,6 +605,14 @@ def _costs_array_to_matrix(col_costs: np.ndarray, n_rows: int, ci: int, costs_np
     costs_np[:, :, ci] = col_costs
 
 
+def _cost_slice(costs_np: np.ndarray, percentile: int) -> np.ndarray:
+    """COST(N) 对应 _COST_PERCENTILES 中的 N 分位，保留 numpy 热路径。"""
+    idx = int(percentile) - 1
+    if idx < 0 or idx >= costs_np.shape[0]:
+        raise KeyError(f"COST percentile out of range: {percentile}")
+    return costs_np[idx]
+
+
 def load_turnover_wide(
     index: pd.Index,
     columns: pd.Index,
@@ -768,19 +776,38 @@ def build_chip_structure_factor_bundle(
 
     t2 = time.perf_counter() if debug_timing else 0.0
 
-    cost = {
-        int(p): pd.DataFrame(costs_np[pi], index=index, columns=columns)
-        for pi, p in enumerate(_COST_PERCENTILES)
-    }
-
-    c1, c5, c10, c15, c20, c30 = cost[1], cost[5], cost[10], cost[15], cost[20], cost[30]
-    c33, c34, c35, c40 = cost[33], cost[34], cost[35], cost[40]
-    c50, c60, c66, c67 = cost[50], cost[60], cost[66], cost[67]
-    c70, c80, c85, c90, c95, c99 = cost[70], cost[80], cost[85], cost[90], cost[95], cost[99]
+    c1_np, c5_np, c10_np, c15_np = (
+        _cost_slice(costs_np, 1),
+        _cost_slice(costs_np, 5),
+        _cost_slice(costs_np, 10),
+        _cost_slice(costs_np, 15),
+    )
+    c20_np, c30_np, c33_np, c34_np, c35_np, c40_np = (
+        _cost_slice(costs_np, 20),
+        _cost_slice(costs_np, 30),
+        _cost_slice(costs_np, 33),
+        _cost_slice(costs_np, 34),
+        _cost_slice(costs_np, 35),
+        _cost_slice(costs_np, 40),
+    )
+    c50_np, c60_np, c66_np, c67_np, c70_np, c80_np = (
+        _cost_slice(costs_np, 50),
+        _cost_slice(costs_np, 60),
+        _cost_slice(costs_np, 66),
+        _cost_slice(costs_np, 67),
+        _cost_slice(costs_np, 70),
+        _cost_slice(costs_np, 80),
+    )
+    c85_np, c90_np, c95_np, c99_np = (
+        _cost_slice(costs_np, 85),
+        _cost_slice(costs_np, 90),
+        _cost_slice(costs_np, 95),
+        _cost_slice(costs_np, 99),
+    )
 
     cum_high = H.expanding(min_periods=1).max().to_numpy(dtype=np.float64)
     cum_low = L.expanding(min_periods=1).min().to_numpy(dtype=np.float64)
-    abs_conc = _safe_divide((c95 - c5).to_numpy(dtype=np.float64) * 100.0, cum_high - cum_low)
+    abs_conc = _safe_divide((c95_np - c5_np) * 100.0, cum_high - cum_low)
 
     rel_conc = _tdx_relative_concentration(abs_conc)
 
@@ -792,16 +819,6 @@ def build_chip_structure_factor_bundle(
     either = (rel_score > 0) | (abs_score > 0)
     conc_total[both] = np.minimum(rel_score[both], abs_score[both])
     conc_total[either & ~both] = np.maximum(rel_score[either & ~both], abs_score[either & ~both])
-
-    c85_np = c85.to_numpy(dtype=np.float64)
-    c15_np = c15.to_numpy(dtype=np.float64)
-    c99_np = c99.to_numpy(dtype=np.float64)
-    c1_np = c1.to_numpy(dtype=np.float64)
-    c33_np = c33.to_numpy(dtype=np.float64)
-    c34_np = c34.to_numpy(dtype=np.float64)
-    c35_np = c35.to_numpy(dtype=np.float64)
-    c66_np = c66.to_numpy(dtype=np.float64)
-    c67_np = c67.to_numpy(dtype=np.float64)
 
     # 通达信：筹码单峰密度 / 筹码单峰态 / 筹码单峰1~3 / 筹码单峰优
     single_peak_density_value = _safe_divide((c85_np - c15_np) * 200.0, (c85_np + c15_np))
@@ -835,13 +852,13 @@ def build_chip_structure_factor_bundle(
     single_peak_best = single_peak_state & above_c33
 
     bounds = [
-        (c1, c10), (c10, c20), (c20, c30), (c30, c40), (c40, c50),
-        (c50, c60), (c60, c70), (c70, c80), (c80, c90), (c90, c99),
+        (c1_np, c10_np), (c10_np, c20_np), (c20_np, c30_np), (c30_np, c40_np), (c40_np, c50_np),
+        (c50_np, c60_np), (c60_np, c70_np), (c70_np, c80_np), (c80_np, c90_np), (c90_np, c99_np),
     ]
     k_list = []
-    for lo_df, hi_df in bounds:
-        k_list.append(_safe_divide(np.full_like(close_np, 10.0), (hi_df - lo_df).to_numpy(dtype=np.float64)))
-    k_avg = _safe_divide(np.full_like(close_np, 100.0), (c99 - c1).to_numpy(dtype=np.float64))
+    for lo_np, hi_np in bounds:
+        k_list.append(_safe_divide(np.full_like(close_np, 10.0), hi_np - lo_np))
+    k_avg = _safe_divide(np.full_like(close_np, 100.0), c99_np - c1_np)
     k_avg_safe = np.where(k_avg > 0, k_avg, np.nan)
 
     # 通达信：峰1~峰10，峰数量1；筹码两峰态=非单峰态且峰数量1=2；筹码多峰=非单峰且非两峰
@@ -880,17 +897,17 @@ def build_chip_structure_factor_bundle(
         "single_peak_core_ratio_state": pd.DataFrame(core_ratio_state.astype(float), index=index, columns=columns),
         "single_peak_state": pd.DataFrame(single_peak_state.astype(float), index=index, columns=columns),
         "single_peak_center_price": pd.DataFrame(center, index=index, columns=columns),
-        "cost_1pct": c1,
-        "cost_5pct": c5,
-        "cost_15pct": c15,
-        "cost_33pct": c33,
-        "cost_34pct": c34,
-        "cost_35pct": c35,
-        "cost_66pct": c66,
-        "cost_67pct": c67,
-        "cost_85pct": c85,
-        "cost_95pct": c95,
-        "cost_99pct": c99,
+        "cost_1pct": pd.DataFrame(c1_np, index=index, columns=columns),
+        "cost_5pct": pd.DataFrame(c5_np, index=index, columns=columns),
+        "cost_15pct": pd.DataFrame(c15_np, index=index, columns=columns),
+        "cost_33pct": pd.DataFrame(c33_np, index=index, columns=columns),
+        "cost_34pct": pd.DataFrame(c34_np, index=index, columns=columns),
+        "cost_35pct": pd.DataFrame(c35_np, index=index, columns=columns),
+        "cost_66pct": pd.DataFrame(c66_np, index=index, columns=columns),
+        "cost_67pct": pd.DataFrame(c67_np, index=index, columns=columns),
+        "cost_85pct": pd.DataFrame(c85_np, index=index, columns=columns),
+        "cost_95pct": pd.DataFrame(c95_np, index=index, columns=columns),
+        "cost_99pct": pd.DataFrame(c99_np, index=index, columns=columns),
         "single_peak_low": pd.DataFrame(single_peak_low.astype(float), index=index, columns=columns),
         "single_peak_mid": pd.DataFrame(single_peak_mid.astype(float), index=index, columns=columns),
         "single_peak_high": pd.DataFrame(single_peak_high.astype(float), index=index, columns=columns),
