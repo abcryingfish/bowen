@@ -27,23 +27,25 @@ def build_total_sell_pair_test_bundle(
     L: pd.DataFrame,
     C: pd.DataFrame,
     V: pd.DataFrame,
+    precomputed_factors: dict[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
     """构建卖出组合信号（含 ZXW 因子）。
 
     另含「ZXW因子+破30/60日均线」：收盘价低于对应均线（弱势区）且当日 ZXW=1 时为 1。
     """
     index, columns = C.index, C.columns
+    pre = precomputed_factors or {}
 
-    total_sell_bundle = build_total_sell_signal_bundle(C=C)
-    rsi_bundle = build_rsi_factor_bundle(C=C)
-    top_escape_bundle = build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
-    kdj_bundle = build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
+    total_sell_bundle = None if "total_sell_signal" in pre else build_total_sell_signal_bundle(C=C)
+    rsi_bundle = None if {"rsi_6_cross_down_rsi_12", "rsi_6_overbought"}.issubset(pre) else build_rsi_factor_bundle(C=C)
+    top_escape_bundle = None if "top_escape_score" in pre else build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
+    kdj_bundle = None if "j_overbought_factor" in pre else build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
 
-    total_sell_signal = _align(total_sell_bundle["factor_dfs"]["total_sell_signal"], index, columns)
-    top_escape_score = _align(top_escape_bundle["factor_dfs"]["top_escape_score"], index, columns)
-    j_overbought_factor = _align(kdj_bundle["factor_dfs"]["j_overbought_factor"], index, columns)
-    rsi_cross_down = _align(rsi_bundle["factor_dfs"]["rsi_6_cross_down_rsi_12"], index, columns)
-    rsi_overbought = _align(rsi_bundle["factor_dfs"]["rsi_6_overbought"], index, columns)
+    total_sell_signal = _align(pre["total_sell_signal"] if "total_sell_signal" in pre else total_sell_bundle["factor_dfs"]["total_sell_signal"], index, columns)
+    top_escape_score = _align(pre["top_escape_score"] if "top_escape_score" in pre else top_escape_bundle["factor_dfs"]["top_escape_score"], index, columns)
+    j_overbought_factor = _align(pre["j_overbought_factor"] if "j_overbought_factor" in pre else kdj_bundle["factor_dfs"]["j_overbought_factor"], index, columns)
+    rsi_cross_down = _align(pre["rsi_6_cross_down_rsi_12"] if "rsi_6_cross_down_rsi_12" in pre else rsi_bundle["factor_dfs"]["rsi_6_cross_down_rsi_12"], index, columns)
+    rsi_overbought = _align(pre["rsi_6_overbought"] if "rsi_6_overbought" in pre else rsi_bundle["factor_dfs"]["rsi_6_overbought"], index, columns)
 
     factor_dfs: dict[str, pd.DataFrame] = {}
     factor_name_map: dict[str, str] = {}
@@ -76,9 +78,9 @@ def build_total_sell_pair_test_bundle(
 
     # ZXW + 弱势均线：收盘价在 MA30/MA60 下方（弱势区）且当日 ZXW=1，比「仅下穿当日」更易出可统计样本。
     close_f = _align(C.astype(float), index, columns)
-    ma_bundle = build_moving_average_factor_bundle(C=C, windows=(30, 60))
-    ma30 = _align(ma_bundle["factor_dfs"]["ma_30"], index, columns).astype(float)
-    ma60 = _align(ma_bundle["factor_dfs"]["ma_60"], index, columns).astype(float)
+    ma_bundle = None if {"ma_30", "ma_60"}.issubset(pre) else build_moving_average_factor_bundle(C=C, windows=(30, 60))
+    ma30 = _align(pre["ma_30"] if "ma_30" in pre else ma_bundle["factor_dfs"]["ma_30"], index, columns).astype(float)
+    ma60 = _align(pre["ma_60"] if "ma_60" in pre else ma_bundle["factor_dfs"]["ma_60"], index, columns).astype(float)
     below_ma30 = close_f < ma30
     below_ma60 = close_f < ma60
     zxw_bin = _to_binary_positive(zxw_signal)

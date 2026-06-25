@@ -1484,6 +1484,7 @@ def build_total_buy_signal_bundle(
     L: pd.DataFrame,
     C: pd.DataFrame,
     V: pd.DataFrame | None = None,
+    precomputed_factors: dict[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
     """当 MAC总、KDJ信号、抄底总分 同时为「有信号」时，生成总买入信号。
 
@@ -1500,20 +1501,28 @@ def build_total_buy_signal_bundle(
     t0 = time.perf_counter() if debug_timing else 0.0
 
     if _EXT_BUNDLES_AVAILABLE and not use_local_impl:
-        bottom_bundle = _ext_build_bottom_fishing_factor_bundle(O, H, L, C)
-        kdj_bundle = _ext_build_kdj_factor_bundle(O, H, L, C)
-        d_bundle = _ext_build_d_class_factor_bundle(O, H, L, C)
+        bottom_bundle = None if precomputed_factors and "bottom_fishing_score" in precomputed_factors else _ext_build_bottom_fishing_factor_bundle(O, H, L, C)
+        kdj_bundle = None if precomputed_factors and "r_condition" in precomputed_factors else _ext_build_kdj_factor_bundle(O, H, L, C)
+        d_bundle = None if precomputed_factors and "mac_total" in precomputed_factors else _ext_build_d_class_factor_bundle(O, H, L, C)
     else:
-        bottom_bundle = build_bottom_fishing_factor_bundle(O, H, L, C)
-        kdj_bundle = build_kdj_factor_bundle(O, H, L, C)
-        d_bundle = build_d_class_factor_bundle(O, H, L, C)
+        bottom_bundle = None if precomputed_factors and "bottom_fishing_score" in precomputed_factors else build_bottom_fishing_factor_bundle(O, H, L, C)
+        kdj_bundle = None if precomputed_factors and "r_condition" in precomputed_factors else build_kdj_factor_bundle(O, H, L, C)
+        d_bundle = None if precomputed_factors and "mac_total" in precomputed_factors else build_d_class_factor_bundle(O, H, L, C)
     t1 = time.perf_counter() if debug_timing else 0.0
 
     bottom_fishing_score = _align(
-        bottom_bundle["factor_dfs"]["bottom_fishing_score"], index, columns
+        precomputed_factors["bottom_fishing_score"] if precomputed_factors and "bottom_fishing_score" in precomputed_factors else bottom_bundle["factor_dfs"]["bottom_fishing_score"], index, columns
     ).astype(float)
-    r_condition = _align(kdj_bundle["factor_dfs"]["r_condition"], index, columns)
-    mac_total = _align(d_bundle["factor_dfs"]["mac_total"], index, columns).astype(float)
+    r_condition = _align(
+        precomputed_factors["r_condition"] if precomputed_factors and "r_condition" in precomputed_factors else kdj_bundle["factor_dfs"]["r_condition"],
+        index,
+        columns,
+    )
+    mac_total = _align(
+        precomputed_factors["mac_total"] if precomputed_factors and "mac_total" in precomputed_factors else d_bundle["factor_dfs"]["mac_total"],
+        index,
+        columns,
+    ).astype(float)
 
     mac_signal = mac_total > 0
     kdj_signal = r_condition.fillna(False).astype(bool)
@@ -1525,7 +1534,28 @@ def build_total_buy_signal_bundle(
     single_peak_best_signal = pd.DataFrame(False, index=index, columns=columns)
     concentration_total = pd.DataFrame(0.0, index=index, columns=columns)
     chip_peak_score = pd.DataFrame(0.0, index=index, columns=columns)
-    if V is not None and _CHIP_BUNDLE_AVAILABLE:
+    has_precomputed_chip = bool(
+        precomputed_factors
+        and "concentration_total_score" in precomputed_factors
+        and "chip_peak_score" in precomputed_factors
+    )
+    if has_precomputed_chip:
+        concentration_total = _align(
+            precomputed_factors["concentration_total_score"], index, columns
+        ).astype(float)
+        chip_peak_score = _align(
+            precomputed_factors["chip_peak_score"], index, columns
+        ).astype(float)
+        single_peak_best = _align(
+            precomputed_factors.get("single_peak_best", pd.DataFrame(0.0, index=index, columns=columns)),
+            index,
+            columns,
+        ).astype(float)
+        single_peak_best_signal = single_peak_best > 0.0
+
+        raw_total_buy_signal += (base_signal & (concentration_total > 0)).astype(float)
+        raw_total_buy_signal += (base_signal & (chip_peak_score > 0)).astype(float)
+    elif V is not None and _CHIP_BUNDLE_AVAILABLE:
         chip_bundle = _ext_build_chip_structure_factor_bundle(
             H=H,
             L=L,
@@ -1614,12 +1644,25 @@ if __name__ == '__main__':
 
 
 BUNDLE_ID = "total_buy_signal"
+FACTOR_NAME_MAP: dict[str, str] = {
+    "总买入信号": "total_buy_signal",
+    "总买入信号改": "total_buy_signal_adjusted",
+    "总买入信号改(不包集中总)": "total_buy_signal_adjusted_no_concentration",
+    "总买入超强底": "super_strong_bottom",
+}
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {
     "total_buy_signal": 1300,
     "total_buy_signal_adjusted": 1300,
     "total_buy_signal_adjusted_no_concentration": 1300,
     "super_strong_bottom": 1300,
 }
+
+
+def get_factor_catalog() -> dict[str, object]:
+    return {
+        "bundle_id": BUNDLE_ID,
+        "factor_name_map": dict(FACTOR_NAME_MAP),
+    }
 
 
 def get_factor_lookback_config() -> dict[str, object]:

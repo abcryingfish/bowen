@@ -1,5 +1,0 @@
-stock_num=1152,code=003021.SZ,start_date=2026-06-02,error=返回空数据
-stock_num=1561,code=300957.SZ,start_date=2026-06-02,error=返回空数据
-stock_num=1833,code=600135.SH,start_date=2026-06-02,error=返回空数据
-stock_num=1883,code=600285.SH,start_date=2026-06-02,error=返回空数据
-stock_num=3643,code=603577.SH,start_date=2026-06-05,error=返回空数据

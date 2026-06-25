@@ -55,15 +55,17 @@ def _build_mac_top_j_base_signal(
     C: pd.DataFrame,
     index: pd.Index,
     columns: pd.Index,
+    precomputed_factors: dict[str, pd.DataFrame] | None = None,
 ) -> pd.DataFrame:
     """MAC总 ∩ 逃顶总分 ∩ J值超买因子（与现有三因子 AND 组合一致）。"""
-    mac_bundle = build_d_class_factor_bundle(O=O, H=H, L=L, C=C)
-    top_bundle = build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
-    kdj_bundle = build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
+    pre = precomputed_factors or {}
+    mac_bundle = None if "mac_total" in pre else build_d_class_factor_bundle(O=O, H=H, L=L, C=C)
+    top_bundle = None if "top_escape_score" in pre else build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
+    kdj_bundle = None if "j_overbought_factor" in pre else build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
 
-    mac_total = _align(mac_bundle["factor_dfs"]["mac_total"], index, columns)
-    top_escape_score = _align(top_bundle["factor_dfs"]["top_escape_score"], index, columns)
-    j_overbought_factor = _align(kdj_bundle["factor_dfs"]["j_overbought_factor"], index, columns)
+    mac_total = _align(pre["mac_total"] if "mac_total" in pre else mac_bundle["factor_dfs"]["mac_total"], index, columns)
+    top_escape_score = _align(pre["top_escape_score"] if "top_escape_score" in pre else top_bundle["factor_dfs"]["top_escape_score"], index, columns)
+    j_overbought_factor = _align(pre["j_overbought_factor"] if "j_overbought_factor" in pre else kdj_bundle["factor_dfs"]["j_overbought_factor"], index, columns)
 
     return (
         _to_binary_positive(mac_total)
@@ -78,12 +80,13 @@ def build_sell_factor_volume_bundle(
     L: pd.DataFrame,
     C: pd.DataFrame,
     V: pd.DataFrame,
+    precomputed_factors: dict[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
     """卖出因子（A-B）：(MAC总∩逃顶∩J超买) AND 近5日均量 > A×前B日均量。"""
     index, columns = C.index, C.columns
     volume = _align(V, index, columns).astype(float)
 
-    base_signal = _build_mac_top_j_base_signal(O, H, L, C, index, columns)
+    base_signal = _build_mac_top_j_base_signal(O, H, L, C, index, columns, precomputed_factors)
 
     factor_dfs: dict[str, pd.DataFrame] = {}
     factor_name_map: dict[str, str] = {}

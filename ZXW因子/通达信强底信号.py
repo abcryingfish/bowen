@@ -56,6 +56,7 @@ def build_tdx_bottom_alert_bundle(
     C: pd.DataFrame,
     V: pd.DataFrame | None = None,
     valid_bar: pd.DataFrame | None = None,
+    precomputed_factors: dict[str, pd.DataFrame] | None = None,
 ) -> dict[str, Any]:
     """合成通达信强底 / 超强底 / 五日内六级。"""
     if _IMPORT_ERR is not None:
@@ -69,26 +70,14 @@ def build_tdx_bottom_alert_bundle(
     L = _align(L.astype(float), index, columns)
     C = _align(C.astype(float), index, columns)
     V = _align(V.astype(float), index, columns)
-    if valid_bar is not None:
-        valid = _align(valid_bar, index, columns).fillna(False).astype(bool)
-        seen_valid = valid.cumsum().gt(0)
-        needs_compact = ((~valid) & seen_valid).any(axis=0)
-        if bool(needs_compact.any()):
-            return _build_tdx_bottom_alert_bundle_with_valid_bar(
-                O=O,
-                H=H,
-                L=L,
-                C=C,
-                V=V,
-                valid_bar=valid,
-                needs_compact=needs_compact,
-            )
+    pre = precomputed_factors or {}
 
-    d_bundle = _build_d_class_factor_bundle(O=O, H=H, L=L, C=C)
-    bottom_bundle = _build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
-    kdj_bundle = _build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
-    ma_part = _build_ma_class_zxw_bundle(C=C)
-    chip_bundle = _build_chip_structure_factor_bundle(
+    d_bundle = None if "mac_total" in pre else _build_d_class_factor_bundle(O=O, H=H, L=L, C=C)
+    bottom_bundle = None if "kline_bottom" in pre else _build_bottom_fishing_factor_bundle(O=O, H=H, L=L, C=C)
+    kdj_bundle = None if "r_condition" in pre else _build_kdj_factor_bundle(O=O, H=H, L=L, C=C)
+    ma_part = None if "ma_class_zxw" in pre else _build_ma_class_zxw_bundle(C=C)
+    has_chip = "concentration_total_score" in pre and "chip_peak_score" in pre
+    chip_bundle = None if has_chip else _build_chip_structure_factor_bundle(
         H=H,
         L=L,
         C=C,
@@ -98,14 +87,16 @@ def build_tdx_bottom_alert_bundle(
         history_decay=0.95,
     )
 
-    mac_total = _align(d_bundle["factor_dfs"]["mac_total"], index, columns).astype(float)
-    kline_bottom = _align(bottom_bundle["factor_dfs"]["kline_bottom"], index, columns).astype(float)
-    r_condition = _align(kdj_bundle["factor_dfs"]["r_condition"], index, columns).astype(float)
-    ma_class = _align(ma_part["factor_dfs"]["ma_class_zxw"], index, columns).astype(float)
+    mac_total = _align(pre["mac_total"] if "mac_total" in pre else d_bundle["factor_dfs"]["mac_total"], index, columns).astype(float)
+    kline_bottom = _align(pre["kline_bottom"] if "kline_bottom" in pre else bottom_bundle["factor_dfs"]["kline_bottom"], index, columns).astype(float)
+    r_condition = _align(pre["r_condition"] if "r_condition" in pre else kdj_bundle["factor_dfs"]["r_condition"], index, columns).astype(float)
+    ma_class = _align(pre["ma_class_zxw"] if "ma_class_zxw" in pre else ma_part["factor_dfs"]["ma_class_zxw"], index, columns).astype(float)
     concentration_total = _align(
-        chip_bundle["factor_dfs"]["concentration_total_score"], index, columns
+        pre["concentration_total_score"] if has_chip else chip_bundle["factor_dfs"]["concentration_total_score"], index, columns
     ).astype(float)
-    chip_peak_score = _align(chip_bundle["factor_dfs"]["chip_peak_score"], index, columns).astype(float)
+    chip_peak_score = _align(
+        pre["chip_peak_score"] if has_chip else chip_bundle["factor_dfs"]["chip_peak_score"], index, columns
+    ).astype(float)
 
     signal_e = mac_total > 0.0
     signal_k = kline_bottom > 0.0
@@ -270,16 +261,17 @@ def get_factor_catalog() -> dict[str, Any]:
 def get_factor_lookback_config() -> dict[str, Any]:
     """回看取子模块与 250 根 K 线要求的上界。"""
     lookbacks = [MIN_BARSCOUNT + FIVE_DAY_WINDOW - 1]
-    for loader in (
-        _build_d_class_factor_bundle,
-        _build_bottom_fishing_factor_bundle,
-        _build_kdj_factor_bundle,
-        _build_ma_class_zxw_bundle,
-        _build_chip_structure_factor_bundle,
+    for module_name in (
+        "MACD因子",
+        "抄底因子",
+        "KDJ因子",
+        "均线因子",
+        "筹码结构因子",
     ):
-        if loader is None:
+        try:
+            mod = __import__(module_name, fromlist=["get_factor_lookback_config"])
+        except Exception:
             continue
-        mod = __import__(loader.__module__, fromlist=["get_factor_lookback_config"])
         fn = getattr(mod, "get_factor_lookback_config", None)
         if callable(fn):
             cfg = fn()

@@ -5,6 +5,12 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+try:
+    from factor_debug_log import factor_log
+except Exception:  # pragma: no cover
+    def factor_log(event: str, **fields: Any) -> None:
+        return
+
 
 BundleResult = tuple[set[str], list[dict[str, Any]]]
 RawBundleCompute = Callable[..., BundleResult]
@@ -29,6 +35,78 @@ def _slice_frame(df: pd.DataFrame | None, rows: pd.Index, columns: pd.Index) -> 
     if df is None:
         return None
     return df.reindex(index=rows, columns=columns)
+
+
+def _build_compacted_frame(
+    df: pd.DataFrame,
+    valid: pd.DataFrame,
+    columns: pd.Index,
+    compact_index: pd.Index,
+) -> pd.DataFrame:
+    out = pd.DataFrame(np.nan, index=compact_index, columns=columns, dtype=float)
+    for col in columns:
+        mask = valid[col].to_numpy(dtype=bool)
+        values = df.loc[valid.index[mask], col].to_numpy()
+        if len(values) > 0:
+            out.loc[compact_index[: len(values)], col] = values
+    return out
+
+
+def _build_compacted_valid_bar(
+    valid: pd.DataFrame,
+    columns: pd.Index,
+    compact_index: pd.Index,
+) -> pd.DataFrame:
+    out = pd.DataFrame(False, index=compact_index, columns=columns, dtype=bool)
+    for col in columns:
+        count = int(valid[col].to_numpy(dtype=bool).sum())
+        if count > 0:
+            out.loc[compact_index[:count], col] = True
+    return out
+
+
+def _merge_compacted_result(
+    compact_result: BundleResult,
+    *,
+    original_index: pd.Index,
+    compact_index: pd.Index,
+    columns: pd.Index,
+    valid: pd.DataFrame,
+) -> BundleResult:
+    selected, bundles = compact_result
+    remapped_bundles: list[dict[str, Any]] = []
+    valid_np = valid.to_numpy(dtype=bool)
+    row_parts: list[np.ndarray] = []
+    compact_row_parts: list[np.ndarray] = []
+    col_parts: list[np.ndarray] = []
+    for ci in range(valid_np.shape[1]):
+        row_pos = np.flatnonzero(valid_np[:, ci])
+        n = int(row_pos.size)
+        if n == 0:
+            continue
+        row_parts.append(row_pos)
+        compact_row_parts.append(np.arange(n, dtype=np.intp))
+        col_parts.append(np.full(n, ci, dtype=np.intp))
+    if row_parts:
+        real_row_idx = np.concatenate(row_parts)
+        compact_row_idx = np.concatenate(compact_row_parts)
+        col_idx = np.concatenate(col_parts)
+    else:
+        real_row_idx = np.empty(0, dtype=np.intp)
+        compact_row_idx = np.empty(0, dtype=np.intp)
+        col_idx = np.empty(0, dtype=np.intp)
+
+    for bundle in bundles:
+        factor_dfs: dict[str, pd.DataFrame] = {}
+        for factor_name, frame in bundle.get("factor_dfs", {}).items():
+            aligned = frame.reindex(index=compact_index, columns=columns).astype(float)
+            out_np = np.full((len(original_index), len(columns)), np.nan, dtype=np.float64)
+            if real_row_idx.size:
+                aligned_np = aligned.to_numpy(dtype=np.float64, copy=False)
+                out_np[real_row_idx, col_idx] = aligned_np[compact_row_idx, col_idx]
+            factor_dfs[factor_name] = pd.DataFrame(out_np, index=original_index, columns=columns)
+        remapped_bundles.append({**bundle, "factor_dfs": factor_dfs})
+    return selected, remapped_bundles
 
 
 def _call_raw_compute(
@@ -75,23 +153,43 @@ def merge_bundle_outputs(
     merged_bundles: list[dict[str, Any]] = []
     for bundle_idx in range(bundle_count):
         factor_name_map = part_results[0][1][bundle_idx].get("factor_name_map", {})
-        factor_dfs: dict[str, pd.DataFrame] = {}
+        factor_names: set[str] = set()
         for _, bundles in part_results:
             bundle = bundles[bundle_idx]
-            for factor_name in bundle.get("factor_dfs", {}).keys():
-                if factor_name not in factor_dfs:
-                    factor_dfs[factor_name] = pd.DataFrame(np.nan, index=index, columns=columns)
+            factor_names.update(bundle.get("factor_dfs", {}).keys())
 
-        for _, bundles in part_results:
-            bundle = bundles[bundle_idx]
-            for factor_name, frame in bundle.get("factor_dfs", {}).items():
-                aligned = frame.reindex(index=index).astype(float)
-                factor_dfs[factor_name].loc[:, aligned.columns] = aligned
+        factor_log(
+            "valid_bar.merge_bundle.start",
+            bundle_idx=int(bundle_idx),
+            factors=int(len(factor_names)),
+            parts=int(len(part_results)),
+            rows=int(len(index)),
+            cols=int(len(columns)),
+        )
+        factor_dfs: dict[str, pd.DataFrame] = {}
+        for factor_name in factor_names:
+            pieces: list[pd.DataFrame] = []
+            for _, bundles in part_results:
+                frame = bundles[bundle_idx].get("factor_dfs", {}).get(factor_name)
+                if frame is None:
+                    continue
+                pieces.append(frame.reindex(index=index).astype(float, copy=False))
+            if pieces:
+                factor_dfs[factor_name] = pd.concat(pieces, axis=1, copy=False).reindex(columns=columns).fillna(0.0)
+            else:
+                factor_dfs[factor_name] = pd.DataFrame(0.0, index=index, columns=columns)
+        factor_log(
+            "valid_bar.merge_bundle.finish",
+            bundle_idx=int(bundle_idx),
+            factors=int(len(factor_dfs)),
+            rows=int(len(index)),
+            cols=int(len(columns)),
+        )
 
         merged_bundles.append(
             {
                 **part_results[0][1][bundle_idx],
-                "factor_dfs": {name: frame.fillna(0.0) for name, frame in factor_dfs.items()},
+                "factor_dfs": factor_dfs,
                 "factor_name_map": factor_name_map,
             }
         )
@@ -161,24 +259,46 @@ def compute_bundles_with_valid_bar(
         )
 
     compact_cols = pd.Index([col for col in C.columns if bool(needs_compact.get(col, False))])
-    for col in compact_cols:
-        col_valid = valid[col].fillna(False).astype(bool)
-        real_index = valid.index[col_valid.to_numpy()]
-        if len(real_index) == 0:
-            continue
-        one_col = pd.Index([col])
+    real_lengths = {
+        col: int(valid[col].to_numpy(dtype=bool).sum())
+        for col in compact_cols
+    }
+    compact_cols = pd.Index([col for col in compact_cols if real_lengths.get(col, 0) > 0])
+    max_real_len = max((real_lengths[col] for col in compact_cols), default=0)
+    compact_index = pd.RangeIndex(max_real_len)
+
+    factor_log(
+        "valid_bar.compact_groups",
+        total_cols=int(len(C.columns)),
+        fast_cols=int(len(fast_cols)),
+        compact_cols=int(len(compact_cols)),
+        groups=1 if len(compact_cols) else 0,
+        largest_group=int(len(compact_cols)),
+        mode="compressed_batch",
+        max_real_len=int(max_real_len),
+    )
+
+    if len(compact_cols) > 0 and max_real_len > 0:
+        compact_valid = _build_compacted_valid_bar(valid, compact_cols, compact_index)
+        compact_result = _call_raw_compute(
+            raw_compute,
+            O=_build_compacted_frame(O, valid, compact_cols, compact_index),
+            H=_build_compacted_frame(H, valid, compact_cols, compact_index),
+            L=_build_compacted_frame(L, valid, compact_cols, compact_index),
+            C=_build_compacted_frame(C, valid, compact_cols, compact_index),
+            V=_build_compacted_frame(V, valid, compact_cols, compact_index),
+            selected_bundles=selected_bundles,
+            T=_build_compacted_frame(T, valid, compact_cols, compact_index) if T is not None else None,
+            enable_bottom_cache=False,
+            valid_bar=compact_valid,
+        )
         part_results.append(
-            _call_raw_compute(
-                raw_compute,
-                O=O.loc[real_index, one_col],
-                H=H.loc[real_index, one_col],
-                L=L.loc[real_index, one_col],
-                C=C.loc[real_index, one_col],
-                V=V.loc[real_index, one_col],
-                selected_bundles=selected_bundles,
-                T=_slice_frame(T, real_index, one_col),
-                enable_bottom_cache=False,
-                valid_bar=valid.loc[real_index, one_col],
+            _merge_compacted_result(
+                compact_result,
+                original_index=C.index,
+                compact_index=compact_index,
+                columns=compact_cols,
+                valid=valid.loc[:, compact_cols],
             )
         )
 

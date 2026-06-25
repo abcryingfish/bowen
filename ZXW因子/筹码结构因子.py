@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+import hashlib
 import os
+import threading
 import time
+import uuid
+from collections import OrderedDict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+try:
+    from factor_debug_log import factor_log
+except Exception:  # pragma: no cover
+    def factor_log(event: str, **fields: Any) -> None:
+        return
 
 try:
     from numba import njit, prange
@@ -20,6 +30,10 @@ except Exception:  # pragma: no cover
 # 对齐通达信/fengwo CYQ：峰 (H+L)/2、minD=0.01、换手%/100、AC=1
 # fengwo.COST 实测与 VOL 无关（旧筹码衰减和新增筹码均按换手率；新增为三角分布）
 DEFAULT_TURNOVER_BASE_DIR = r"D:\database\stock_financial_statements\market_equity_data"
+CHIP_STATE_CACHE_PATH = (
+    r"C:\Users\Administrator\Desktop\python_venv\temp_calculated_data\Chip Distribution\latest_state.parquet"
+)
+CHIP_STATE_ALGORITHM_VERSION = "tdx_fengwo_v1"
 CHOUMA_MIN_D = 0.01
 CHOUMA_AC = 1.0
 CHOUMA_FLAG = 1
@@ -36,10 +50,127 @@ TURNOVER_MA_WINDOW = 20
 CYQ_COEFF = CHOUMA_AC
 PRICE_GRID_SIZE = 600
 GRID_PADDING_RATIO = 0.05
+_CHIP_BUNDLE_CACHE_MAX_SIZE = 2
+_CHIP_BUNDLE_CACHE: OrderedDict[tuple[Any, ...], dict[str, dict[str, pd.DataFrame]]] = OrderedDict()
+_CHIP_STATE_CACHE_WRITE_LOCK = threading.RLock()
+
+
+def _chip_state_cache_enabled() -> bool:
+    return os.getenv("ZXW_CHIP_STATE_CACHE", "1") != "0"
+
+
+def _chip_state_cache_explicitly_enabled() -> bool:
+    return os.getenv("ZXW_CHIP_STATE_CACHE") == "1"
+
+
+def _chip_state_cache_min_cols() -> int:
+    raw = os.getenv("ZXW_CHIP_STATE_MIN_COLS", "64").strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 64
+
+
+def _chip_state_cache_bootstrap_enabled(n_rows: int, n_cols: int) -> bool:
+    raw = os.getenv("ZXW_CHIP_STATE_BOOTSTRAP_MAX_CELLS", "50000").strip()
+    try:
+        max_cells = int(raw)
+    except ValueError:
+        max_cells = 0
+    return max_cells > 0 and (int(n_rows) * int(n_cols)) <= max_cells
+
+
+def _chip_state_max_bins() -> int:
+    raw = os.getenv("ZXW_CHIP_STATE_MAX_BINS", "500000").strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 500000
 
 
 def _timing_enabled() -> bool:
     return os.getenv("ZXW_FACTOR_DEBUG_TIMING", "0") == "1"
+
+
+def _chip_bundle_cache_enabled() -> bool:
+    return os.getenv("ZXW_CHIP_BUNDLE_CACHE", "1") != "0"
+
+
+def clear_chip_structure_bundle_cache() -> None:
+    _CHIP_BUNDLE_CACHE.clear()
+
+
+def _update_hash_with_index(h: "hashlib._Hash", index: pd.Index) -> None:
+    h.update(str(len(index)).encode("utf-8"))
+    if isinstance(index, pd.DatetimeIndex):
+        values = index.view("int64")
+        h.update(np.ascontiguousarray(values).view(np.uint8))
+        return
+    for value in index:
+        h.update(str(value).encode("utf-8", errors="surrogatepass"))
+        h.update(b"\x00")
+
+
+def _array_digest(arr: np.ndarray) -> bytes:
+    data = np.ascontiguousarray(arr)
+    h = hashlib.blake2b(digest_size=16)
+    h.update(str(data.shape).encode("ascii"))
+    h.update(str(data.dtype).encode("ascii"))
+    h.update(data.view(np.uint8))
+    return h.digest()
+
+
+def _chip_bundle_cache_key(
+    *,
+    index: pd.Index,
+    columns: pd.Index,
+    h_np: np.ndarray,
+    l_np: np.ndarray,
+    c_np: np.ndarray,
+    v_np: np.ndarray,
+    t_np: np.ndarray,
+    min_d: float,
+    ac: float,
+) -> tuple[Any, ...]:
+    index_hash = hashlib.blake2b(digest_size=16)
+    _update_hash_with_index(index_hash, index)
+    column_hash = hashlib.blake2b(digest_size=16)
+    _update_hash_with_index(column_hash, columns)
+    return (
+        index_hash.digest(),
+        column_hash.digest(),
+        tuple(c_np.shape),
+        float(min_d),
+        float(ac),
+        bool(CHOUMA_USE_VOLUME),
+        bool(CHOUMA_ADD_SCALES_WITH_TURNOVER),
+        _array_digest(h_np),
+        _array_digest(l_np),
+        _array_digest(c_np),
+        _array_digest(v_np),
+        _array_digest(t_np),
+    )
+
+
+def _get_cached_chip_bundle(
+    key: tuple[Any, ...],
+) -> dict[str, dict[str, pd.DataFrame]] | None:
+    cached = _CHIP_BUNDLE_CACHE.get(key)
+    if cached is None:
+        return None
+    _CHIP_BUNDLE_CACHE.move_to_end(key)
+    return cached
+
+
+def _store_cached_chip_bundle(
+    key: tuple[Any, ...],
+    bundle: dict[str, dict[str, pd.DataFrame]],
+) -> None:
+    _CHIP_BUNDLE_CACHE[key] = bundle
+    _CHIP_BUNDLE_CACHE.move_to_end(key)
+    max_size = max(1, int(os.getenv("ZXW_CHIP_BUNDLE_CACHE_SIZE", _CHIP_BUNDLE_CACHE_MAX_SIZE)))
+    while len(_CHIP_BUNDLE_CACHE) > max_size:
+        _CHIP_BUNDLE_CACHE.popitem(last=False)
 
 
 def _use_numba(n_rows: int, n_cols: int) -> bool:
@@ -533,6 +664,86 @@ if _NUMBA_AVAILABLE:
         return out
 
     @njit(cache=True, fastmath=False)
+    def _compute_chouma_cost_series_numba_with_state(
+        high: np.ndarray,
+        low: np.ndarray,
+        volume: np.ndarray,
+        turnover_pct: np.ndarray,
+        percentiles: np.ndarray,
+        min_d: float,
+        ac: float,
+        use_volume: bool,
+        add_scales_with_turnover: bool,
+        init_chip: np.ndarray,
+        init_base_low: float,
+        init_n_bins: int,
+        init_cum_high: float,
+        init_cum_low: float,
+    ) -> tuple:
+        n = len(high)
+        p_count = len(percentiles)
+        out = np.zeros((p_count, n), dtype=np.float64)
+        abs_conc = np.zeros(n, dtype=np.float64)
+        targets = percentiles / 100.0
+
+        chip = init_chip.copy()
+        base_low = init_base_low
+        n_bins = init_n_bins
+        if n_bins != len(chip):
+            n_bins = len(chip)
+        cum_high = init_cum_high
+        cum_low = init_cum_low
+        prev_cost = np.zeros(p_count, dtype=np.float64)
+
+        for i in range(n):
+            tr_raw = turnover_pct[i]
+            h = high[i]
+            l = low[i]
+            valid_bar = np.isfinite(tr_raw) and np.isfinite(h) and np.isfinite(l)
+            if valid_bar:
+                if not np.isfinite(cum_high):
+                    cum_high = h
+                elif h > cum_high:
+                    cum_high = h
+                if not np.isfinite(cum_low):
+                    cum_low = l
+                elif l < cum_low:
+                    cum_low = l
+
+                chip, base_low, n_bins = _update_chip_one_day(
+                    chip,
+                    base_low,
+                    n_bins,
+                    h,
+                    l,
+                    volume[i],
+                    tr_raw / 100.0,
+                    min_d,
+                    ac,
+                    use_volume,
+                    add_scales_with_turnover,
+                )
+                _fill_costs_from_chip(chip, base_low, min_d, n_bins, targets, out, i)
+                for p in range(p_count):
+                    prev_cost[p] = out[p, i]
+            else:
+                if i > 0:
+                    for p in range(p_count):
+                        out[p, i] = out[p, i - 1]
+                        prev_cost[p] = out[p, i]
+                else:
+                    for p in range(p_count):
+                        out[p, i] = prev_cost[p]
+
+            denom = cum_high - cum_low
+            if denom > 0.0 and np.isfinite(denom):
+                abs_conc[i] = ((out[94, i] - out[4, i]) * 100.0) / denom
+            else:
+                abs_conc[i] = 0.0
+
+        return out, chip, base_low, n_bins, cum_high, cum_low, abs_conc
+
+    @njit(cache=True, fastmath=False)
     def _rolling_minmax_norm_numba(abs_conc: np.ndarray, window: int) -> np.ndarray:
         rows, cols = abs_conc.shape
         out = np.zeros((rows, cols), dtype=np.float64)
@@ -601,6 +812,151 @@ def _compute_chouma_cost_series_worker(args: tuple) -> tuple[int, np.ndarray]:
     return ci, costs
 
 
+def _compute_chouma_cost_series_with_state(
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
+    volume: np.ndarray,
+    turnover_pct: np.ndarray,
+    percentiles: np.ndarray,
+    dates: pd.Index,
+    *,
+    state: dict[str, Any] | None,
+    min_d: float,
+    ac: float,
+    use_volume: bool,
+) -> tuple[np.ndarray, dict[str, Any], np.ndarray]:
+    del close
+    n = len(high)
+    p_count = len(percentiles)
+    if state is None:
+        init_chip = np.zeros(0, dtype=np.float64)
+        init_base_low = 0.0
+        init_n_bins = 0
+        init_cum_high = np.nan
+        init_cum_low = np.nan
+        abs_tail = np.zeros(0, dtype=np.float64)
+    else:
+        init_chip = np.asarray(state.get("chip", np.zeros(0)), dtype=np.float64).copy()
+        init_base_low = float(state.get("base_low", 0.0))
+        init_n_bins = int(state.get("n_bins", len(init_chip)))
+        init_cum_high = float(state.get("cum_high", np.nan))
+        init_cum_low = float(state.get("cum_low", np.nan))
+        abs_tail = np.asarray(state.get("abs_conc_tail", np.zeros(0)), dtype=np.float64).copy()
+
+    if _NUMBA_AVAILABLE:
+        out, chip, base_low, n_bins, cum_high, cum_low, abs_conc = _compute_chouma_cost_series_numba_with_state(
+            np.ascontiguousarray(high, dtype=np.float64),
+            np.ascontiguousarray(low, dtype=np.float64),
+            np.ascontiguousarray(volume, dtype=np.float64),
+            np.ascontiguousarray(turnover_pct, dtype=np.float64),
+            np.ascontiguousarray(percentiles, dtype=np.int64),
+            min_d,
+            ac,
+            use_volume,
+            CHOUMA_ADD_SCALES_WITH_TURNOVER,
+            init_chip,
+            init_base_low,
+            init_n_bins,
+            init_cum_high,
+            init_cum_low,
+        )
+        if n > 0:
+            tail_joined = np.concatenate([abs_tail, abs_conc])
+            abs_tail = tail_joined[-(CONCENTRATION_NORM_WINDOW - 1) :]
+            last_dt = pd.Timestamp(dates[-1]).floor("D")
+        else:
+            last_dt = pd.Timestamp(state["last_dt"]).floor("D") if state else pd.NaT
+        new_state = {
+            "last_dt": last_dt,
+            "base_low": float(base_low),
+            "n_bins": int(n_bins),
+            "chip": np.asarray(chip, dtype=np.float64),
+            "cum_high": float(cum_high),
+            "cum_low": float(cum_low),
+            "abs_conc_tail": abs_tail,
+            "min_d": float(min_d),
+            "ac": float(ac),
+            "algorithm_version": CHIP_STATE_ALGORITHM_VERSION,
+        }
+        return out, new_state, abs_conc
+
+    out = np.zeros((p_count, n), dtype=np.float64)
+    targets = percentiles / 100.0
+    chip = init_chip.copy()
+    base_low = init_base_low
+    n_bins = init_n_bins
+    if n_bins != len(chip):
+        n_bins = len(chip)
+    cum_high = init_cum_high
+    cum_low = init_cum_low
+    prev_cost = np.zeros(p_count, dtype=np.float64)
+
+    abs_conc = np.zeros(n, dtype=np.float64)
+    for i in range(n):
+        tr_raw = turnover_pct[i]
+        h = high[i]
+        l = low[i]
+        valid_bar = np.isfinite(tr_raw) and np.isfinite(h) and np.isfinite(l)
+        if valid_bar:
+            if not np.isfinite(cum_high):
+                cum_high = float(h)
+            else:
+                cum_high = max(cum_high, float(h))
+            if not np.isfinite(cum_low):
+                cum_low = float(l)
+            else:
+                cum_low = min(cum_low, float(l))
+            chip, base_low, n_bins = _update_chip_one_day_py(
+                chip,
+                base_low,
+                n_bins,
+                h,
+                l,
+                volume[i],
+                float(tr_raw) / 100.0,
+                min_d,
+                ac,
+                use_volume,
+            )
+            _fill_costs_from_chip_py(chip, base_low, min_d, n_bins, targets, out, i)
+            prev_cost = out[:, i].copy()
+        else:
+            if i > 0:
+                out[:, i] = out[:, i - 1]
+                prev_cost = out[:, i].copy()
+            else:
+                out[:, i] = prev_cost
+
+        denom = cum_high - cum_low if np.isfinite(cum_high) and np.isfinite(cum_low) else np.nan
+        if denom > 0 and np.isfinite(denom):
+            c5 = out[4, i]
+            c95 = out[94, i]
+            abs_conc[i] = ((c95 - c5) * 100.0) / denom
+        else:
+            abs_conc[i] = 0.0
+
+    if n > 0:
+        tail_joined = np.concatenate([abs_tail, abs_conc])
+        abs_tail = tail_joined[-(CONCENTRATION_NORM_WINDOW - 1) :]
+        last_dt = pd.Timestamp(dates[-1]).floor("D")
+    else:
+        last_dt = pd.Timestamp(state["last_dt"]).floor("D") if state else pd.NaT
+    new_state = {
+        "last_dt": last_dt,
+        "base_low": float(base_low),
+        "n_bins": int(n_bins),
+        "chip": chip,
+        "cum_high": float(cum_high),
+        "cum_low": float(cum_low),
+        "abs_conc_tail": abs_tail,
+        "min_d": float(min_d),
+        "ac": float(ac),
+        "algorithm_version": CHIP_STATE_ALGORITHM_VERSION,
+    }
+    return out, new_state, abs_conc
+
+
 def _costs_array_to_matrix(col_costs: np.ndarray, n_rows: int, ci: int, costs_np: np.ndarray) -> None:
     costs_np[:, :, ci] = col_costs
 
@@ -611,6 +967,140 @@ def _cost_slice(costs_np: np.ndarray, percentile: int) -> np.ndarray:
     if idx < 0 or idx >= costs_np.shape[0]:
         raise KeyError(f"COST percentile out of range: {percentile}")
     return costs_np[idx]
+
+
+def _encode_float_array(arr: np.ndarray) -> bytes:
+    return np.ascontiguousarray(arr, dtype=np.float64).tobytes()
+
+
+def _decode_float_array(raw: Any) -> np.ndarray:
+    if raw is None or (isinstance(raw, float) and np.isnan(raw)):
+        return np.zeros(0, dtype=np.float64)
+    if isinstance(raw, memoryview):
+        raw = raw.tobytes()
+    return np.frombuffer(raw, dtype=np.float64).copy()
+
+
+def _load_chip_state_cache(path: str | None = None) -> dict[str, dict[str, Any]]:
+    if path is None:
+        path = CHIP_STATE_CACHE_PATH
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with _CHIP_STATE_CACHE_WRITE_LOCK:
+            df = pd.read_parquet(path)
+    except Exception:
+        return {}
+    required = {
+        "htsc_code",
+        "last_dt",
+        "base_low",
+        "n_bins",
+        "chip_bytes",
+        "cum_high",
+        "cum_low",
+        "abs_conc_tail_bytes",
+        "min_d",
+        "ac",
+        "algorithm_version",
+    }
+    if not required.issubset(set(df.columns)):
+        return {}
+    states: dict[str, dict[str, Any]] = {}
+    for _, row in df.iterrows():
+        code = str(row["htsc_code"])
+        try:
+            states[code] = {
+                "htsc_code": code,
+                "last_dt": pd.Timestamp(row["last_dt"]).floor("D"),
+                "base_low": float(row["base_low"]),
+                "n_bins": int(row["n_bins"]),
+                "chip": _decode_float_array(row["chip_bytes"]),
+                "cum_high": float(row["cum_high"]),
+                "cum_low": float(row["cum_low"]),
+                "abs_conc_tail": _decode_float_array(row["abs_conc_tail_bytes"]),
+                "min_d": float(row["min_d"]),
+                "ac": float(row["ac"]),
+                "algorithm_version": str(row["algorithm_version"]),
+            }
+        except Exception:
+            continue
+    return states
+
+
+def _state_params_match(state: dict[str, Any], min_d: float, ac: float) -> bool:
+    return (
+        state.get("algorithm_version") == CHIP_STATE_ALGORITHM_VERSION
+        and np.isclose(float(state.get("min_d", np.nan)), float(min_d))
+        and np.isclose(float(state.get("ac", np.nan)), float(ac))
+    )
+
+
+def _state_usable_for_incremental(state: dict[str, Any], min_d: float, ac: float) -> bool:
+    if not _state_params_match(state, min_d, ac):
+        return False
+    try:
+        n_bins = int(state.get("n_bins", 0))
+    except Exception:
+        return False
+    return 0 < n_bins <= _chip_state_max_bins()
+
+
+def _save_chip_state_cache(states: dict[str, dict[str, Any]], path: str | None = None) -> None:
+    if path is None:
+        path = CHIP_STATE_CACHE_PATH
+    if not states:
+        return
+    cache_dir = os.path.dirname(path)
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+    tmp_name = f"latest_state.{os.getpid()}.{threading.get_ident()}.{uuid.uuid4().hex}.tmp.parquet"
+    tmp_path = os.path.join(cache_dir, tmp_name) if cache_dir else f"{path}.{uuid.uuid4().hex}.tmp"
+    try:
+        with _CHIP_STATE_CACHE_WRITE_LOCK:
+            merged_states = _load_chip_state_cache(path)
+            merged_states.update(states)
+
+            rows: list[dict[str, Any]] = []
+            updated_at = pd.Timestamp.now()
+            for code, state in merged_states.items():
+                chip = np.asarray(state.get("chip", np.zeros(0)), dtype=np.float64)
+                abs_tail = np.asarray(state.get("abs_conc_tail", np.zeros(0)), dtype=np.float64)
+                rows.append(
+                    {
+                        "htsc_code": str(code),
+                        "last_dt": pd.Timestamp(state["last_dt"]).floor("D"),
+                        "base_low": float(state.get("base_low", 0.0)),
+                        "n_bins": int(state.get("n_bins", len(chip))),
+                        "chip_bytes": _encode_float_array(chip),
+                        "cum_high": float(state.get("cum_high", np.nan)),
+                        "cum_low": float(state.get("cum_low", np.nan)),
+                        "abs_conc_tail_bytes": _encode_float_array(abs_tail[-(CONCENTRATION_NORM_WINDOW - 1) :]),
+                        "min_d": float(state.get("min_d", CHOUMA_MIN_D)),
+                        "ac": float(state.get("ac", CHOUMA_AC)),
+                        "algorithm_version": CHIP_STATE_ALGORITHM_VERSION,
+                        "updated_at": updated_at,
+                    }
+                )
+            df = pd.DataFrame(rows)
+            df.to_parquet(tmp_path, index=False)
+            last_exc: OSError | None = None
+            for attempt in range(20):
+                try:
+                    os.replace(tmp_path, path)
+                    last_exc = None
+                    break
+                except OSError as exc:
+                    last_exc = exc
+                    time.sleep(0.1 * (attempt + 1))
+            if last_exc is not None:
+                raise last_exc
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
 def load_turnover_wide(
@@ -674,6 +1164,28 @@ def _tdx_relative_concentration(abs_conc: np.ndarray) -> np.ndarray:
     return out
 
 
+def _tdx_relative_concentration_with_tail(abs_conc: np.ndarray, tails: list[np.ndarray]) -> np.ndarray:
+    out = np.zeros_like(abs_conc, dtype=np.float64)
+    for ci in range(abs_conc.shape[1]):
+        tail = np.asarray(tails[ci], dtype=np.float64) if ci < len(tails) else np.zeros(0, dtype=np.float64)
+        joined = np.concatenate([tail, abs_conc[:, ci]])
+        if joined.size == 0:
+            continue
+        s = pd.Series(joined)
+        mn = s.rolling(CONCENTRATION_NORM_WINDOW, min_periods=1).min().to_numpy(dtype=np.float64)
+        mx = s.rolling(CONCENTRATION_NORM_WINDOW, min_periods=1).max().to_numpy(dtype=np.float64)
+        rel = _safe_divide(joined - mn, mx - mn) * 100.0
+        out[:, ci] = rel[-abs_conc.shape[0] :]
+    return out
+
+
+def _align_tail_matrix(tail_values: np.ndarray, n_rows: int, start_row: int, n_cols: int) -> np.ndarray:
+    out = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
+    if tail_values.size:
+        out[start_row:, :] = tail_values
+    return out
+
+
 def build_chip_structure_factor_bundle(
     H: pd.DataFrame,
     L: pd.DataFrame,
@@ -694,10 +1206,8 @@ def build_chip_structure_factor_bundle(
     CYQ（fengwo/通达信对齐：对称三角峰 (H+L)/2，新增乘换手，旧筹码衰减乘换手）+ 集中总/筹码峰。
     T: 换手率宽表，百分数刻度；缺失值在加载层 fillna(0)，NaN 日 chip 不衰减不新增。
     """
-    del window_days, grid_size, history_decay, turnover_ma_window
-
     debug_timing = _timing_enabled()
-    t0 = time.perf_counter() if debug_timing else 0.0
+    t0 = time.perf_counter()
 
     index, columns = C.index, C.columns
     H = _to_frame(H, index=index, columns=columns).astype(float)
@@ -715,16 +1225,156 @@ def build_chip_structure_factor_bundle(
     c_np = np.ascontiguousarray(C.to_numpy(dtype=np.float64))
     v_np = np.ascontiguousarray(V.to_numpy(dtype=np.float64))
     t_np = np.ascontiguousarray(turnover_wide.to_numpy(dtype=np.float64))
-
     n_rows, n_cols = c_np.shape
+    factor_log(
+        "chip.start",
+        rows=int(n_rows),
+        cols=int(n_cols),
+        start=str(pd.Timestamp(index.min()).date()) if len(index) else None,
+        end=str(pd.Timestamp(index.max()).date()) if len(index) else None,
+        state_cache_enabled=_chip_state_cache_enabled(),
+        bundle_cache_enabled=_chip_bundle_cache_enabled(),
+        numba_available=_NUMBA_AVAILABLE,
+        min_d=float(min_d),
+        ac=float(ac),
+    )
+
+    cache_key = None
+    if _chip_bundle_cache_enabled():
+        cache_key = _chip_bundle_cache_key(
+            index=index,
+            columns=columns,
+            h_np=h_np,
+            l_np=l_np,
+            c_np=c_np,
+            v_np=v_np,
+            t_np=t_np,
+            min_d=min_d,
+            ac=ac,
+        )
+        cached = _get_cached_chip_bundle(cache_key)
+        if cached is not None:
+            factor_log("chip.bundle_cache_hit", rows=int(n_rows), cols=int(n_cols))
+            if debug_timing:
+                print("[筹码结构因子] bundle_cache=hit")
+            return cached
+
     p_count = len(_COST_PERCENTILES)
-    costs_np = np.zeros((p_count, n_rows, n_cols), dtype=np.float64)
+    costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
+    abs_conc_override: np.ndarray | None = None
+    rel_conc_tail_inputs: list[np.ndarray] | None = None
+    rel_conc_override: np.ndarray | None = None
+    state_cache_enabled = _chip_state_cache_enabled() and (
+        n_cols >= _chip_state_cache_min_cols() or _chip_state_cache_explicitly_enabled()
+    )
+    state_cache = _load_chip_state_cache() if state_cache_enabled else {}
+    new_states: dict[str, dict[str, Any]] = {}
+    input_dates = pd.DatetimeIndex(index).floor("D") if n_rows > 0 else pd.DatetimeIndex([])
+    state_cache_skip_reason = ""
+    state_cache_checked_cols = 0
+
+    state_start_rows: list[int] | None = None
+    if state_cache_enabled and n_rows > 0 and n_cols > 0:
+        state_start_rows = []
+        for col in columns:
+            state_cache_checked_cols += 1
+            st = state_cache.get(str(col))
+            if st is None or not _state_usable_for_incremental(st, min_d, ac):
+                state_cache_skip_reason = "missing_or_unusable_state"
+                state_start_rows = None
+                break
+            last_dt = pd.Timestamp(st["last_dt"]).floor("D")
+            valid_after_cache = np.flatnonzero(input_dates > last_dt)
+            if valid_after_cache.size == 0:
+                state_cache_skip_reason = "no_input_after_cached_date"
+                state_start_rows = None
+                break
+            state_start_rows.append(int(valid_after_cache[0]))
+    factor_log(
+        "chip.state_cache_checked",
+        enabled=state_cache_enabled,
+        loaded_states=len(state_cache),
+        checked_cols=state_cache_checked_cols,
+        usable=state_start_rows is not None,
+        skip_reason=state_cache_skip_reason,
+        max_bins=_chip_state_max_bins(),
+        min_cols=_chip_state_cache_min_cols(),
+        explicit_enabled=_chip_state_cache_explicitly_enabled(),
+        bootstrap_max_cells=os.getenv("ZXW_CHIP_STATE_BOOTSTRAP_MAX_CELLS", "50000"),
+    )
+
+    if state_start_rows is not None:
+        abs_conc_override = np.zeros((n_rows, n_cols), dtype=np.float64)
+        rel_conc_override = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
+        for ci, col in enumerate(columns):
+            prev_state = state_cache[str(col)]
+            start_row = int(state_start_rows[ci])
+            col_costs, col_state, col_abs = _compute_chouma_cost_series_with_state(
+                h_np[start_row:, ci],
+                l_np[start_row:, ci],
+                c_np[start_row:, ci],
+                v_np[start_row:, ci],
+                t_np[start_row:, ci],
+                _COST_PERCENTILES,
+                index[start_row:],
+                state=prev_state,
+                min_d=min_d,
+                ac=ac,
+                use_volume=CHOUMA_USE_VOLUME,
+            )
+            _costs_array_to_matrix(col_costs, n_rows - start_row, ci, costs_np[:, start_row:, :])
+            abs_conc_override[:start_row, ci] = np.nan
+            abs_conc_override[start_row:, ci] = col_abs
+            tail = np.asarray(prev_state.get("abs_conc_tail", np.zeros(0)), dtype=np.float64)
+            rel_conc_override[:, ci : ci + 1] = _align_tail_matrix(
+                _tdx_relative_concentration_with_tail(col_abs.reshape(-1, 1), [tail]),
+                n_rows,
+                start_row,
+                1,
+            )
+            col_state["htsc_code"] = str(col)
+            new_states[str(col)] = col_state
 
     use_numba = _use_numba(n_rows, n_cols)
     use_parallel = False if use_numba else (parallel if parallel is not None else n_cols >= 4)
-    t1 = time.perf_counter() if debug_timing else 0.0
+    t1 = time.perf_counter()
 
-    if use_numba:
+    if state_start_rows is not None:
+        factor_log(
+            "chip.path",
+            path="state_incremental",
+            rows=int(n_rows),
+            cols=int(n_cols),
+            min_start_row=int(min(state_start_rows)) if state_start_rows else None,
+            max_start_row=int(max(state_start_rows)) if state_start_rows else None,
+        )
+        pass
+    elif state_cache_enabled and _chip_state_cache_bootstrap_enabled(n_rows, n_cols):
+        factor_log("chip.path", path="state_bootstrap", rows=int(n_rows), cols=int(n_cols))
+        abs_conc_override = np.zeros((n_rows, n_cols), dtype=np.float64)
+        rel_conc_tail_inputs = [np.zeros(0, dtype=np.float64) for _ in range(n_cols)]
+        for ci, col in enumerate(columns):
+            if ci == 0 or (ci + 1) % 200 == 0 or ci + 1 == n_cols:
+                factor_log("chip.state_bootstrap_progress", done=int(ci + 1), total=int(n_cols), code=str(col))
+            col_costs, col_state, col_abs = _compute_chouma_cost_series_with_state(
+                h_np[:, ci],
+                l_np[:, ci],
+                c_np[:, ci],
+                v_np[:, ci],
+                t_np[:, ci],
+                _COST_PERCENTILES,
+                index,
+                state=None,
+                min_d=min_d,
+                ac=ac,
+                use_volume=CHOUMA_USE_VOLUME,
+            )
+            _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
+            abs_conc_override[:, ci] = col_abs
+            col_state["htsc_code"] = str(col)
+            new_states[str(col)] = col_state
+    elif use_numba:
+        factor_log("chip.path", path="numba_matrix", rows=int(n_rows), cols=int(n_cols))
         costs_np = _compute_chouma_cost_matrix_numba(
             h_np,
             l_np,
@@ -738,6 +1388,7 @@ def build_chip_structure_factor_bundle(
             CHOUMA_ADD_SCALES_WITH_TURNOVER,
         )
     elif use_parallel and n_cols > 1:
+        factor_log("chip.path", path="process_pool", rows=int(n_rows), cols=int(n_cols), workers=min(_parallel_workers(), n_cols))
         tasks = [
             (
                 ci,
@@ -760,7 +1411,10 @@ def build_chip_structure_factor_bundle(
                 ci, col_costs = fut.result()
                 _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
     else:
+        factor_log("chip.path", path="python_loop", rows=int(n_rows), cols=int(n_cols))
         for ci in range(n_cols):
+            if ci == 0 or (ci + 1) % 200 == 0 or ci + 1 == n_cols:
+                factor_log("chip.python_loop_progress", done=int(ci + 1), total=int(n_cols), code=str(columns[ci]))
             col_costs = _compute_chouma_cost_series(
                 h_np[:, ci],
                 l_np[:, ci],
@@ -774,7 +1428,7 @@ def build_chip_structure_factor_bundle(
             )
             _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
 
-    t2 = time.perf_counter() if debug_timing else 0.0
+    t2 = time.perf_counter()
 
     c1_np, c5_np, c10_np, c15_np = (
         _cost_slice(costs_np, 1),
@@ -805,11 +1459,17 @@ def build_chip_structure_factor_bundle(
         _cost_slice(costs_np, 99),
     )
 
-    cum_high = H.expanding(min_periods=1).max().to_numpy(dtype=np.float64)
-    cum_low = L.expanding(min_periods=1).min().to_numpy(dtype=np.float64)
-    abs_conc = _safe_divide((c95_np - c5_np) * 100.0, cum_high - cum_low)
-
-    rel_conc = _tdx_relative_concentration(abs_conc)
+    if abs_conc_override is None:
+        cum_high = H.expanding(min_periods=1).max().to_numpy(dtype=np.float64)
+        cum_low = L.expanding(min_periods=1).min().to_numpy(dtype=np.float64)
+        abs_conc = _safe_divide((c95_np - c5_np) * 100.0, cum_high - cum_low)
+        rel_conc = _tdx_relative_concentration(abs_conc)
+    else:
+        abs_conc = abs_conc_override
+        if rel_conc_override is not None:
+            rel_conc = rel_conc_override
+        else:
+            rel_conc = _tdx_relative_concentration_with_tail(abs_conc, rel_conc_tail_inputs or [])
 
     rel_score = _score_by_threshold(rel_conc)
     abs_score = _score_by_threshold(abs_conc)
@@ -883,7 +1543,7 @@ def build_chip_structure_factor_bundle(
     chip_peak_score[single_peak_best] = 1.0
     chip_peak_score[(chip_peak_score == 0) & double_peak & above_c33] = 2.0
     chip_peak_score[(chip_peak_score == 0) & multi_peak & above_c33] = 3.0
-    t3 = time.perf_counter() if debug_timing else 0.0
+    t3 = time.perf_counter()
 
     factor_dfs: dict[str, pd.DataFrame] = {
         "absolute_concentration": pd.DataFrame(abs_conc, index=index, columns=columns),
@@ -958,14 +1618,66 @@ def build_chip_structure_factor_bundle(
             f"post={((t3 - t2) * 1000):.2f}ms total={((t4 - t0) * 1000):.2f}ms"
         )
 
-    return {
+    result = {
         "factor_dfs": factor_dfs,
         "factor_name_map": factor_name_map,
     }
+    if cache_key is not None:
+        _store_cached_chip_bundle(cache_key, result)
+    if state_cache_enabled and new_states:
+        try:
+            factor_log("chip.state_cache_save_start", states=len(new_states))
+            _save_chip_state_cache(new_states)
+            factor_log("chip.state_cache_save_done", states=len(new_states))
+        except OSError as exc:
+            factor_log("chip.state_cache_save_failed", states=len(new_states), error=str(exc))
+            print(f"[WARN] 筹码 latest_state 缓存保存失败，已跳过本次缓存写入: {exc}")
+    factor_log(
+        "chip.finish",
+        rows=int(n_rows),
+        cols=int(n_cols),
+        factors=len(factor_dfs),
+        prep_sec=round(float(t1 - t0), 3),
+        cost_sec=round(float(t2 - t1), 3),
+        post_sec=round(float(t3 - t2), 3),
+        total_sec=round(float(time.perf_counter() - t0), 3),
+    )
+    return result
 
 
 BUNDLE_ID = "chip_structure"
 _DEFAULT_LOOKBACK_DAYS = 1220
+FACTOR_NAME_MAP: dict[str, str] = {
+    "绝对集中度": "absolute_concentration",
+    "相对集中度": "relative_concentration",
+    "相对集中度赋值": "relative_concentration_score",
+    "集中度绝级": "absolute_concentration_score",
+    "集中总": "concentration_total_score",
+    "单峰密度指标": "single_peak_density_value",
+    "筹码单峰密度": "single_peak_density_state",
+    "核心宽度占比指标": "single_peak_core_ratio_value",
+    "核心宽度占比条件": "single_peak_core_ratio_state",
+    "筹码单峰态": "single_peak_state",
+    "峰中心价格": "single_peak_center_price",
+    "成本1": "cost_1pct",
+    "成本5": "cost_5pct",
+    "成本15": "cost_15pct",
+    "成本33": "cost_33pct",
+    "成本34": "cost_34pct",
+    "成本35": "cost_35pct",
+    "成本66": "cost_66pct",
+    "成本67": "cost_67pct",
+    "成本85": "cost_85pct",
+    "成本95": "cost_95pct",
+    "成本99": "cost_99pct",
+    "低位单峰": "single_peak_low",
+    "中位单峰": "single_peak_mid",
+    "高位单峰": "single_peak_high",
+    "筹码单峰优": "single_peak_best",
+    "筹码两峰": "double_peak_state",
+    "筹码多峰": "multi_peak_state",
+    "筹码峰赋值": "chip_peak_score",
+}
 
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {
     "absolute_concentration": 1200,
@@ -998,6 +1710,13 @@ FACTOR_LOOKBACK_DAYS: dict[str, int] = {
     "multi_peak_state": 1200,
     "chip_peak_score": 1200,
 }
+
+
+def get_factor_catalog() -> dict[str, Any]:
+    return {
+        "bundle_id": BUNDLE_ID,
+        "factor_name_map": dict(FACTOR_NAME_MAP),
+    }
 
 
 def get_factor_lookback_config() -> dict[str, Any]:

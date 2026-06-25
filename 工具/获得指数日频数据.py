@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """指数日频数据下载。
 
-每次运行：扫描本地 parquet 得到各指数最新交易日，再登录 Insight，
-for 循环逐只调用 get_kline（指数接口一次只能查一只）。
+每次运行：扫描本地 parquet 得到各指数最新交易日，再用 xtquant 下载并读取
+1d K 线，输出保持原 Insight 版本的 index_data_daily 分区和字段语义。
 
 默认指数：000001.SH（上证指数）、399001.SZ（深证成指）。
 """
@@ -18,9 +18,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 import polars as pl
-from insight_python.com.insight import common
-from insight_python.com.insight.market_service import market_service
-from insight_python.com.insight.query import get_kline
+from xtquant import xtdata
 
 BASE_DIR = r"D:\database\index_data_daily"
 DEFAULT_INDEX_CODES = ["000001.SH", "399001.SZ"]
@@ -28,6 +26,8 @@ DEFAULT_START_DATE = "2010-01-01"
 MIN_PARQUET_BYTES = 12
 MERGED_FILE_NAME = "merged.parquet"
 REQUEST_INTERVAL_SEC = 0.5
+DATA_FREQUENCY = "1d"
+MAX_RETRIES = 3
 
 
 def save_partitioned_parquet(df: pl.DataFrame, base_dir: str) -> list[tuple[int, int]]:
@@ -56,14 +56,14 @@ def save_partitioned_parquet(df: pl.DataFrame, base_dir: str) -> list[tuple[int,
         dir_path = os.path.join(base_dir, f"year={year}", f"month={month:02d}")
         os.makedirs(dir_path, exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{timestamp}_year_{year}_month_{month:02d}.parquet"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        file_name = f"{timestamp}_{os.getpid()}_year_{year}_month_{month:02d}.parquet"
         file_path = os.path.join(dir_path, file_name)
 
         save_df = partition_df.drop(["year", "month"])
         save_df.write_parquet(file_path)
         touched_partitions.append((year, month))
-        print(f"✓ 已保存: {file_path} (共 {len(save_df)} 条记录)")
+        print(f"[OK] 已保存: {file_path} (共 {len(save_df)} 条记录)")
 
     return touched_partitions
 
@@ -136,34 +136,12 @@ def rebuild_merged_parquets(
     return rebuilt_files
 
 
-class insightmarketservice(market_service):
-    def on_query_response(self, result):
-        for response in iter(result):
-            print(response)
-
-
-def login() -> None:
-    markets = insightmarketservice()
-    user = "MDIL1_01042"
-    password = "weS._+7atE4Vdr"
-    result = common.login(markets, user, password, login_log=False)
-    print(result)
-
-
-def config(open_trace: bool = True, open_file_log: bool = True, open_cout_log: bool = True) -> None:
-    common.config(open_trace, open_file_log, open_cout_log)
-
-
-def get_version() -> None:
-    print(common.get_version())
-
-
-def fini() -> None:
-    common.fini()
-
-
 def normalize_code(code: str) -> str:
     return str(code).strip().upper()
+
+
+def format_xtquant_day(value: datetime) -> str:
+    return value.strftime("%Y%m%d")
 
 
 def scan_latest_downloaded_times(base_dir: str) -> dict[str, datetime]:
@@ -209,58 +187,125 @@ def resolve_start_date(
     return start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def should_relogin(error_msg: str) -> bool:
-    msg = error_msg.lower()
-    return "login" in msg or "connect" in msg or "session" in msg
+def normalize_xtquant_index_daily_dataframe(raw_df: pd.DataFrame, code: str) -> pd.DataFrame:
+    if raw_df is None or raw_df.empty:
+        return pd.DataFrame()
+
+    df = raw_df.copy()
+    if "time" not in df.columns and df.index.name == "stime":
+        df = df.reset_index()
+        df["time"] = df["stime"]
+    elif "time" not in df.columns:
+        df = df.reset_index()
+        first_col = df.columns[0]
+        df["time"] = df[first_col]
+
+    required_columns = ["time", "open", "high", "low", "close", "volume"]
+    missing_columns = [column for column in required_columns if column not in df.columns]
+    if missing_columns:
+        raise ValueError(f"xtquant 返回缺少必要列: {missing_columns}")
+    if "amount" not in df.columns:
+        df["amount"] = pd.NA
+    if "pvolume" not in df.columns:
+        df["pvolume"] = pd.NA
+
+    raw_time = df["time"]
+    if pd.api.types.is_numeric_dtype(raw_time):
+        max_abs = pd.to_numeric(raw_time, errors="coerce").abs().max()
+        unit = "ms" if pd.notna(max_abs) and max_abs > 10_000_000_000 else "s"
+        df["time"] = (
+            pd.to_datetime(raw_time, unit=unit, errors="coerce", utc=True)
+            .dt.tz_convert("Asia/Shanghai")
+            .dt.tz_localize(None)
+            .dt.floor("D")
+        )
+    else:
+        text_time = raw_time.astype(str).str.replace(r"\.0$", "", regex=True)
+        parsed_time = pd.to_datetime(text_time, format="%Y%m%d", errors="coerce")
+        fallback_time = pd.to_datetime(raw_time, errors="coerce")
+        df["time"] = parsed_time.fillna(fallback_time).dt.floor("D")
+
+    code = normalize_code(code)
+    df["htsc_code"] = code
+    df["exchange"] = "DefaultSecurityIDSource"
+    df["security_type"] = "index"
+    df["security_id"] = code.split(".")[0]
+    df["frequency"] = "daily"
+    df["value"] = pd.to_numeric(df["amount"], errors="coerce")
+    for column in ["open", "high", "low", "close", "volume", "pvolume", "value"]:
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+    df["volume"] = df["pvolume"].fillna(df["volume"] * 100)
+
+    ordered_columns = [
+        "htsc_code",
+        "time",
+        "exchange",
+        "security_type",
+        "security_id",
+        "frequency",
+        "open",
+        "close",
+        "high",
+        "low",
+        "volume",
+        "value",
+    ]
+    df = df.dropna(subset=["time", "htsc_code", "open", "high", "low", "close"])
+    df = df.drop_duplicates(subset=["htsc_code", "time"], keep="last")
+    df = df.sort_values(["time", "htsc_code"]).reset_index(drop=True)
+    return df[ordered_columns]
 
 
 def fetch_index_kline_with_retry(
     htsc_code: str,
     time_start_date: datetime,
     time_end_date: datetime,
-    max_retries: int = 3,
+    max_retries: int = MAX_RETRIES,
 ) -> pd.DataFrame | None:
-    """逐只指数拉取日 K；get_kline 每次只传一个 htsc_code。"""
+    """逐只指数拉取日 K，输出保持原 Insight 版本列语义。"""
     code = normalize_code(htsc_code)
+    start_text = format_xtquant_day(time_start_date)
+    end_text = format_xtquant_day(time_end_date)
     retry_count = 0
     while retry_count < max_retries:
         try:
-            result = get_kline(
-                htsc_code=[code],
-                time=[time_start_date, time_end_date],
-                frequency="daily",
-                fq="none",
+            xtdata.download_history_data2(
+                stock_list=[code],
+                period=DATA_FREQUENCY,
+                start_time=start_text,
+                end_time=end_text,
             )
-            if result is None or len(result) == 0:
+            data = xtdata.get_market_data_ex(
+                field_list=["time", "open", "high", "low", "close", "volume", "amount", "pvolume"],
+                stock_list=[code],
+                period=DATA_FREQUENCY,
+                start_time=start_text,
+                end_time=end_text,
+                dividend_type="none",
+                fill_data=False,
+            )
+            if not isinstance(data, dict) or code not in data:
                 return None
-
-            result = result.copy()
-            result["htsc_code"] = result["htsc_code"].map(normalize_code)
-            result["time"] = pd.to_datetime(result["time"]).dt.floor("D")
-            result = result.drop_duplicates(subset=["htsc_code", "time"], keep="last")
+            result = normalize_xtquant_index_daily_dataframe(data.get(code), code)
+            if result.empty:
+                return None
             return result
         except Exception as exc:
             retry_count += 1
             error_msg = str(exc)
-            print(f"  ✗ {code} 第 {retry_count} 次尝试失败: {error_msg}")
+            print(f"  [FAIL] {code} 第 {retry_count} 次尝试失败: {error_msg}")
             if retry_count >= max_retries:
                 raise
 
             wait_time = 2 * retry_count
-            print(f"  ⏳ 等待 {wait_time} 秒后重试...")
+            print(f"  [WAIT] 等待 {wait_time} 秒后重试...")
             time.sleep(wait_time)
-
-            if should_relogin(error_msg):
-                print("  🔄 检测到连接问题，尝试重新登录...")
-                login()
-                config(False, False, False)
-                print("  ✓ 重新登录成功")
 
     return None
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="指数日频下载：for 循环逐只 get_kline，增量写入 parquet")
+    parser = argparse.ArgumentParser(description="指数日频下载：xtquant 1d K 线，保持 index_data_daily 旧格式")
     parser.add_argument(
         "--codes",
         nargs="+",
@@ -296,13 +341,6 @@ def main() -> None:
 
     latest_time_map = scan_latest_downloaded_times(base_dir)
 
-    print("=" * 60)
-    print("初始化连接…")
-    print("=" * 60)
-    get_version()
-    login()
-    config(False, False, False)
-
     failed_codes: list[dict[str, object]] = []
     processed_count = 0
     skipped_count = 0
@@ -311,41 +349,36 @@ def main() -> None:
     print(f"待处理指数: {index_codes}")
     print("=" * 60)
 
-    try:
-        total = len(index_codes)
-        for idx, code in enumerate(index_codes, start=1):
-            start_date = resolve_start_date(code, latest_time_map, default_start_date)
-            if start_date > time_end_date:
-                skipped_count += 1
-                print(f"\n[{idx}/{total}] {code} 已是最新，跳过")
+    total = len(index_codes)
+    for idx, code in enumerate(index_codes, start=1):
+        start_date = resolve_start_date(code, latest_time_map, default_start_date)
+        if start_date > time_end_date:
+            skipped_count += 1
+            print(f"\n[{idx}/{total}] {code} 已是最新，跳过")
+            continue
+
+        print(f"\n[{idx}/{total}] {code}")
+        print(f"  下载区间: {start_date.date()} ~ {time_end_date.date()}")
+
+        try:
+            result = fetch_index_kline_with_retry(code, start_date, time_end_date)
+            if result is None or result.empty:
+                print(f"  [WARN] {code} 返回空数据")
+                failed_codes.append({"code": code, "error": "返回空数据"})
                 continue
 
-            print(f"\n[{idx}/{total}] {code}")
-            print(f"  下载区间: {start_date.date()} ~ {time_end_date.date()}")
-
-            try:
-                result = fetch_index_kline_with_retry(code, start_date, time_end_date)
-                if result is None or result.empty:
-                    print(f"  ⚠️ {code} 返回空数据")
-                    failed_codes.append({"code": code, "error": "返回空数据"})
-                    continue
-
-                touched = save_partitioned_parquet(pl.from_pandas(result), base_dir)
-                touched_partitions.update(touched)
-                processed_count += 1
-                print(f"  ✓ 成功 {len(result)} 条，累计成功 {processed_count}/{total - skipped_count}")
-                time.sleep(REQUEST_INTERVAL_SEC)
-            except Exception as exc:
-                error_msg = str(exc)
-                print(f"  ✗ {code} 最终失败: {error_msg}")
-                failed_codes.append({"code": code, "error": error_msg})
-    finally:
-        print("\n" + "=" * 60)
-        print("处理完成，释放连接...")
-        fini()
+            touched = save_partitioned_parquet(pl.from_pandas(result), base_dir)
+            touched_partitions.update(touched)
+            processed_count += 1
+            print(f"  [OK] 成功 {len(result)} 条，累计成功 {processed_count}/{total - skipped_count}")
+            time.sleep(REQUEST_INTERVAL_SEC)
+        except Exception as exc:
+            error_msg = str(exc)
+            print(f"  [FAIL] {code} 最终失败: {error_msg}")
+            failed_codes.append({"code": code, "error": error_msg})
 
     print("\n" + "=" * 60)
-    print("📊 执行统计")
+    print("[STATS] 执行统计")
     print("=" * 60)
     print(f"成功: {processed_count} | 已最新跳过: {skipped_count} | 失败: {len(failed_codes)}")
     print(f"更新到的分区数: {len(touched_partitions)}")
@@ -359,7 +392,7 @@ def main() -> None:
         print("本次无新增数据写入，跳过 merged.parquet 重建。")
 
     if failed_codes:
-        print("\n⚠️ 以下指数失败，可后续补跑:")
+        print("\n[WARN] 以下指数失败，可后续补跑:")
         for fail in failed_codes:
             print(f"  - {fail['code']}: {fail['error']}")
 
