@@ -11,6 +11,12 @@ def test_zxw_notebook_uses_ordinary_adjustment_service() -> None:
     notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
     source = "\n".join("".join(cell.get("source", [])) for cell in notebook.get("cells", []))
 
-    assert "from daily_adjustment_service import apply_daily_adjustment" in source
     assert "_zxw_apply_ordinary_adjustment" in source
     assert "np.cumprod(xdy)" not in source
+
+
+def test_zxw_notebook_does_not_depend_on_visualization_import_path() -> None:
+    notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
+    source = "\n".join("".join(cell.get("source", [])) for cell in notebook.get("cells", []))
+
+    assert "daily_adjustment_service" not in source
