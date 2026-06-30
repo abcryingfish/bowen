@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化因子有效性检验</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23151b23'/%3E%3Cpath d='M8 21h16M8 16h16M8 11h16' stroke='%2333d69f' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="./factor_validation.css">
+    <script defer src="./vendor/plotly.min.js"></script>
+</head>
+<body>
+    <header class="page-shell-header">
+        <div class="brand">量化研究工作台</div>
+        <nav class="header-center-tabs" aria-label="页面导航">
+            <a class="header-tab" href="../%E9%87%8F%E5%8C%96%E5%9B%A0%E5%AD%90/index.html">量化因子</a>
+            <a class="header-tab" href="../%E5%BD%A2%E6%80%81%E9%9D%A2/index.html">形态面</a>
+            <a class="header-tab" href="../%E8%88%86%E6%83%85%E9%9D%A2/index.html">舆情面</a>
+            <a class="header-tab" href="../%E5%9F%BA%E6%9C%AC%E9%9D%A2/index.html">基本面</a>
+            <a class="header-tab active" href="./dashboard.html">因子检验</a>
+        </nav>
+        <div id="page-clock" class="page-clock">Time: --</div>
+    </header>
+    <main class="validation-shell">
+        <aside class="control-rail" aria-label="因子检验参数">
+            <section class="control-block">
+                <div class="block-title">因子</div>
+                <input id="factor-search" class="field" type="search" placeholder="搜索因子或分组">
+                <div id="factor-list" class="factor-list"></div>
+                <div id="factor-drop-zone" class="factor-drop-zone">拖拽或点击因子到这里</div>
+                <div id="selected-factor" class="selected-factor">未选择</div>
+            </section>
+            <section class="control-block">
+                <div class="block-title">参数</div>
+                <label class="field-label">股票池<select id="stock-pool" class="field"><option value="ALL_A">全市场 CSV</option></select></label>
+                <label class="field-label">开始日期<input id="start-date" class="field" type="date"></label>
+                <label class="field-label">结束日期<input id="end-date" class="field" type="date"></label>
+                <label class="field-label">滚动窗口<input id="rolling-window" class="field" type="number" min="2" step="1" value="60"></label>
+                <label class="field-label">分组数量<select id="group-count" class="field"><option value="5">5</option><option value="8">8</option><option value="10">10</option><option value="20">20</option></select></label>
+                <button id="run-btn" class="primary-btn" type="button">运行检验</button>
+                <button id="save-record-btn" class="secondary-btn" type="button" disabled>保存成果</button>
+                <div id="status-line" class="status-line">等待选择因子</div>
+            </section>
+        </aside>
+        <section class="scroll-deck" id="scroll-deck">
+            <section class="deck-panel" id="panel-quality"><div class="panel-head"><span>01</span><h1>基础数据质量</h1></div><div class="metric-grid" id="quality-cards"></div><div id="quality-chart" class="chart-box"></div></section>
+            <section class="deck-panel" id="panel-ic"><div class="panel-head"><span>02</span><h1>IC / RankIC / 累计 IC</h1></div><div id="ic-summary" class="summary-table"></div><div id="cum-ic-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-rolling"><div class="panel-head"><span>03</span><h1>滚动 IC</h1></div><div id="rolling-ic-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-groups"><div class="panel-head"><span>04</span><h1>分组收益</h1></div><div id="group-chart" class="chart-box tall"></div><div id="group-table" class="summary-table"></div></section>
+            <section class="deck-panel" id="panel-events"><div class="panel-head"><span>05</span><h1>信号事件研究</h1></div><div id="event-summary" class="summary-table"></div><div id="event-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-records"><div class="panel-head"><span>06</span><h1>我的因子成果</h1></div><div id="records-list" class="records-list"></div></section>
+        </section>
+    </main>
+    <nav class="section-jump-nav" aria-label="页面因子导航">
+        <a class="section-jump-link active" href="#panel-quality" data-target="panel-quality"><span>01</span>数据质量</a>
+        <a class="section-jump-link" href="#panel-ic" data-target="panel-ic"><span>02</span>IC 检验</a>
+        <a class="section-jump-link" href="#panel-rolling" data-target="panel-rolling"><span>03</span>滚动 IC</a>
+        <a class="section-jump-link" href="#panel-groups" data-target="panel-groups"><span>04</span>分组收益</a>
+        <a class="section-jump-link" href="#panel-events" data-target="panel-events"><span>05</span>事件研究</a>
+        <a class="section-jump-link" href="#panel-records" data-target="panel-records"><span>06</span>因子成果</a>
+    </nav>
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right"><div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标"><canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600" aria-hidden="true"></canvas></div></div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+    <script>window.PAGE_VIEW = "factor-validation";</script>
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="./factor_validation.js"></script>
+</body>
+</html>

@@ -21,16 +21,32 @@ RAW_EVENT_COLUMNS = (
     "allotPrice",
 )
 ADJUST_ALIASES = {
-    "": "forward",
-    "qfq": "forward",
-    "forward": "forward",
-    "前复权": "forward",
-    "hfq": "backward",
-    "backward": "backward",
-    "后复权": "backward",
+    "": "forward_ratio",
+    "qfq": "forward_ratio",
+    "forward": "forward_ratio",
+    "forward_ratio": "forward_ratio",
+    "qfq_ratio": "forward_ratio",
+    "equal_forward": "forward_ratio",
+    "?????": "forward_ratio",
+    "???": "forward_ratio",
+    "hfq": "backward_ratio",
+    "backward": "backward_ratio",
+    "backward_ratio": "backward_ratio",
+    "hfq_ratio": "backward_ratio",
+    "equal_backward": "backward_ratio",
+    "?????": "backward_ratio",
+    "???": "backward_ratio",
+    "forward_ordinary": "forward_ordinary",
+    "ordinary_forward": "forward_ordinary",
+    "qfq_ordinary": "forward_ordinary",
+    "?????": "forward_ordinary",
+    "backward_ordinary": "backward_ordinary",
+    "ordinary_backward": "backward_ordinary",
+    "hfq_ordinary": "backward_ordinary",
+    "?????": "backward_ordinary",
     "none": "none",
     "raw": "none",
-    "不复权": "none",
+    "???": "none",
 }
 
 _MONTH_WIDE_CACHE: dict[str, dict[str, Any]] = {}
@@ -42,8 +58,16 @@ def normalize_adjust_mode(mode: Any) -> str:
     raw = "" if mode is None else str(mode).strip().lower()
     normalized = ADJUST_ALIASES.get(raw)
     if normalized is None:
-        raise ValueError("adjust 仅支持: none / forward / backward")
+        raise ValueError("adjust ???: none / forward_ratio / backward_ratio / forward_ordinary / backward_ordinary")
     return normalized
+
+
+def _adjust_direction(mode: str) -> str:
+    if mode.startswith("forward"):
+        return "forward"
+    if mode.startswith("backward"):
+        return "backward"
+    return mode
 
 
 def _bar_time_to_day(time_value: Any) -> pd.Timestamp:
@@ -271,6 +295,29 @@ def _event_effective_date(event_row: pd.Series) -> pd.Timestamp:
     return pd.Timestamp(event_row["event_date"]).normalize()
 
 
+def _infer_event_effective_dates(events: pd.DataFrame, xdy_series: pd.Series) -> pd.DataFrame:
+    if events.empty:
+        return events
+    out = events.copy()
+    out["effective_date"] = out["event_date"]
+    if xdy_series.empty:
+        return out
+
+    xdy_values = pd.to_numeric(xdy_series, errors="coerce").dropna().sort_index()
+    if xdy_values.empty:
+        return out
+    change_days = xdy_values.index[xdy_values.ne(xdy_values.shift(1))]
+    for idx, row in out.iterrows():
+        event_day = pd.Timestamp(row["event_date"]).normalize()
+        ratio = _event_share_ratio(row)
+        candidates = [day for day in change_days if day >= event_day and day <= event_day + pd.Timedelta(days=10)]
+        if not candidates:
+            continue
+        best_day = min(candidates, key=lambda day: abs(float(xdy_values.loc[day]) - ratio))
+        out.at[idx, "effective_date"] = pd.Timestamp(best_day).normalize()
+    return out
+
+
 def _event_share_ratio(event_row: pd.Series) -> float:
     return 1.0 + float(event_row.get("stockBonus", 0.0)) + float(event_row.get("stockGift", 0.0)) + float(event_row.get("allotNum", 0.0))
 
@@ -301,21 +348,25 @@ def _apply_ordinary_adjustment(
     mode: str,
     *,
     raw_base_path: Path = ADJ_RAW_BASE_PATH,
+    wide_base_path: Path = ADJ_WIDE_BASE_PATH,
 ) -> list[dict[str, Any]] | None:
     events = _load_raw_events_for_code(code, raw_base_path=Path(raw_base_path))
     if events.empty:
         return None
+    xdy_series = _load_full_xdy_series_for_code(code, wide_base_path=Path(wide_base_path))
+    events = _infer_event_effective_dates(events, xdy_series)
+    direction = _adjust_direction(mode)
 
     adjusted = [dict(bar) for bar in bars]
     for bar in adjusted:
         day = _bar_time_to_day(bar.get("time"))
         if pd.isna(day):
             continue
-        if mode == "backward":
-            active_events = events.loc[events["event_date"] <= day]
+        if direction == "backward":
+            active_events = events.loc[events["effective_date"] <= day]
             iterator = reversed(list(active_events.itertuples(index=False)))
         else:
-            active_events = events.loc[events["event_date"] > day]
+            active_events = events.loc[events["effective_date"] > day]
             iterator = active_events.itertuples(index=False)
 
         event_rows = [pd.Series(row._asdict()) for row in iterator]
@@ -329,7 +380,7 @@ def _apply_ordinary_adjustment(
                 continue
             adjusted_value = float(value)
             for event_row in event_rows:
-                if mode == "backward":
+                if direction == "backward":
                     adjusted_value = _apply_backward_event_value(adjusted_value, event_row)
                 else:
                     adjusted_value = _apply_forward_event_value(adjusted_value, event_row)
@@ -343,16 +394,17 @@ def _apply_ratio_adjustment(
     mode: str,
     *,
     wide_base_path: Path = ADJ_WIDE_BASE_PATH,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, Any]] | None:
     xdy_series = _load_full_xdy_series_for_code(code, wide_base_path=Path(wide_base_path))
     if xdy_series.empty:
-        return [dict(bar) for bar in bars]
+        return None
 
     full_backward_series = _compute_backward_factor_series(xdy_series)
     backward_factor = _resolve_backward_factors_for_bars(bars, full_backward_series)
     if backward_factor.size == 0:
-        return [dict(bar) for bar in bars]
-    if mode == "forward":
+        return None
+    direction = _adjust_direction(mode)
+    if direction == "forward":
         last_factor = float(full_backward_series.iloc[-1]) if not full_backward_series.empty else 1.0
         factors = backward_factor / (last_factor if last_factor != 0.0 else 1.0)
     else:
@@ -379,21 +431,39 @@ def apply_daily_adjustment(
     if adjust_mode == "none" or not bars:
         return [dict(bar) for bar in bars]
 
+    if adjust_mode.endswith("_ratio"):
+        ratio_adjusted = _apply_ratio_adjustment(
+            bars,
+            code,
+            adjust_mode,
+            wide_base_path=Path(wide_base_path),
+        )
+        if ratio_adjusted is not None:
+            return ratio_adjusted
+
     ordinary_adjusted = _apply_ordinary_adjustment(
         bars,
         code,
         adjust_mode,
         raw_base_path=Path(raw_base_path),
+        wide_base_path=Path(wide_base_path),
     )
     if ordinary_adjusted is not None:
         return ordinary_adjusted
 
-    return _apply_ratio_adjustment(
+    if adjust_mode.endswith("_ordinary"):
+        return [dict(bar) for bar in bars]
+
+    ratio_adjusted = _apply_ratio_adjustment(
         bars,
         code,
         adjust_mode,
         wide_base_path=Path(wide_base_path),
     )
+    if ratio_adjusted is not None:
+        return ratio_adjusted
+
+    return [dict(bar) for bar in bars]
 
 
 def adjust_daily_bars(

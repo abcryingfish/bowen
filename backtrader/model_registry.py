@@ -14,6 +14,7 @@ from models.zxw_factor_check_dual_assumption import runner as zxw_factor_check_d
 from models.zxw_factor_check_profit_threshold_dual_assumption import (
     runner as zxw_factor_check_profit_threshold_dual_assumption_runner,
 )
+from models.zxw_factor_check_base_threshold import runner as zxw_factor_check_base_threshold_runner
 
 ProgressCallback = Callable[[str, int, str], None]
 
@@ -204,6 +205,23 @@ def _doc_zxw_factor_check_profit_threshold_dual_assumption() -> str:
     )
 
 
+def _doc_zxw_factor_check_base_threshold() -> str:
+    return (
+        "<p><strong>ZXW 组合规则（因子检验 + 基本面阈值）</strong>"
+        "（<code>zxw_factor_check_base_threshold</code>）。"
+        "在「双假设 + 卖出阈值」模型基础上，增加买入端基本面硬过滤。</p>"
+        "<p><strong>买入过滤</strong>：前端买入因子合成 <code>strong_buy_signal≥1</code> 后，"
+        "仅保留同时满足 <code>PE&lt;50</code>、<code>PB&lt;6</code>、<code>ROE&gt;10</code>、"
+        "<code>营业收入同比&gt;10</code> 的标的信号。</p>"
+        "<p><strong>数据匹配</strong>：基本面读取 QMT 派生表 "
+        "<code>D:\\database\\qmt_company_data\\table=factor_fundamental_valuation</code>；"
+        "PE 使用 <code>pe_ttm</code>，PB 使用 <code>pb</code>，ROE 使用 <code>roe</code>，"
+        "营业收入同比由同表 <code>revenue</code> 按报告期同比计算；均按信号日前最近日频数据匹配。</p>"
+        "<p><strong>其余</strong>：保留原模型卖出阈值、单日涨跌幅不可交易、首日回溯建仓与现金补仓规则；不做子集穷举。</p>"
+        "<p><strong>前端</strong>：须同时配置买入因子与卖出因子（各至少 1 个）。</p>"
+    )
+
+
 def _doc_zxw_strong_adjusted() -> str:
     return (
         "<p><strong>ZXW 组合规则（只采用强点交易策略）</strong>（<code>StrongAdjustedZxwStrategy</code>）。"
@@ -287,6 +305,14 @@ REGISTRY: dict[str, ModelEntry] = {
         uses_frontend_buy_sell_rules=True,
         run=zxw_factor_check_profit_threshold_dual_assumption_runner.run,
     ),
+    "zxw_factor_check_base_threshold": ModelEntry(
+        id="zxw_factor_check_base_threshold",
+        title="ZXW组合规则(基本面叠加：双假设+卖出阈值)",
+        description_html=_doc_zxw_factor_check_base_threshold(),
+        web_runnable=True,
+        uses_frontend_buy_sell_rules=True,
+        run=zxw_factor_check_base_threshold_runner.run,
+    ),
     "zxw_init_10pct_snapshot": ModelEntry(
         id="zxw_init_10pct_snapshot",
         title="4-28 初始10%硬仓位（命名快照）",
@@ -327,6 +353,7 @@ def list_models_public() -> list[dict[str, Any]]:
         "zxw_factor_check_no_lookahead",
         "zxw_factor_check_dual_assumption",
         "zxw_factor_check_profit_threshold_dual_assumption",
+        "zxw_factor_check_base_threshold",
         "zxw_init_10pct_snapshot",
         "configurable_signal_rules",
     ]

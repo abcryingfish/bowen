@@ -1216,13 +1216,17 @@ let BACKTEST_MODEL_DOC = {};
 const BACKTEST_MODEL_FALLBACK = [];
 
 const ADJUST_MODE_PARAM = {
-    qfq: "forward",
-    hfq: "backward",
+    forward_ratio: "forward_ratio",
+    forward_ordinary: "forward_ordinary",
+    backward_ratio: "backward_ratio",
+    backward_ordinary: "backward_ordinary",
+    qfq: "forward_ratio",
+    hfq: "backward_ratio",
     none: "none",
 };
 let currentCode = PAGE_BOOT.code || "301469.SZ";
 let currentInterval = "1day";
-let currentAdjustMode = "qfq";
+let currentAdjustMode = "forward_ratio";
 const PORTFOLIO_MAIN_CURVE_CODE = "000000.YKRS";
 const CASH_CURVE_CODE = "0000000.YKRS";
 const BENCHMARK_CURVE_CODE = "000001.YKRS";
@@ -3314,8 +3318,19 @@ function alignToCurrentInterval(tsSeconds) {
 }
 
 function getCurrentAdjustParam() {
-    const key = String(currentAdjustMode || "qfq").trim();
-    return ADJUST_MODE_PARAM[key] || "forward";
+    const key = String(currentAdjustMode || "forward_ratio").trim();
+    return ADJUST_MODE_PARAM[key] || "forward_ratio";
+}
+
+function normalizeAdjustModeKey(mode) {
+    const key = String(mode || "forward_ratio").trim();
+    if (key === "qfq") {
+        return "forward_ratio";
+    }
+    if (key === "hfq") {
+        return "backward_ratio";
+    }
+    return Object.prototype.hasOwnProperty.call(ADJUST_MODE_PARAM, key) ? key : "forward_ratio";
 }
 
 function keepDigits(value, maxLen) {
@@ -3340,7 +3355,7 @@ function persistViewState() {
         const payload = {
             code: String(currentCode || "").trim().toUpperCase(),
             interval: String(currentInterval || "").trim(),
-            adjustMode: String(currentAdjustMode || "qfq").trim()
+            adjustMode: normalizeAdjustModeKey(currentAdjustMode)
         };
         localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
@@ -3401,7 +3416,7 @@ function restoreViewState() {
             // 无历史记录时使用默认 1day，并优先沿用自选项中的已选 code。
             currentInterval = "1day";
             intervalSelect.value = "1day";
-            currentAdjustMode = "qfq";
+            currentAdjustMode = "forward_ratio";
             if (adjustModeSelect) {
                 adjustModeSelect.value = currentAdjustMode;
             }
@@ -3423,11 +3438,7 @@ function restoreViewState() {
             currentInterval = "1day";
             intervalSelect.value = "1day";
         }
-        if (Object.prototype.hasOwnProperty.call(ADJUST_MODE_PARAM, savedAdjustMode)) {
-            currentAdjustMode = savedAdjustMode;
-        } else {
-            currentAdjustMode = "qfq";
-        }
+        currentAdjustMode = normalizeAdjustModeKey(savedAdjustMode);
         if (adjustModeSelect) {
             adjustModeSelect.value = currentAdjustMode;
         }
@@ -3447,7 +3458,7 @@ function restoreViewState() {
         // 记录异常时回退默认值。
         currentInterval = "1day";
         intervalSelect.value = "1day";
-        currentAdjustMode = "qfq";
+        currentAdjustMode = "forward_ratio";
         if (adjustModeSelect) {
             adjustModeSelect.value = currentAdjustMode;
         }

@@ -27,6 +27,20 @@ TABLE_LABELS = {
 }
 TABLE_ORDER = ["Income", "Balance", "CashFlow", "PershareIndex", "Capital"]
 META_COLUMNS = {"htsc_code", "table_name", "table", "year", "month"}
+DATE_PRIORITY = [
+    "report_date",
+    "time",
+    "announce_date",
+    "income_report_date",
+    "income_announce_date",
+    "balance_report_date",
+    "balance_announce_date",
+    "roe_report_date",
+    "roe_announce_date",
+    "capital_report_date",
+    "capital_announce_date",
+    "updated_at",
+]
 FIELD_LABELS = {
     # common
     "report_date": "报告期",
@@ -184,6 +198,26 @@ def _quote_paths(paths: list[str]) -> str:
     return "[" + ", ".join(repr(path) for path in paths) + "]"
 
 
+def _table_columns(paths: list[str]) -> list[str]:
+    if not paths:
+        return []
+    query = f"DESCRIBE SELECT * FROM read_parquet({_quote_paths(paths)}, union_by_name=true)"
+    return duckdb.connect(database=":memory:").execute(query).df()["column_name"].tolist()
+
+
+def _date_columns(columns: list[str]) -> list[str]:
+    column_set = set(columns)
+    return [column for column in DATE_PRIORITY if column in column_set]
+
+
+def _order_by_clause(columns: list[str]) -> str:
+    date_columns = _date_columns(columns)
+    if not date_columns:
+        return ""
+    items = [f'CAST("{column}" AS TIMESTAMP) DESC NULLS LAST' for column in date_columns]
+    return "ORDER BY " + ", ".join(items)
+
+
 def _to_jsonable(value: Any) -> Any:
     if value is None:
         return None
@@ -204,7 +238,7 @@ def _rows_to_json(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _infer_column_type(key: str, rows: list[dict[str, Any]]) -> str:
-    if key in {"report_date", "announce_date", "updated_at"}:
+    if key in DATE_PRIORITY or key.endswith("_date"):
         return "date"
     for row in rows:
         value = row.get(key)
@@ -219,7 +253,7 @@ def _build_columns(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     if not rows:
         return []
     keys = list(rows[0].keys())
-    preferred = ["report_date", "announce_date", "period", "name"]
+    preferred = ["report_date", "time", "announce_date", "period", "name"]
     ordered = [key for key in preferred if key in keys]
     ordered.extend(key for key in keys if key not in ordered and key not in META_COLUMNS)
     return [{"key": key, "label": FIELD_LABELS.get(key, key), "type": _infer_column_type(key, rows)} for key in ordered]
@@ -242,18 +276,22 @@ def query_qmt_company_table(code: str | None, table: str | None, limit: int = DE
     if not paths:
         raise MarketDataNotFoundError(f"未找到 QMT 公司数据表 {table_name}")
     safe_limit = max(1, min(int(limit or DEFAULT_LIMIT), 200))
+    columns = _table_columns(paths)
+    order_by = _order_by_clause(columns)
     query = f"""
     SELECT *
     FROM read_parquet({_quote_paths(paths)}, union_by_name=true)
     WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) = ?
-    ORDER BY CAST(report_date AS TIMESTAMP) DESC, CAST(announce_date AS TIMESTAMP) DESC
+    {order_by}
     LIMIT {safe_limit}
     """
     df = duckdb.connect(database=":memory:").execute(query, [normalized]).df()
     if df.empty:
         raise MarketDataNotFoundError(f"未找到 {normalized} 的 {table_name} 数据")
     rows = _rows_to_json(df.to_dict(orient="records"))
-    rows.sort(key=lambda row: (str(row.get("report_date") or ""), str(row.get("announce_date") or "")), reverse=True)
+    date_columns = _date_columns(columns)
+    if date_columns:
+        rows.sort(key=lambda row: tuple(str(row.get(column) or "") for column in date_columns), reverse=True)
     return {
         "meta": {
             "code": normalized,
@@ -282,7 +320,7 @@ def query_qmt_company_summary(code: str | None) -> dict[str, Any]:
             continue
         latest_by_table[table] = row
         name = name or str(row.get("name") or "")
-        report = str(row.get("report_date") or "")
+        report = next((str(row.get(column) or "") for column in DATE_PRIORITY if row.get(column)), "")
         if report and report > latest_report:
             latest_report = report
     if not latest_by_table:

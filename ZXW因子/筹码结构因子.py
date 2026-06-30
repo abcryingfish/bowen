@@ -29,7 +29,7 @@ except Exception:  # pragma: no cover
 
 # 对齐通达信/fengwo CYQ：峰 (H+L)/2、minD=0.01、换手%/100、AC=1
 # fengwo.COST 实测与 VOL 无关（旧筹码衰减和新增筹码均按换手率；新增为三角分布）
-DEFAULT_TURNOVER_BASE_DIR = r"D:\database\stock_financial_statements\market_equity_data"
+DEFAULT_TURNOVER_BASE_DIR = r"D:\database\qmt_turnover_data"
 CHIP_STATE_CACHE_PATH = (
     r"C:\Users\Administrator\Desktop\python_venv\temp_calculated_data\Chip Distribution\latest_state.parquet"
 )
@@ -1108,7 +1108,7 @@ def load_turnover_wide(
     columns: pd.Index,
     base_dir: str = DEFAULT_TURNOVER_BASE_DIR,
 ) -> pd.DataFrame:
-    """从 market_equity_data 分区 parquet 读取换手率宽表（百分数刻度）。"""
+    """从 QMT 换手率分区 parquet 读取换手率宽表（百分数刻度）。"""
     import duckdb
 
     if len(index) == 0 or len(columns) == 0:

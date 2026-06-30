@@ -30,7 +30,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 
 BASE_DIR = r"D:\database\stock_basic_data_daily"
-BATCH_SIZE = 450  # 每批 xtquant 请求的股票数量
+BATCH_SIZE = 100  # 每批 xtquant 请求的股票数量
 DEFAULT_SECTOR_NAME = "\u6caa\u6df1A\u80a1"
 DEFAULT_START_DATE = "2010-01-01"
 DEFAULT_END_DATE = ""

@@ -130,17 +130,6 @@ class FactorCheckProfitThresholdDualAssumptionZxwStrategy(FactorCheckDualAssumpt
             if self._submit_profit_threshold_sell(d):
                 threshold_sold_codes.add(self._code_key(d))
 
-        for d in sorted_ds:
-            if self._code_key(d) in threshold_sold_codes:
-                continue
-            close_px = float(d.close[0])
-            if not np.isfinite(close_px) or close_px <= 0:
-                continue
-            if self.getposition(d).size <= 0:
-                continue
-            if self._strong_sell_hit(d):
-                self._submit_sell_signal_close(d)
-
         total_value = float(self.broker.getvalue())
         if total_value <= 0:
             return

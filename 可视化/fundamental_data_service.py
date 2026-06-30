@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""基本面 parquet 查询服务 — 读取 D:\\database\\stock_financial_statements。"""
+"""基本面 parquet 查询服务 — 读取 D:\\database\\qmt_company_data。"""
 
 from __future__ import annotations
 
@@ -20,107 +20,105 @@ from market_data_service import (
     _list_recent_merged_candidates,
 )
 
-FINANCIAL_ROOT = r"D:\database\stock_financial_statements"
+FINANCIAL_ROOT = r"D:\database\qmt_company_data"
 MERGED_GLOB = "**/merged.parquet"
 CODE_PATTERN = re.compile(r"^\d{6}\.(SH|SZ|BJ)$", re.IGNORECASE)
 
 STATEMENT_SUBDIRS = {
-    "income": "income_statements",
-    "balance": "balance_sheet",
-    "cashflow": "cash_flow_statement",
+    "income": "table=Income",
+    "balance": "table=Balance",
+    "cashflow": "table=CashFlow",
 }
-INDICATOR_SUBDIR = "financial_indicators"
-VALUATION_SUBDIR = "stock_valuation_data"
-EQUITY_SUBDIR = "market_equity_data"
+INDICATOR_SUBDIR = "table=PershareIndex"
+VALUATION_SUBDIR = "table=factor_fundamental_valuation"
+EQUITY_SUBDIR = r"D:\database\qmt_turnover_data"
 
 FieldSpec = dict[str, str]  # key -> label; format stored separately
 
 INCOME_FIELDS: list[tuple[str, str, str]] = [
-    ("oper_revenue", "营业收入", "money"),
-    ("total_oper_cost", "营业总成本", "money"),
-    ("oper_cost", "营业成本", "money"),
-    ("sell_expense", "销售费用", "money"),
-    ("admin_expense", "管理费用", "money"),
-    ("fin_cost", "财务费用", "money"),
+    ("revenue", "营业收入", "money"),
+    ("total_expense", "营业总成本", "money"),
+    ("operating_revenue", "营业成本", "money"),
+    ("sale_expense", "销售费用", "money"),
+    ("less_gerl_admin_exp", "管理费用", "money"),
+    ("financial_expense", "财务费用", "money"),
     ("oper_profit", "营业利润", "money"),
-    ("total_profit", "利润总额", "money"),
-    ("income_tax_expense", "所得税费用", "money"),
-    ("net_profit", "净利润", "money"),
-    ("net_profit_coms", "归母净利润", "money"),
-    ("basic_eps", "基本每股收益", "number"),
-    ("diluted_eps", "稀释每股收益", "number"),
+    ("tot_profit", "利润总额", "money"),
+    ("inc_tax", "所得税费用", "money"),
+    ("net_profit_incl_min_int_inc", "净利润", "money"),
+    ("net_profit_incl_min_int_inc_after", "归母净利润", "money"),
+    ("s_fa_eps_basic", "基本每股收益", "number"),
+    ("s_fa_eps_diluted", "稀释每股收益", "number"),
 ]
 
 BALANCE_FIELDS: list[tuple[str, str, str]] = [
-    ("monetary_fund", "货币资金", "money"),
-    ("account_rec", "应收账款", "money"),
-    ("inventory", "存货", "money"),
-    ("total_cur_asset", "流动资产合计", "money"),
-    ("fixed_asset_net", "固定资产净额", "money"),
-    ("total_non_cur_asset", "非流动资产合计", "money"),
-    ("total_asset", "资产总计", "money"),
-    ("st_borrowing", "短期借款", "money"),
-    ("account_pay", "应付账款", "money"),
-    ("total_cur_liab", "流动负债合计", "money"),
-    ("lt_borrowing", "长期借款", "money"),
-    ("total_non_cur_liab", "非流动负债合计", "money"),
-    ("total_liab", "负债合计", "money"),
-    ("share_capital", "股本", "money"),
-    ("capital_reserve", "资本公积", "money"),
-    ("retained_earning", "未分配利润", "money"),
-    ("total_sh_equity", "股东权益合计", "money"),
-    ("total_liab_sh_equity", "负债及股东权益总计", "money"),
+    ("cash_equivalents", "货币资金", "money"),
+    ("account_receivable", "应收账款", "money"),
+    ("inventories", "存货", "money"),
+    ("total_current_assets", "流动资产合计", "money"),
+    ("fix_assets", "固定资产净额", "money"),
+    ("total_non_current_assets", "非流动资产合计", "money"),
+    ("tot_assets", "资产总计", "money"),
+    ("shortterm_loan", "短期借款", "money"),
+    ("accounts_payable", "应付账款", "money"),
+    ("total_current_liability", "流动负债合计", "money"),
+    ("long_term_loans", "长期借款", "money"),
+    ("non_current_liabilities", "非流动负债合计", "money"),
+    ("tot_liab", "负债合计", "money"),
+    ("cap_stk", "股本", "money"),
+    ("cap_rsrv", "资本公积", "money"),
+    ("undistributed_profit", "未分配利润", "money"),
+    ("total_equity", "股东权益合计", "money"),
+    ("tot_liab_shrhldr_eqy", "负债及股东权益总计", "money"),
 ]
 
 CASHFLOW_FIELDS: list[tuple[str, str, str]] = [
-    ("sub_total_cash_in_oper", "经营活动现金流入小计", "money"),
-    ("sub_total_cash_out_oper", "经营活动现金流出小计", "money"),
-    ("net_cash_flow_oper", "经营活动现金流量净额", "money"),
-    ("sub_total_cash_in_inv", "投资活动现金流入小计", "money"),
-    ("sub_total_cash_out_inv", "投资活动现金流出小计", "money"),
-    ("net_cash_flow_inv", "投资活动现金流量净额", "money"),
-    ("sub_total_cash_in_fina", "筹资活动现金流入小计", "money"),
-    ("sub_total_cash_out_fina", "筹资活动现金流出小计", "money"),
-    ("net_cash_flow_fina", "筹资活动现金流量净额", "money"),
-    ("effect_foreign_ex_rate", "汇率变动影响", "money"),
-    ("cash_equi_net_incr", "现金及等价物净增加额", "money"),
-    ("cashequiending", "期末现金及等价物余额", "money"),
+    ("stot_cash_inflows_oper_act", "经营活动现金流入小计", "money"),
+    ("stot_cash_outflows_oper_act", "经营活动现金流出小计", "money"),
+    ("net_cash_flows_oper_act", "经营活动现金流量净额", "money"),
+    ("stot_cash_inflows_inv_act", "投资活动现金流入小计", "money"),
+    ("stot_cash_outflows_inv_act", "投资活动现金流出小计", "money"),
+    ("net_cash_flows_inv_act", "投资活动现金流量净额", "money"),
+    ("stot_cash_inflows_fnc_act", "筹资活动现金流入小计", "money"),
+    ("stot_cash_outflows_fnc_act", "筹资活动现金流出小计", "money"),
+    ("net_cash_flows_fnc_act", "筹资活动现金流量净额", "money"),
+    ("eff_fx_flu_cash", "汇率变动影响", "money"),
+    ("net_incr_cash_cash_equ", "现金及等价物净增加额", "money"),
+    ("cash_cash_equ_end_period", "期末现金及等价物余额", "money"),
 ]
 
 INDICATOR_TABLE_COLUMNS: list[tuple[str, str, str]] = [
-    ("oper_revenue", "营业收入", "money"),
-    ("net_profit_parent_com", "归母净利润", "money"),
-    ("gross_profit_margin", "毛利率", "percent"),
-    ("profit_margin", "净利率", "percent"),
-    ("oper_profit_margin", "营业利润率", "percent"),
-    ("roe", "ROE", "percent"),
-    ("roa", "ROA", "percent"),
-    ("basic_eps", "基本 EPS", "number"),
-    ("oper_revenue_yoy", "营收同比", "percent"),
-    ("net_profit_yoy", "净利润同比", "percent"),
-    ("current_ratio", "流动比率", "ratio"),
-    ("equity_ratio", "产权比率", "ratio"),
-    ("total_asset", "总资产", "money"),
+    ("inc_revenue", "营业收入同比", "percent"),
+    ("inc_net_profit", "净利润同比", "percent"),
+    ("sales_gross_profit", "毛利率", "percent"),
+    ("du_profit_rate", "净利率", "percent"),
+    ("du_profit", "营业利润率", "percent"),
+    ("equity_roe", "ROE", "percent"),
+    ("net_roe", "净资产收益率", "percent"),
+    ("s_fa_eps_basic", "基本 EPS", "number"),
+    ("inc_revenue_rate", "营收同比", "percent"),
+    ("inc_net_profit_rate", "净利润同比", "percent"),
+    ("gear_ratio", "资产负债率", "ratio"),
+    ("inventory_turnover", "存货周转率", "ratio"),
 ]
 
 CHART_METRICS: list[tuple[str, str, str]] = [
-    ("profit_margin", "净利率", "percent"),
-    ("gross_profit_margin", "毛利率", "percent"),
-    ("roe", "ROE", "percent"),
-    ("oper_revenue_yoy", "营收同比", "percent"),
-    ("basic_eps", "基本 EPS", "number"),
-    ("total_asset_yoy", "总资产同比", "percent"),
+    ("du_profit_rate", "净利率", "percent"),
+    ("sales_gross_profit", "毛利率", "percent"),
+    ("equity_roe", "ROE", "percent"),
+    ("inc_revenue_rate", "营收同比", "percent"),
+    ("s_fa_eps_basic", "基本 EPS", "number"),
+    ("inc_net_profit_rate", "净利润同比", "percent"),
 ]
 
 OVERVIEW_KPIS: list[tuple[str, str, str, Optional[str]]] = [
-    ("oper_revenue", "营业收入", "money", "oper_revenue_yoy"),
-    ("net_profit_parent_com", "归母净利润", "money", "net_profit_yoy"),
-    ("roe", "ROE", "percent", None),
-    ("profit_margin", "净利率", "percent", None),
-    ("gross_profit_margin", "毛利率", "percent", None),
-    ("total_asset", "总资产", "money", "total_asset_yoy"),
-    ("basic_eps", "基本 EPS", "number", None),
-    ("current_ratio", "流动比率", "ratio", None),
+    ("revenue", "营业收入", "money", "inc_revenue_rate"),
+    ("net_profit_incl_min_int_inc_after", "归母净利润", "money", "inc_net_profit_rate"),
+    ("equity_roe", "ROE", "percent", None),
+    ("du_profit_rate", "净利率", "percent", None),
+    ("sales_gross_profit", "毛利率", "percent", None),
+    ("s_fa_eps_basic", "基本 EPS", "number", None),
+    ("gear_ratio", "资产负债率", "ratio", None),
 ]
 
 MAX_QUARTER_ROWS = 12
@@ -148,8 +146,11 @@ VIEW_SPECS: list[tuple[str, str, int]] = [
 
 # parquet 中主字段常为空，用 Insight 实际有值的列回填
 INDICATOR_VALUE_FALLBACKS: dict[str, list[str]] = {
-    "roe": ["weighted_roe", "cut_roe"],
-    "roa": ["roa_ebit"],
+    "equity_roe": ["net_roe"],
+    "oper_revenue_yoy": ["inc_revenue_rate", "inc_revenue"],
+    "net_profit_yoy": ["inc_net_profit_rate", "inc_net_profit"],
+    "gross_profit_margin": ["sales_gross_profit", "gross_profit"],
+    "profit_margin": ["du_profit_rate", "du_profit"],
 }
 
 
@@ -170,6 +171,8 @@ def _subdir_glob(subdir: str) -> str:
 
 
 def _subdir_base(subdir: str) -> str:
+    if re.match(r"^[A-Za-z]:[\\/]", subdir):
+        return subdir.replace("\\", "/")
     return f"{FINANCIAL_ROOT}/{subdir}".replace("\\", "/")
 
 
@@ -187,17 +190,16 @@ def _unique_columns(*groups: list[str]) -> list[str]:
 
 def _statement_columns(field_specs: list[tuple[str, str, str]]) -> list[str]:
     return _unique_columns(
-        ["end_date", "period", "name"],
+        ["report_date AS end_date", "period", "name"],
         [key for key, _, _ in field_specs],
     )
 
 
 def _indicator_columns() -> list[str]:
     return _unique_columns(
-        ["end_date", "period", "name"],
+        ["report_date AS end_date", "period", "name"],
         [key for key, _, _ in INDICATOR_TABLE_COLUMNS],
         [key for key, _, _ in CHART_METRICS],
-        [key for key, _, _, _ in OVERVIEW_KPIS],
         [alt for alts in INDICATOR_VALUE_FALLBACKS.values() for alt in alts],
     )
 
@@ -205,12 +207,8 @@ def _indicator_columns() -> list[str]:
 VALUATION_COLUMNS = [
     "htsc_code",
     "time",
-    "pe",
-    "pettm",
+    "pe_ttm AS pettm",
     "pb",
-    "ps",
-    "psttm",
-    "floating_market_val",
     "total_market_val",
 ]
 EQUITY_COLUMNS = [
@@ -236,6 +234,15 @@ def _quote_parquet_paths(paths: list[str]) -> str:
     return "[" + ", ".join(repr(path) for path in paths) + "]"
 
 
+def _empty_view_sql(view_name: str) -> str:
+    if view_name in {"income", "balance", "cashflow", "indicator"}:
+        return (
+            "SELECT CAST(NULL AS VARCHAR) AS htsc_code, CAST(NULL AS DATE) AS report_date, "
+            "CAST(NULL AS VARCHAR) AS period, CAST(NULL AS VARCHAR) AS name WHERE false"
+        )
+    return "SELECT CAST(NULL AS VARCHAR) AS htsc_code, CAST(NULL AS TIMESTAMP) AS time WHERE false"
+
+
 def _financial_data_stamp() -> float:
     stamps: list[float] = []
     for _, subdir, _ in VIEW_SPECS:
@@ -256,10 +263,11 @@ def _ensure_views() -> duckdb.DuckDBPyConnection:
             _VIEW_CONN = duckdb.connect(database=":memory:")
         for view_name, subdir, recent_count in VIEW_SPECS:
             paths = _resolve_partition_paths(subdir, recent_count=recent_count)
-            _VIEW_CONN.execute(
-                "CREATE OR REPLACE VIEW fin_"
-                f"{view_name} AS SELECT * FROM read_parquet({_quote_parquet_paths(paths)}, union_by_name=true)"
-            )
+            if paths:
+                view_sql = f"SELECT * FROM read_parquet({_quote_parquet_paths(paths)}, hive_partitioning=true, union_by_name=true)"
+            else:
+                view_sql = _empty_view_sql(view_name)
+            _VIEW_CONN.execute("CREATE OR REPLACE VIEW fin_" f"{view_name} AS {view_sql}")
         _VIEW_STAMP = stamp
         return _VIEW_CONN
 
@@ -287,6 +295,7 @@ def _resolve_partition_paths(subdir: str, *, recent_count: int) -> list[str]:
 
     recent_paths = _list_recent_merged_candidates(base, max_count=recent_count)
     paths = recent_paths if recent_paths else [_subdir_glob(subdir)]
+    paths = [path for path in paths if "*" in path or os.path.exists(path)]
     with _PARTITION_CACHE_LOCK:
         _PARTITION_PATH_CACHE[cache_key] = (stamp, list(paths))
     return paths
@@ -357,7 +366,7 @@ def _fetch_quarterly_from_view(
     select_sql = ", ".join(columns)
     sql = (
         f"SELECT {select_sql} FROM fin_{view_name} "
-        "WHERE htsc_code = ? ORDER BY end_date DESC, period DESC LIMIT ?"
+        "WHERE htsc_code = ? ORDER BY report_date DESC, period DESC LIMIT ?"
     )
     try:
         df = con.execute(sql, [code, limit]).fetchdf()
@@ -405,7 +414,7 @@ def _fetch_quarterly_df(
         return []
     sql = (
         f"SELECT {select_sql} FROM {reader_sql} "
-        "WHERE htsc_code = ? ORDER BY end_date DESC, period DESC LIMIT ?"
+        "WHERE htsc_code = ? ORDER BY report_date DESC, period DESC LIMIT ?"
     )
     try:
         df = con.execute(sql, [*reader_params, code, limit]).fetchdf()
@@ -418,7 +427,7 @@ def _fetch_quarterly_df(
     glob_path = _subdir_glob(subdir)
     fallback_sql = (
         f"SELECT {select_sql} FROM read_parquet(?, hive_partitioning=true, union_by_name=true) "
-        "WHERE htsc_code = ? ORDER BY end_date DESC, period DESC LIMIT ?"
+        "WHERE htsc_code = ? ORDER BY report_date DESC, period DESC LIMIT ?"
     )
     try:
         df = con.execute(fallback_sql, [glob_path, code, limit]).fetchdf()
@@ -546,10 +555,10 @@ def _build_overview(rows: list[dict[str, Any]], income_rows: list[dict[str, Any]
         value = _get_indicator_field(latest, key)
         if not _is_finite_number(value) and income_rows:
             income_latest = income_rows[-1]
-            if key == "oper_revenue":
-                value = income_latest.get("oper_revenue") or income_latest.get("total_oper_revenue")
-            elif key == "net_profit_parent_com":
-                value = income_latest.get("net_profit_coms") or income_latest.get("net_profit")
+            if key == "revenue":
+                value = income_latest.get("revenue") or income_latest.get("total_income")
+            elif key == "net_profit_incl_min_int_inc_after":
+                value = income_latest.get("net_profit_incl_min_int_inc_after") or income_latest.get("net_profit_incl_min_int_inc")
         yoy = latest.get(yoy_key) if yoy_key else None
         if not _is_finite_number(value) and not _is_finite_number(yoy):
             continue

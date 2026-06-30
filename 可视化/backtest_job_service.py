@@ -262,6 +262,7 @@ def create_backtest_job(payload: dict[str, Any]) -> dict[str, Any]:
             "zxw_factor_check_no_lookahead",
             "zxw_factor_check_dual_assumption",
             "zxw_factor_check_profit_threshold_dual_assumption",
+            "zxw_factor_check_base_threshold",
         ):
             raise ValueError(f"因子检验模型 {adopt} 不支持 run_mode=optuna")
         payload = _prepare_optuna_payload(payload, adopt)

@@ -1,111 +1,168 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""日频日行情（get_daily_basic）下载。
+r"""日频换手率生成。
 
-每次运行：先扫描本地 parquet；再登录并用 get_all_stocks_info 拉取上海 XSHG +
-深圳 XSHE 全市场 htsc_code；与本地对比后逐只增量下载 get_daily_basic 返回的全部字段。
+数据源：
+- 日 K：D:\database\stock_basic_data_daily
+- 股本：D:\database\qmt_company_data\table=Capital
 
-股票代码仅通过 API 获取。数据写入 ``D:\\database\\stock_financial_statements\\market_equity_data``（可通过
-``--base-dir`` 覆盖），分区格式：``year=YYYY/month=MM/*.parquet`` + ``merged.parquet``。
+输出：
+D:\database\qmt_turnover_data\year=YYYY\month=MM\merged.parquet
+
+换手率口径：turnover_rate = volume / circulating_capital * 100。
+Capital 按 report_date <= 交易日 的最近一条匹配。
 """
 from __future__ import annotations
 
 import argparse
 import os
 import time
-from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import duckdb
 import pandas as pd
 import polars as pl
-from insight_python.com.insight import common
-from insight_python.com.insight.market_service import market_service
-from insight_python.com.insight.query import get_all_stocks_info, get_daily_basic
 
-BASE_DIR = r"D:\database\stock_financial_statements\market_equity_data"
-DEFAULT_START_DATE = "2010-01-01"
-MIN_PARQUET_BYTES = 12
+DAILY_BASE_DIR = r"D:\database\stock_basic_data_daily"
+CAPITAL_BASE_DIR = r"D:\database\qmt_company_data"
+BASE_DIR = r"D:\database\qmt_turnover_data"
 MERGED_FILE_NAME = "merged.parquet"
-SLEEP_SEC = 0.0005
-
-# get_daily_basic SDK 返回的全部字段（trading_day 会映射为 time）
-DAILY_BASIC_NUMERIC_COLUMNS: tuple[str, ...] = (
-    "prev_close",
-    "open",
-    "high",
-    "low",
-    "close",
-    "backward_adjusted_closing_price",
-    "volume",
-    "value",
-    "turnover_deals",
-    "day_change",
-    "turnover_rate",
-    "amplitude",
-    "avg_price",
-    "avg_vol_per_deal",
-    "avg_value_per_deal",
-    "floating_market_val",
-    "total_market_val",
-)
-DAILY_BASIC_STRING_COLUMNS: tuple[str, ...] = (
-    "name",
-    "exchange",
-    "trading_state",
-)
+MIN_PARQUET_BYTES = 12
+PARQUET_WRITE_RETRIES = 5
+PARQUET_WRITE_RETRY_SLEEP_SEC = 0.5
+DEFAULT_LOOKBACK_DAYS = 5
 
 
+def _timestamp_token() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
 
-def save_partitioned_parquet(df: pl.DataFrame, base_dir: str) -> list[tuple[int, int]]:
-    """按 year/month 分区追加写入 parquet，并把 time 统一压成按天 Datetime。"""
-    if df.is_empty():
+def _parquet_pattern(base_dir: str) -> str:
+    return str(Path(base_dir) / "year=*" / "month=*" / MERGED_FILE_NAME).replace("\\", "/")
+
+
+def _capital_pattern(capital_base_dir: str) -> str:
+    return str(Path(capital_base_dir) / "table=Capital" / "year=*" / "month=*" / MERGED_FILE_NAME).replace("\\", "/")
+
+
+def normalize_code(code: str) -> str:
+    return str(code or "").strip().upper()
+
+
+def parse_codes(codes: str | None) -> list[str]:
+    if not codes:
         return []
-
-    df = (
-        df.with_columns(pl.col("time").cast(pl.Datetime, strict=False).dt.truncate("1d").alias("time"))
-        .drop_nulls(["time", "htsc_code"])
-        .unique(subset=["htsc_code", "time"], keep="last")
-        .sort(["time", "htsc_code"])
-    )
-
-    df = df.with_columns([
-        pl.col("time").dt.year().alias("year"),
-        pl.col("time").dt.month().alias("month"),
-    ])
-
-    touched_partitions: list[tuple[int, int]] = []
-    partitions = df.partition_by(["year", "month"])
-
-    for partition_df in partitions:
-        year = int(partition_df["year"][0])
-        month = int(partition_df["month"][0])
-        dir_path = os.path.join(base_dir, f"year={year}", f"month={month:02d}")
-        os.makedirs(dir_path, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_name = f"{timestamp}_year_{year}_month_{month:02d}.parquet"
-        file_path = os.path.join(dir_path, file_name)
-
-        save_df = partition_df.drop(["year", "month"])
-        save_df.write_parquet(file_path)
-        touched_partitions.append((year, month))
-        print(f"✓ 已保存: {file_path} (共 {len(save_df)} 条记录)")
-
-    return touched_partitions
+    return sorted({normalize_code(part) for part in str(codes).replace("，", ",").split(",") if part.strip()})
 
 
-def transform_daily_htsc_time_merged(df: pl.DataFrame) -> pl.DataFrame:
-    if "time" not in df.columns or "htsc_code" not in df.columns:
-        return df
-    return (
-        df.with_columns(pl.col("time").cast(pl.Datetime, strict=False).dt.truncate("1d").alias("time"))
-        .drop_nulls(["time", "htsc_code"])
-        .unique(subset=["htsc_code", "time"], keep="last")
-        .sort(["time", "htsc_code"])
-    )
+def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.DataFrame:
+    """用日 K 成交股数和 Capital.circulating_capital 计算百分数换手率。"""
+    if daily is None or daily.empty or capital is None or capital.empty:
+        return pd.DataFrame()
+
+    daily_df = daily.copy()
+    capital_df = capital.copy()
+    daily_df["htsc_code"] = daily_df["htsc_code"].map(normalize_code)
+    capital_df["htsc_code"] = capital_df["htsc_code"].map(normalize_code)
+    daily_df["time"] = pd.to_datetime(daily_df["time"], errors="coerce").dt.floor("D")
+    capital_df["report_date"] = pd.to_datetime(capital_df["report_date"], errors="coerce").dt.floor("D")
+    if "announce_date" in capital_df.columns:
+        capital_df["announce_date"] = pd.to_datetime(capital_df["announce_date"], errors="coerce").dt.floor("D")
+    else:
+        capital_df["announce_date"] = capital_df["report_date"]
+
+    daily_df["volume"] = pd.to_numeric(daily_df["volume"], errors="coerce")
+    if "value" in daily_df.columns:
+        daily_df["value"] = pd.to_numeric(daily_df["value"], errors="coerce")
+    if "close" in daily_df.columns:
+        daily_df["close"] = pd.to_numeric(daily_df["close"], errors="coerce")
+
+    for column in ("total_capital", "circulating_capital", "freeFloatCapital"):
+        if column not in capital_df.columns:
+            capital_df[column] = pd.NA
+        capital_df[column] = pd.to_numeric(capital_df[column], errors="coerce")
+
+    daily_df = daily_df.dropna(subset=["htsc_code", "time", "volume"])
+    capital_df = capital_df.dropna(subset=["htsc_code", "report_date", "circulating_capital"])
+    daily_df = daily_df[daily_df["volume"] > 0].copy()
+    capital_df = capital_df[capital_df["circulating_capital"] > 0].copy()
+    if daily_df.empty or capital_df.empty:
+        return pd.DataFrame()
+
+    daily_df = daily_df.sort_values(["htsc_code", "time"]).reset_index(drop=True)
+    capital_df = capital_df.sort_values(["htsc_code", "report_date"]).reset_index(drop=True)
+
+    frames: list[pd.DataFrame] = []
+    capital_groups = dict(tuple(capital_df.groupby("htsc_code", sort=False)))
+    for code, day_group in daily_df.groupby("htsc_code", sort=False):
+        cap_group = capital_groups.get(code)
+        if cap_group is None or cap_group.empty:
+            continue
+        merged = pd.merge_asof(
+            day_group.sort_values("time"),
+            cap_group[
+                [
+                    "report_date",
+                    "announce_date",
+                    "total_capital",
+                    "circulating_capital",
+                    "freeFloatCapital",
+                ]
+            ].sort_values("report_date"),
+            left_on="time",
+            right_on="report_date",
+            direction="backward",
+        )
+        frames.append(merged)
+
+    if not frames:
+        return pd.DataFrame()
+
+    out = pd.concat(frames, ignore_index=True).dropna(subset=["circulating_capital"]).copy()
+    out["turnover_rate"] = out["volume"] / out["circulating_capital"] * 100.0
+    out["capital_report_date"] = out["report_date"]
+    out["capital_announce_date"] = out["announce_date"]
+    out["turnover_source"] = "qmt_capital_circulating"
+    out["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if "close" in out.columns:
+        out["floating_market_val"] = out["close"] * out["circulating_capital"]
+        out["total_market_val"] = out["close"] * out["total_capital"]
+    else:
+        out["floating_market_val"] = pd.NA
+        out["total_market_val"] = pd.NA
+
+    if "value" in out.columns:
+        out["avg_price"] = out["value"] / out["volume"]
+    else:
+        out["avg_price"] = pd.NA
+
+    keep_cols = [
+        "htsc_code",
+        "time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "value",
+        "turnover_rate",
+        "avg_price",
+        "floating_market_val",
+        "total_market_val",
+        "total_capital",
+        "circulating_capital",
+        "freeFloatCapital",
+        "capital_report_date",
+        "capital_announce_date",
+        "turnover_source",
+        "updated_at",
+    ]
+    for column in keep_cols:
+        if column not in out.columns:
+            out[column] = pd.NA
+    return out[keep_cols].sort_values(["time", "htsc_code"]).reset_index(drop=True)
 
 
 def _is_readable_parquet(path: Path) -> bool:
@@ -115,466 +172,175 @@ def _is_readable_parquet(path: Path) -> bool:
         return False
 
 
-def rebuild_merged_parquets(
-    base_dir: str,
-    touched_partitions: set[tuple[int, int]],
-    transform_merged=None,
-) -> list[Path]:
-    rebuilt_files: list[Path] = []
+def _write_parquet_atomic_with_retry(df: pl.DataFrame, file_path: Path, compression: str = "zstd") -> None:
+    last_exc: Exception | None = None
+    for attempt in range(1, PARQUET_WRITE_RETRIES + 1):
+        temp_path = file_path.parent / f"{file_path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+        try:
+            df.write_parquet(str(temp_path), compression=compression)
+            temp_path.replace(file_path)
+            return
+        except OSError as exc:
+            last_exc = exc
+            try:
+                if temp_path.exists() and temp_path.stat().st_size == 0:
+                    temp_path.unlink()
+            except OSError:
+                pass
+            if attempt < PARQUET_WRITE_RETRIES:
+                time.sleep(PARQUET_WRITE_RETRY_SLEEP_SEC * attempt)
+                continue
+            raise
+    if last_exc is not None:
+        raise last_exc
+
+
+def transform_turnover_merged(df: pl.DataFrame) -> pl.DataFrame:
+    if "time" not in df.columns or "htsc_code" not in df.columns:
+        return df
+    return (
+        df.with_columns(
+            [
+                pl.col("time")
+                .map_elements(lambda v: pd.to_datetime(v, errors="coerce"), return_dtype=pl.Datetime)
+                .dt.truncate("1d")
+                .alias("time"),
+                pl.col("htsc_code").cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("htsc_code"),
+            ]
+        )
+        .drop_nulls(["time", "htsc_code"])
+        .unique(subset=["htsc_code", "time"], keep="last")
+        .sort(["time", "htsc_code"])
+    )
+
+
+def save_partitioned_parquet(df: pl.DataFrame, base_dir: str) -> set[tuple[int, int]]:
+    if df.is_empty():
+        return set()
+    df = transform_turnover_merged(df)
+    df = df.with_columns(
+        [
+            pl.col("time").dt.year().alias("year"),
+            pl.col("time").dt.month().alias("month"),
+        ]
+    )
+    touched: set[tuple[int, int]] = set()
+    for partition_df in df.partition_by(["year", "month"]):
+        year = int(partition_df["year"][0])
+        month = int(partition_df["month"][0])
+        dir_path = Path(base_dir) / f"year={year}" / f"month={month:02d}"
+        dir_path.mkdir(parents=True, exist_ok=True)
+        file_path = dir_path / f"{_timestamp_token()}_year_{year}_month_{month:02d}.parquet"
+        _write_parquet_atomic_with_retry(partition_df.drop(["year", "month"]), file_path, compression="zstd")
+        touched.add((year, month))
+        print(f"[OK] 已保存 QMT 换手率: {file_path} ({len(partition_df)} 条)")
+    return touched
+
+
+def rebuild_merged_parquets(base_dir: str, touched_partitions: set[tuple[int, int]]) -> list[Path]:
+    rebuilt: list[Path] = []
     for year, month in sorted(touched_partitions):
         partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}"
-        if not partition_dir.exists():
-            continue
-
         merged_path = partition_dir / MERGED_FILE_NAME
-        raw_files = sorted(
-            path for path in partition_dir.glob("*.parquet")
-            if path.is_file() and path.name != MERGED_FILE_NAME
-        )
+        raw_files = sorted(path for path in partition_dir.glob("*.parquet") if path.name != MERGED_FILE_NAME)
         input_files = ([merged_path] if merged_path.exists() else []) + raw_files
         input_files = [path for path in input_files if _is_readable_parquet(path)]
         if not input_files:
-            print(f"[WARN] 分区 {year}-{month:02d} 无有效 parquet，跳过 merged 重建。")
             continue
 
-        try:
-            merged_df = pl.concat(
-                [pl.scan_parquet(str(path)) for path in input_files],
-                how="diagonal_relaxed",
-            ).collect(engine="streaming")
-            if transform_merged is not None:
-                merged_df = transform_merged(merged_df)
-            temp_path = partition_dir / f"{MERGED_FILE_NAME}.{os.getpid()}.{time.time_ns()}.tmp"
-            merged_df.write_parquet(str(temp_path), compression="zstd")
-            temp_path.replace(merged_path)
-            rebuilt_files.append(merged_path)
-            print(f"[OK] 已重建 merged: {merged_path}")
-        except Exception as exc:
-            print(f"[WARN] 分区 {year}-{month:02d} merged 重建失败: {exc}")
-            continue
-
-        deleted_count = 0
+        merged_df = pl.concat([pl.scan_parquet(str(path)) for path in input_files], how="diagonal_relaxed").collect(engine="streaming")
+        merged_df = transform_turnover_merged(merged_df)
+        _write_parquet_atomic_with_retry(merged_df, merged_path, compression="zstd")
+        rebuilt.append(merged_path)
         for raw_file in raw_files:
             try:
                 raw_file.unlink()
-                deleted_count += 1
             except OSError as exc:
-                print(f"[WARN] 删除原始文件失败，保留到下次合并: {raw_file.name} | {exc}")
-        if deleted_count:
-            print(f"[OK] 已删除原始 parquet 文件数: {deleted_count} | 分区: {year}-{month:02d}")
-    return rebuilt_files
+                print(f"[WARN] 删除原始文件失败: {raw_file} | {exc}")
+        print(f"[OK] 已重建 QMT 换手率 merged: {merged_path}")
+    return rebuilt
 
 
-class insightmarketservice(market_service):
-    def on_query_response(self, result):
-        for response in iter(result):
-            print(response)
+def load_source_frames(
+    daily_base_dir: str,
+    capital_base_dir: str,
+    start: str,
+    end: str,
+    codes: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    daily_pattern = _parquet_pattern(daily_base_dir)
+    capital_pattern = _capital_pattern(capital_base_dir)
+    codes_filter = ""
+    params: list[object] = [daily_pattern, start, end]
+    if codes:
+        codes_filter = "AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) IN (SELECT code FROM code_list)"
 
-
-def login() -> None:
-    markets = insightmarketservice()
-    user = "MDIL1_01042"
-    password = "weS._+7atE4Vdr"
-    result = common.login(markets, user, password, login_log=False)
-    print(result)
-
-
-def config(open_trace: bool = True, open_file_log: bool = True, open_cout_log: bool = True) -> None:
-    common.config(open_trace, open_file_log, open_cout_log)
-
-
-def get_version() -> None:
-    print(common.get_version())
-
-
-def fini() -> None:
-    common.fini()
-
-
-def normalize_code(code: str) -> str:
-    return str(code).strip().upper()
-
-
-def fetch_market_universe_htsc_codes(
-    listing_start: datetime,
-    listing_end: datetime,
-    listing_state: str = "上市交易",
-) -> list[str]:
-    """上海 + 深圳 get_all_stocks_info，合并 htsc_code 并去重。"""
-    codes: set[str] = set()
-    for exchange in ("XSHG", "XSHE"):
-        result = get_all_stocks_info(
-            listing_date=[listing_start, listing_end],
-            exchange=exchange,
-            listing_state=listing_state,
-        )
-        if result is None:
-            print(f"⚠️ {exchange} get_all_stocks_info 返回 None，跳过")
-            continue
-        if not hasattr(result, "columns") or "htsc_code" not in result.columns:
-            print(f"⚠️ {exchange} 结果无 htsc_code 列: {getattr(result, 'columns', None)}")
-            continue
-        for raw in result["htsc_code"].tolist():
-            codes.add(normalize_code(str(raw)))
-        print(f"✓ {exchange} 已合并，当前不重复代码数: {len(codes)}")
-    return sorted(codes)
-
-
-def _collect_scan_parquet_paths(base_dir: str) -> list[str]:
-    """优先 merged.parquet；否则仅纳入可读的非空增量文件，跳过损坏小文件。"""
-    base_path = Path(base_dir)
-    merged_files = sorted(base_path.glob("**/merged.parquet"))
-    if merged_files:
-        return [str(p).replace("\\", "/") for p in merged_files]
-
-    valid_files: list[str] = []
-    skipped_small = 0
-    for path in sorted(base_path.glob("**/*.parquet")):
-        if path.name == MERGED_FILE_NAME:
-            continue
-        try:
-            if path.stat().st_size < MIN_PARQUET_BYTES:
-                skipped_small += 1
-                continue
-        except OSError:
-            skipped_small += 1
-            continue
-        valid_files.append(str(path).replace("\\", "/"))
-
-    if skipped_small:
-        print(f"⚠️ 扫描时跳过 {skipped_small} 个无效/损坏 parquet 小文件。")
-    return valid_files
-
-
-def scan_latest_downloaded_times(base_dir: str) -> dict[str, datetime]:
-    """扫描本地 parquet，返回每只股票已下载到的最新交易日。"""
-    latest_time_map: dict[str, datetime] = {}
-    if not os.path.exists(base_dir):
-        return latest_time_map
-
-    parquet_paths = _collect_scan_parquet_paths(base_dir)
-    if not parquet_paths:
-        print("未发现本地 parquet，将按默认起始日处理新股票。")
-        return latest_time_map
-
+    con = duckdb.connect()
     try:
-        print(f"正在扫描已下载的数据（{len(parquet_paths)} 个 parquet），请稍候...")
-        if len(parquet_paths) == 1:
-            from_clause = f"read_parquet('{parquet_paths[0]}', union_by_name=true)"
-        else:
-            quoted = ", ".join(f"'{path}'" for path in parquet_paths)
-            from_clause = f"read_parquet([{quoted}], union_by_name=true)"
-        query = f"""
-        SELECT
-            UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
-            MAX(CAST(time AS TIMESTAMP)) AS latest_time
-        FROM {from_clause}
-        WHERE htsc_code IS NOT NULL
-          AND time IS NOT NULL
-        GROUP BY 1
-        """
-        latest_df = duckdb.query(query).df()
-        if latest_df.empty:
-            print("扫描完成，但未发现有效历史记录。")
-            return latest_time_map
-
-        latest_df["latest_time"] = pd.to_datetime(latest_df["latest_time"]).dt.floor("D")
-        for _, row in latest_df.iterrows():
-            latest_time_map[normalize_code(row["htsc_code"])] = row["latest_time"].to_pydatetime()
-
-        print(f"发现已下载 {len(latest_time_map)} 个股票的历史日行情数据。")
-    except Exception as exc:
-        print(f"⚠️ 扫描本地历史数据失败，将按默认起始日处理: {exc}")
-
-    return latest_time_map
-
-
-def build_download_plan(
-    all_codes: list[str],
-    latest_time_map: dict[str, datetime],
-    default_start_date: datetime,
-    time_end_date: datetime,
-) -> tuple[dict[datetime, list[str]], dict[str, int]]:
-    """按起始日期分组，便于逐只下载相同时间范围的股票。"""
-    grouped_codes: dict[datetime, list[str]] = defaultdict(list)
-    stats = {"up_to_date": 0, "incremental": 0, "full_new": 0}
-    for raw_code in all_codes:
-        code = normalize_code(raw_code)
-        latest_time = latest_time_map.get(code)
-        if latest_time is None:
-            start_date = default_start_date
-            stats["full_new"] += 1
-        else:
-            start_date = latest_time + timedelta(days=1)
-            stats["incremental"] += 1
-        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        if start_date > time_end_date:
-            stats["up_to_date"] += 1
-            if latest_time is not None:
-                stats["incremental"] -= 1
-            else:
-                stats["full_new"] -= 1
-            continue
-        grouped_codes[start_date].append(code)
-    return dict(sorted(grouped_codes.items(), key=lambda item: item[0])), stats
-
-
-def flatten_download_plan(download_plan: dict[datetime, list[str]]) -> list[tuple[datetime, str]]:
-    """将按起始日分组的计划展开为 (start_date, code) 列表，便于逐只请求。"""
-    tasks: list[tuple[datetime, str]] = []
-    for start_date, codes in download_plan.items():
-        for code in codes:
-            tasks.append((start_date, code))
-    return tasks
-
-
-def should_relogin(error_msg: str) -> bool:
-    msg = error_msg.lower()
-    return "login" in msg or "connect" in msg or "session" in msg
-
-
-def normalize_daily_basic_response(raw: pd.DataFrame) -> pd.DataFrame:
-    """get_daily_basic 全字段 -> 标准列（htsc_code + time + 接口其余字段）。"""
-    if raw.empty:
-        return raw
-
-    if "trading_day" not in raw.columns or "htsc_code" not in raw.columns:
-        missing = [c for c in ("trading_day", "htsc_code") if c not in raw.columns]
-        raise ValueError(f"接口结果缺少列: {missing}")
-
-    out = raw.copy()
-    out["htsc_code"] = out["htsc_code"].map(normalize_code)
-    out["time"] = pd.to_datetime(out["trading_day"], errors="coerce").dt.floor("D")
-    out = out.drop(columns=["trading_day"])
-
-    for col in DAILY_BASIC_NUMERIC_COLUMNS:
-        if col in out.columns:
-            out[col] = pd.to_numeric(out[col], errors="coerce")
-
-    for col in DAILY_BASIC_STRING_COLUMNS:
-        if col in out.columns:
-            out[col] = out[col].astype("string")
-
-    out = out.dropna(subset=["htsc_code", "time"])
-    out = out.drop_duplicates(subset=["htsc_code", "time"], keep="last")
-
-    lead_cols = ["htsc_code", "time"]
-    tail_cols = [c for c in out.columns if c not in lead_cols]
-    return out[lead_cols + tail_cols].sort_values(["time", "htsc_code"]).reset_index(drop=True)
-
-
-def fetch_single_stock_with_retry(
-    code: str,
-    time_start_date: datetime,
-    time_end_date: datetime,
-    max_retries: int = 3,
-) -> pd.DataFrame | None:
-    """逐只调用 get_daily_basic（该接口仅支持单票）。"""
-    retry_count = 0
-    while retry_count < max_retries:
-        try:
-            result = get_daily_basic(
-                htsc_code=code,
-                trading_day=[time_start_date, time_end_date],
-            )
-            if result is None or isinstance(result, str):
-                return None
-            if not hasattr(result, "columns") or result.empty:
-                return None
-
-            return normalize_daily_basic_response(result)
-        except Exception as exc:
-            retry_count += 1
-            error_msg = str(exc)
-            print(f"  ✗ 第 {retry_count} 次尝试失败: {error_msg}")
-            if retry_count >= max_retries:
-                raise
-
-            wait_time = 2 * retry_count
-            print(f"  ⏳ 等待 {wait_time} 秒后重试...")
-            time.sleep(wait_time)
-
-            if should_relogin(error_msg):
-                print("  🔄 检测到连接问题，尝试重新登录...")
-                login()
-                config(False, False, False)
-                print("  ✓ 重新登录成功")
-
-    return None
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="日频日行情下载：get_all_stocks_info 全市场 + get_daily_basic 全字段"
-    )
-    parser.add_argument(
-        "--listing-start",
-        default="1990-01-01",
-        help="get_all_stocks_info listing_date 左端（默认 1990-01-01）",
-    )
-    parser.add_argument(
-        "--listing-end",
-        default="",
-        help="listing_date 右端，默认今天；格式 YYYY-MM-DD",
-    )
-    parser.add_argument(
-        "--listing-state",
-        default="上市交易",
-        help="get_all_stocks_info listing_state",
-    )
-    parser.add_argument(
-        "--base-dir",
-        default=BASE_DIR,
-        help="日行情 parquet 根目录",
-    )
-    parser.add_argument(
-        "--default-start",
-        default=DEFAULT_START_DATE,
-        help="本地尚无该票时，日行情从该日起拉（默认与 DEFAULT_START_DATE 一致）",
-    )
-    parser.add_argument(
-        "--end",
-        default="",
-        help="日行情结束日，默认今天；格式 YYYY-MM-DD",
-    )
-    parser.add_argument(
-        "--sleep-sec",
-        type=float,
-        default=SLEEP_SEC,
-        help="逐只请求间隔秒数（默认 0.0005）",
-    )
-    return parser.parse_args()
+        if codes:
+            con.register("code_list", pd.DataFrame({"code": codes}))
+        daily = con.execute(
+            f"""
+            SELECT
+                UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                CAST(time AS TIMESTAMP) AS time,
+                CAST(open AS DOUBLE) AS open,
+                CAST(high AS DOUBLE) AS high,
+                CAST(low AS DOUBLE) AS low,
+                CAST(close AS DOUBLE) AS close,
+                CAST(volume AS DOUBLE) AS volume,
+                CAST(value AS DOUBLE) AS value
+            FROM read_parquet(?, hive_partitioning=1, union_by_name=true)
+            WHERE CAST(time AS DATE) >= CAST(? AS DATE)
+              AND CAST(time AS DATE) <= CAST(? AS DATE)
+              {codes_filter}
+            """,
+            params,
+        ).df()
+        capital = con.execute(
+            f"""
+            SELECT
+                UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                CAST(report_date AS TIMESTAMP) AS report_date,
+                CAST(announce_date AS TIMESTAMP) AS announce_date,
+                CAST(total_capital AS DOUBLE) AS total_capital,
+                CAST(circulating_capital AS DOUBLE) AS circulating_capital,
+                CAST(freeFloatCapital AS DOUBLE) AS freeFloatCapital
+            FROM read_parquet(?, hive_partitioning=1, union_by_name=true)
+            WHERE CAST(report_date AS DATE) <= CAST(? AS DATE)
+              AND circulating_capital IS NOT NULL
+              AND circulating_capital > 0
+              {codes_filter}
+            """,
+            [capital_pattern, end],
+        ).df()
+    finally:
+        con.close()
+    return daily, capital
 
 
 def main() -> None:
-    args = parse_args()
-    base_dir = str(args.base_dir)
-    os.makedirs(base_dir, exist_ok=True)
-    default_start_date = datetime.strptime(args.default_start, "%Y-%m-%d")
-    end_s = (args.end or "").strip()
-    time_end_date = datetime.now() if not end_s else datetime.strptime(end_s, "%Y-%m-%d")
-    time_end_date = time_end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    parser = argparse.ArgumentParser(description="QMT 日频换手率：日K volume / Capital.circulating_capital * 100")
+    parser.add_argument("--base-dir", default=BASE_DIR, help="QMT 换手率输出目录")
+    parser.add_argument("--daily-base-dir", default=DAILY_BASE_DIR, help="QMT 日 K 数据目录")
+    parser.add_argument("--capital-base-dir", default=CAPITAL_BASE_DIR, help="QMT 公司数据根目录")
+    default_start = (datetime.now() - timedelta(days=DEFAULT_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    parser.add_argument("--start", default=default_start, help="开始日期 YYYY-MM-DD，默认回溯 5 天")
+    parser.add_argument("--end", default=datetime.now().strftime("%Y-%m-%d"), help="结束日期 YYYY-MM-DD")
+    parser.add_argument("--codes", default="", help="逗号分隔股票代码；空表示全量")
+    args = parser.parse_args()
 
-    latest_time_map = scan_latest_downloaded_times(base_dir)
-
-    print("=" * 60)
-    print("初始化连接并获取全市场股票池（XSHG + XSHE）…")
-    print("=" * 60)
-    get_version()
-    login()
-    config(False, False, False)
-    listing_start = datetime.strptime(args.listing_start.strip(), "%Y-%m-%d")
-    le_s = (args.listing_end or "").strip()
-    listing_end = datetime.now() if not le_s else datetime.strptime(le_s, "%Y-%m-%d")
-    all_codes = fetch_market_universe_htsc_codes(listing_start, listing_end, args.listing_state)
-    print(f"股票池（API）: {len(all_codes)} 只")
-    print("=" * 60)
-
-    download_plan, plan_stats = build_download_plan(
-        all_codes, latest_time_map, default_start_date, time_end_date
-    )
-    tasks = flatten_download_plan(download_plan)
-    pending_total = len(tasks)
-    print(
-        "增量计划: "
-        f"已最新 {plan_stats['up_to_date']} 只 | "
-        f"增量补拉 {plan_stats['incremental']} 只 | "
-        f"首次全量 {plan_stats['full_new']} 只"
-    )
-    if download_plan:
-        plan_preview = ", ".join(
-            f"{start.date()}({len(codes)}只)" for start, codes in list(download_plan.items())[:5]
-        )
-        print(f"下载起点分组(前5): {plan_preview}")
-    if pending_total == 0:
-        print("所有股票都已更新到最新日期，无需下载。")
-        fini()
+    codes = parse_codes(args.codes)
+    print(f"QMT 换手率计算: {args.start} ~ {args.end} | codes={len(codes) or 'ALL'}")
+    daily, capital = load_source_frames(args.daily_base_dir, args.capital_base_dir, args.start, args.end, codes)
+    print(f"日 K 行数: {len(daily)} | Capital 行数: {len(capital)}")
+    result = calculate_turnover_frame(daily, capital)
+    if result.empty:
+        print("[WARN] 未生成任何 QMT 换手率记录。")
         return
-
-    failed_stocks: list[dict[str, object]] = []
-    processed_count = 0
-    touched_partitions: set[tuple[int, int]] = set()
-
-    print(f"需更新股票数量: {pending_total}")
-    print("=" * 60)
-
-    try:
-        for stock_num, (start_date, code) in enumerate(tasks, start=1):
-            print(f"\n[股票 {stock_num}/{pending_total}] {code}")
-            print(f"  下载区间: {start_date.date()} ~ {time_end_date.date()}")
-
-            try:
-                result = fetch_single_stock_with_retry(code, start_date, time_end_date)
-                if result is None or result.empty:
-                    print(f"  ⚠️ {code} 返回空数据，已记录")
-                    failed_stocks.append(
-                        {
-                            "code": code,
-                            "start_date": start_date.strftime("%Y-%m-%d"),
-                            "error": "返回空数据",
-                            "stock_num": stock_num,
-                        }
-                    )
-                    time.sleep(args.sleep_sec)
-                    continue
-
-                result_pl = pl.from_pandas(result)
-                touched = save_partitioned_parquet(result_pl, base_dir)
-                touched_partitions.update(touched)
-
-                processed_count += 1
-                print(f"  ✓ 成功处理 {code}，累计 {processed_count}/{pending_total}")
-                time.sleep(args.sleep_sec)
-            except Exception as exc:
-                error_msg = str(exc)
-                print(f"  ✗ {code} 最终失败: {error_msg}")
-                failed_stocks.append(
-                    {
-                        "code": code,
-                        "start_date": start_date.strftime("%Y-%m-%d"),
-                        "error": error_msg,
-                        "stock_num": stock_num,
-                    }
-                )
-                time.sleep(args.sleep_sec)
-    finally:
-        print("\n" + "=" * 60)
-        print("处理完成，释放连接...")
-        fini()
-
-    print("\n" + "=" * 60)
-    print("📊 执行统计")
-    print("=" * 60)
-    print(f"成功处理: {processed_count}/{pending_total} 个股票")
-    print(f"更新到的分区数: {len(touched_partitions)}")
-    print(f"失败股票: {len(failed_stocks)} 只")
-
-    if touched_partitions:
-        rebuilt_files = rebuild_merged_parquets(
-            base_dir, touched_partitions, transform_merged=transform_daily_htsc_time_merged
-        )
-        print(f"重建 merged.parquet 数量: {len(rebuilt_files)}")
-    else:
-        print("本次无新增数据写入，跳过 merged.parquet 重建。")
-
-    if failed_stocks:
-        print("\n⚠️ 以下股票失败，可后续补跑:")
-        for fail in failed_stocks:
-            print(
-                f"  - 序号 {fail['stock_num']}: {fail['code']} | "
-                f"起始日期: {fail['start_date']} | 原因: {fail['error']}"
-            )
-
-        fail_file = f"failed_stocks_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(fail_file, "w", encoding="utf-8") as f:
-            for fail in failed_stocks:
-                f.write(
-                    f"stock_num={fail['stock_num']},code={fail['code']},"
-                    f"start_date={fail['start_date']},error={fail['error']}\n"
-                )
-        print(f"\n失败记录已保存到: {fail_file}")
-
-    print("=" * 60)
+    touched = save_partitioned_parquet(pl.from_pandas(result), args.base_dir)
+    rebuild_merged_parquets(args.base_dir, touched)
+    print(f"[OK] QMT 换手率生成完成: {len(result)} 条 | 分区 {len(touched)} 个")
 
 
 if __name__ == "__main__":

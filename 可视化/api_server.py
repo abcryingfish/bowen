@@ -82,6 +82,16 @@ from qmt_company_data_service import (
     query_qmt_company_table,
     query_qmt_company_tables,
 )
+from 量化因子有效性检验.factor_validation_service import (
+    FactorValidationError,
+    FactorValidationInputError,
+    FactorValidationNotFoundError,
+    delete_factor_validation_record,
+    list_factor_validation_factors,
+    list_factor_validation_records,
+    run_factor_validation,
+    save_factor_validation_record,
+)
 
 
 def _parse_multipart_form_simple(content_type: str, body: bytes) -> tuple[str | None, bytes | None, str | None]:
@@ -234,6 +244,14 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_factor_list(query)
             return
 
+        if parsed.path == "/api/factor-validation/factors":
+            self._handle_factor_validation_factors()
+            return
+
+        if parsed.path == "/api/factor-validation/records":
+            self._handle_factor_validation_records()
+            return
+
         if parsed.path == "/api/market/signal":
             self._handle_market_signal(query)
             return
@@ -323,6 +341,14 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_factor_couple()
             return
 
+        if parsed.path == "/api/factor-validation/run":
+            self._handle_factor_validation_run()
+            return
+
+        if parsed.path == "/api/factor-validation/records":
+            self._handle_factor_validation_record_save()
+            return
+
         if parsed.path == "/api/watchlist":
             self._handle_watchlist_post()
             return
@@ -342,6 +368,10 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/backtest/history/attachment":
             self._handle_backtest_portfolio_attachment_delete()
+            return
+        if parsed.path == "/api/factor-validation/records":
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            self._handle_factor_validation_record_delete(query)
             return
         self._send_json(
             HTTPStatus.NOT_FOUND,
@@ -789,6 +819,69 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                     }
                 },
             )
+
+    def _send_factor_validation_error(self, exc: Exception) -> None:
+        if isinstance(exc, FactorValidationInputError):
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}},
+            )
+            return
+        if isinstance(exc, FactorValidationNotFoundError):
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}},
+            )
+            return
+        if isinstance(exc, FactorValidationError):
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "FACTOR_VALIDATION_ERROR", "message": str(exc)}},
+            )
+            return
+        self._send_json(
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            {
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "服务内部错误",
+                    "detail": str(exc),
+                }
+            },
+        )
+
+    def _handle_factor_validation_factors(self) -> None:
+        try:
+            self._send_json(HTTPStatus.OK, list_factor_validation_factors())
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_run(self) -> None:
+        try:
+            payload = self._read_json_body()
+            self._send_json(HTTPStatus.OK, run_factor_validation(payload))
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_records(self) -> None:
+        try:
+            self._send_json(HTTPStatus.OK, list_factor_validation_records())
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_record_save(self) -> None:
+        try:
+            payload = self._read_json_body()
+            self._send_json(HTTPStatus.OK, save_factor_validation_record(payload))
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_record_delete(self, query: dict[str, list[str]]) -> None:
+        try:
+            record_id = self._first_query_value(query, "id")
+            self._send_json(HTTPStatus.OK, delete_factor_validation_record(str(record_id or "")))
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
 
     def _handle_market_signal(self, query: dict[str, list[str]]) -> None:
         try:

@@ -35,8 +35,8 @@ flowchart LR
   end
   subgraph disk [D:\database]
     OHLC[stock_basic_data_daily]
-    MEQ[stock_financial_statements/market_equity_data]
-    VAL[stock_financial_statements/stock_valuation_data]
+    MEQ[qmt_turnover_data]
+    VAL[qmt_company_data/table=factor_fundamental_valuation]
     ADJ[stock_adj_daily]
     MIN[stock_basic_data_mins]
     SIG[signal_daily]
@@ -96,8 +96,8 @@ flowchart LR
 | 路径 | 写入方 | 内容 |
 |------|--------|------|
 | `stock_basic_data_daily` | `工具/获得股票日频数据.py` | 日 K OHLCV |
-| `stock_financial_statements/market_equity_data` | `工具/获得股票日频换手率.py` | 日 basic（含换手率等）；旧名 `stock_liquidity_data` / `stock_temp_data` 已废弃 |
-| `stock_financial_statements/stock_valuation_data` | `工具/获得市值数据.py` | PE/PB/PS/市值等估值 |
+| `qmt_turnover_data` | `工具/获得股票日频换手率.py` | QMT 日 K + Capital 流通股本计算换手率；换手率主链路 |
+| `qmt_company_data/table=factor_fundamental_valuation` | `工具/获得市值数据.py` | PE/PB/PS/市值等估值 |
 | `stock_adj_daily` | `工具/获得股票日频复权因子.py` | 复权因子分段 |
 | `stock_basic_data_mins` | `工具/获得股票分钟级数据.py` | 1 分钟 K |
 | `index_data_daily` | `工具/获得指数日频数据.py` | 指数日 K |
@@ -155,7 +155,7 @@ flowchart LR
 | `可视化/api_server.py` | HTTP 路由：`/api/market/bars`、因子、回测模型列表等 |
 | `可视化/backtest_job_service.py` | 网页触发回测任务 |
 | `ZXW因子/ZXW策略技术因子生成.ipynb` | 批量生成技术因子并写入 `signal_daily` |
-| `ZXW因子/筹码结构因子.py` | 筹码集中度；读 `market_equity_data` 换手率 |
+| `ZXW因子/筹码结构因子.py` | 筹码集中度；读 `qmt_turnover_data` 换手率 |
 | `因子分类/factor_catalog.json` | 前端因子分组（与 notebook 产出列名应对齐） |
 | `backtrader/model_registry.py` | 回测模型注册表 → 前端 `GET /api/backtest/models` |
 | `backtrader/settings.py` | 回测公共路径、资金、DuckDB 视图等 |

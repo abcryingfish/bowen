@@ -25,7 +25,7 @@ import polars as pl
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MORPH_DIR = PROJECT_ROOT / "形态趋势通道因子"
-DEFAULT_MARKET_EQUITY_PATH = r"D:\database\stock_financial_statements\market_equity_data"
+DEFAULT_MARKET_EQUITY_PATH = r"D:\database\stock_basic_data_daily"
 DEFAULT_OUTPUT_BASE = r"D:\database\signal_daily_形态\candlestick_no_vol"
 DEFAULT_CODES = ""
 DEFAULT_BATCH_SIZE = 0
@@ -423,7 +423,7 @@ def _write_part_parquet(df: pl.DataFrame, file_path: Path) -> None:
 
 def fetch_universe_codes_from_market_equity(market_equity_path: str) -> list[str]:
     if not os.path.isdir(market_equity_path):
-        raise FileNotFoundError(f"market_equity_data 目录不存在: {market_equity_path}")
+        raise FileNotFoundError(f"日 K 数据目录不存在: {market_equity_path}")
 
     parquet_glob = _glob_parquet_pattern(market_equity_path)
     conn = duckdb.connect(database=":memory:")
@@ -491,7 +491,7 @@ def load_ohlcv_from_duckdb(
     target_codes: list[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if not os.path.isdir(market_equity_path):
-        raise FileNotFoundError(f"market_equity_data 目录不存在: {market_equity_path}")
+        raise FileNotFoundError(f"日 K 数据目录不存在: {market_equity_path}")
 
     parquet_glob = _glob_parquet_pattern(market_equity_path)
     filters = [

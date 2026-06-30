@@ -313,6 +313,7 @@
                 || mid === "zxw_factor_check_no_lookahead"
                 || mid === "zxw_factor_check_dual_assumption"
                 || mid === "zxw_factor_check_profit_threshold_dual_assumption"
+                || mid === "zxw_factor_check_base_threshold"
             )) {
                 row.style.display = "none";
                 return;
@@ -536,7 +537,8 @@
                 adopt_model === "zxw_factor_check_only"
                 || adopt_model === "zxw_factor_check_no_lookahead"
                 || adopt_model === "zxw_factor_check_dual_assumption"
-                || adopt_model === "zxw_factor_check_profit_threshold_dual_assumption";
+                || adopt_model === "zxw_factor_check_profit_threshold_dual_assumption"
+                || adopt_model === "zxw_factor_check_base_threshold";
             if (isFactorCheck) {
                 if (paramTraverseSwitchOn) {
                     throw new Error("因子检验模型不支持参数遍历，请关闭参数遍历开关");

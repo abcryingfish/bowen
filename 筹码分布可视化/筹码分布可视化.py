@@ -29,7 +29,7 @@ from 筹码结构因子 import (  # noqa: E402
 
 
 DAILY_BASE_DIR = r"D:\database\stock_basic_data_daily"
-TURNOVER_BASE_DIR = r"D:\database\stock_financial_statements\market_equity_data"
+TURNOVER_BASE_DIR = r"D:\database\qmt_turnover_data"
 OUTPUT_DIR = PROJECT_ROOT / "筹码分布可视化"
 DEFAULT_COST_PERCENTILES = (5, 15, 33, 50, 70, 85, 95)
 PPM_SCALE = 1_000_000
@@ -331,7 +331,7 @@ canvas {{ width: 100%; height: 760px; display: block; }}
       <h1>{data['code']} 筹码分布详细可视化</h1>
       <div class="sub">完整价格档位分布 · minD={data['minD']} · 数据日数={len(data['days'])} · 生成时间={data['generatedAt']}</div>
     </div>
-    <div class="sub">数据源：本地日线 parquet + market_equity_data 换手率</div>
+    <div class="sub">数据源：本地日线 parquet + qmt_turnover_data 换手率</div>
   </div>
   <div class="controls">
     <div class="row">

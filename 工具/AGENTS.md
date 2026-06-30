@@ -14,8 +14,8 @@
 | Default path | Written by | Notes |
 |--------------|------------|-------|
 | `D:\database\stock_basic_data_daily` | `获得股票日频数据.py` | 日 K OHLCV；`time` + `htsc_code` |
-| `D:\database\stock_financial_statements\market_equity_data` | `获得股票日频换手率.py` | `get_daily_basic` 全字段；原目录名 `stock_liquidity_data` / `stock_temp_data` 已废弃 |
-| `D:\database\stock_financial_statements\stock_valuation_data` | `获得市值数据.py` | `get_stock_valuation` 估值字段；与 market_equity 同属财报父目录 |
+| `D:\database\qmt_turnover_data` | `获得股票日频换手率.py` | QMT 日 K `volume` + `qmt_company_data/table=Capital` 的 `circulating_capital` 计算换手率 |
+| `D:\database\qmt_company_data\table=factor_fundamental_valuation` | `获得市值数据.py` | `get_stock_valuation` 估值字段；与 market_equity 同属财报父目录 |
 | `D:\database\stock_adj_daily` | `获得股票日频复权因子.py` | `adj_factor_segments.parquet`（+ 可选 wide） |
 | `D:\database\stock_basic_data_mins` | `获得股票分钟级数据.py` | 1min K 线 |
 | `D:\database\index_data_daily` | `获得指数日频数据.py` | 默认 000001.SH / 399001.SZ |
@@ -33,8 +33,8 @@
 | Path | API / source | Purpose |
 |------|----------------|---------|
 | `获得股票日频数据.py` | `get_all_stocks_info` + batch daily K | All-market daily OHLCV → `stock_basic_data_daily`; exports universe CSV with pinyin. |
-| `获得股票日频换手率.py` | `get_all_stocks_info` + `get_daily_basic` | Per-stock incremental daily basic (incl. turnover, volume, market val) → `stock_financial_statements/market_equity_data`. |
-| `获得市值数据.py` | `get_all_stocks_info` + `get_stock_valuation` | Per-stock incremental valuation only → `stock_financial_statements/stock_valuation_data`. Saves: `htsc_code`, `exchange`, `time`, `pe`, `pettm`, `pb`, `pc`, `pcttm`, `ps`, `psttm`, `floating_market_val`, `total_market_val`. **Does not** save `avg_vol_per_deal`, `avg_value_per_deal`, price/name fields. |
+| `获得股票日频换手率.py` | local QMT daily K + Capital | 本地计算 `turnover_rate = volume / circulating_capital * 100` → `qmt_turnover_data`. |
+| `qmt公司数据获取.py` | QMT company data + daily close | Per-stock incremental valuation only → `qmt_company_data/table=factor_fundamental_valuation`. Saves: `htsc_code`, `exchange`, `time`, `pe`, `pettm`, `pb`, `pc`, `pcttm`, `ps`, `psttm`, `floating_market_val`, `total_market_val`. **Does not** save `avg_vol_per_deal`, `avg_value_per_deal`, price/name fields. |
 | `获得股票日频复权因子.py` | `get_adj_factor` (xdy segments) | Segments → `adj_factor_segments.parquet`; optional `--emit-wide`. Respect `end_date` open segment vs `--adj-end`. |
 | `获得股票分钟级数据.py` | `signal_daily` pool + `stock_basic_data_daily` years + `get_kline` | Serial 1 stock × 1 year; default `--max-year 2025`; → `stock_basic_data_mins`. |
 | `获得指数日频数据.py` | `get_kline` (one index per call) | Default indices 000001.SH / 399001.SZ → `index_data_daily`. |
@@ -44,9 +44,9 @@
 
 ## Downstream consumers (do not break paths silently)
 
-- `ZXW因子/筹码结构因子.py` → reads turnover from `D:\database\stock_financial_statements\market_equity_data` (`DEFAULT_TURNOVER_BASE_DIR`).
+- `ZXW因子/筹码结构因子.py` → reads turnover from `D:\database\qmt_turnover_data` (`DEFAULT_TURNOVER_BASE_DIR`).
 - `ZXW因子/ZXW策略技术因子生成.ipynb` → `TURNOVER_BASE_PATH` same as above.
-- Renaming `market_equity_data` or `stock_financial_statements/stock_valuation_data` requires grep repo + update notebook constants.
+- Renaming `qmt_turnover_data` or `qmt_company_data/table=factor_fundamental_valuation` requires grep repo + update notebook constants.
 
 ## Dependencies
 
@@ -59,7 +59,7 @@
 - Do not replace “stock pool must come from API” in `获得股票日频数据.py` / `获得股票日频换手率.py` / `获得市值数据.py` without explicit user request.
 - Minute script: stock pool from `signal_daily` (reference factor), years filtered by `stock_basic_data_daily` — do not revert to hard-coded CSV pool without user ask.
 - Keep merge semantics in `增量信号保存.py` unless user asks to change priority/key.
-- `market_equity_data` and `stock_financial_statements/stock_valuation_data` are **separate** stores under the same parent; overlapping columns (e.g. market cap) may exist in both until user consolidates.
+- `qmt_turnover_data` and `qmt_company_data/table=factor_fundamental_valuation` are separate QMT-derived stores; overlapping columns (e.g. market cap) may exist in both until user consolidates.
 
 ## CLI templates (replace paths)
 
@@ -67,8 +67,8 @@
 $py = c:\Users\Administrator\Desktop\python_venv\.venv\Scripts\python.exe
 
 & $py 工具/获得股票日频数据.py --base-dir D:\database\stock_basic_data_daily
-& $py 工具/获得股票日频换手率.py --base-dir D:\database\stock_financial_statements\market_equity_data
-& $py 工具/获得市值数据.py --base-dir D:\database\stock_financial_statements\stock_valuation_data
+& $py 工具/获得股票日频换手率.py --base-dir D:\database\qmt_turnover_data
+& $py 工具/获得市值数据.py --base-dir D:\database\qmt_company_data\table=factor_fundamental_valuation
 & $py 工具/获得股票日频复权因子.py --base-dir D:\database\stock_adj_daily
 & $py 工具/获得股票分钟级数据.py --max-year 2025
 & $py 工具/获得指数日频数据.py --base-dir D:\database\index_data_daily
@@ -80,8 +80,8 @@ Common flags (liquidity / valuation / daily OHLC): `--default-start 2010-01-01`,
 ## Task routing
 
 - Daily OHLCV / universe CSV / pinyin search → `获得股票日频数据.py`
-- Daily basic / turnover / liquidity fields → `获得股票日频换手率.py`
-- PE/PB/PS/market cap valuation only → `获得市值数据.py`
+- QMT turnover fields → `获得股票日频换手率.py`
+- QMT PE/PB/ROE/revenue/market cap valuation → `获得市值数据.py`
 - Adj factors / wide table / date semantics → `获得股票日频复权因子.py`
 - Minute range / signal pool / year cap → `获得股票分钟级数据.py`
 - Index daily K → `获得指数日频数据.py`
@@ -100,13 +100,13 @@ Common flags (liquidity / valuation / daily OHLC): `--default-start 2010-01-01`,
 
 > 打开 `工具/获得股票日频数据.py`。在「股票池仍只从 API 拉取」的前提下完成：【例如改 `--base-dir` 默认值、listing 日期区间、日 K 结束日、批大小、错误重试、universe 导出】。改完说明我该如何运行一条示例命令。
 
-**流动性 / 日 basic `获得股票日频换手率.py`**
+**QMT 换手率 `获得股票日频换手率.py`**
 
-> 打开 `工具/获得股票日频换手率.py`。数据根目录默认 `D:\database\stock_financial_statements\market_equity_data`（旧名 `stock_liquidity_data` / `stock_temp_data`）。任务：【改字段、起始日、增量逻辑、merged 重建】。保持逐只 `get_daily_basic` 与 API 股票池。
+> 打开 `工具/获得股票日频换手率.py`。数据根目录默认 `D:\database\qmt_turnover_data`。换手率由本地 `stock_basic_data_daily.volume` 与 `qmt_company_data/table=Capital.circulating_capital` 计算得到。任务：【改字段、起始日、merged 重建】。不要再恢复 Insight `get_daily_basic` 逻辑。
 
 **估值 `获得市值数据.py`**
 
-> 打开 `工具/获得市值数据.py`。接口 `get_stock_valuation`，只保留估值列（见 AGENTS.md 表格），`trading_day` 存为 `time`，默认 `D:\database\stock_financial_statements\stock_valuation_data`。任务：【描述】。不要写入 `avg_vol_per_deal` / `avg_value_per_deal` 除非我明确要求。
+> 打开 `工具/获得市值数据.py`。接口 `get_stock_valuation`，只保留估值列（见 AGENTS.md 表格），`trading_day` 存为 `time`，默认 `D:\database\qmt_company_data\table=factor_fundamental_valuation`。任务：【描述】。不要写入 `avg_vol_per_deal` / `avg_value_per_deal` 除非我明确要求。
 
 **复权因子 `获得股票日频复权因子.py`**
 

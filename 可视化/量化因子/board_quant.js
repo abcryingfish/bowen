@@ -2248,10 +2248,8 @@ intervalSelect.addEventListener("change", async () => {
 });
 if (adjustModeSelect) {
     adjustModeSelect.addEventListener("change", async () => {
-        const nextMode = String(adjustModeSelect.value || "qfq").trim();
-        currentAdjustMode = Object.prototype.hasOwnProperty.call(ADJUST_MODE_PARAM, nextMode)
-            ? nextMode
-            : "qfq";
+        const nextMode = String(adjustModeSelect.value || "forward_ratio").trim();
+        currentAdjustMode = normalizeAdjustModeKey(nextMode);
         adjustModeSelect.value = currentAdjustMode;
         await switchIntervalAndReload();
         countdownValue = AUTO_REFRESH_SECONDS;
@@ -2391,8 +2389,6 @@ function getSignalTypeToggleState() {
 window.getSignalTypeToggleState = getSignalTypeToggleState;
 window.getSignalSlotBindings = () => ({ ...signalSlotBindings });
 window.ChartBoardView = { id: "quant", label: "量化因子" };
-
-
 
 
 

@@ -1,12 +1,13 @@
 /**
- * 三页悬浮球互跳：index / 结果展示 / result，不展示当前页入口。
+ * Edge floating HUD page navigation.
  */
 (function (global) {
     const PAGES = [
-        { id: "chart", file: "../量化因子/index.html", label: "打开 K 线主页面" },
-        { id: "results", file: "../结果展示/index.html", label: "打开成果展示页" },
-        { id: "portfolio", file: "../组合结果/index.html", label: "打开组合结果页" },
-        { id: "live", file: "../实盘面/index.html", label: "打开实盘页面" },
+        { id: "chart", file: "../%E9%87%8F%E5%8C%96%E5%9B%A0%E5%AD%90/index.html", label: "\u91cf\u5316\u56e0\u5b50" },
+        { id: "factor-validation", file: "../%E9%87%8F%E5%8C%96%E5%9B%A0%E5%AD%90%E6%9C%89%E6%95%88%E6%80%A7%E6%A3%80%E9%AA%8C/dashboard.html", label: "\u91cf\u5316\u56e0\u5b50\u6709\u6548\u6027\u68c0\u9a8c" },
+        { id: "results", file: "../%E7%BB%93%E6%9E%9C%E5%B1%95%E7%A4%BA/index.html", label: "\u6210\u679c\u5c55\u793a" },
+        { id: "portfolio", file: "../%E7%BB%84%E5%90%88%E7%BB%93%E6%9E%9C/index.html", label: "\u7ec4\u5408\u7ed3\u679c" },
+        { id: "live", file: "../%E5%AE%9E%E7%9B%98%E9%9D%A2/index.html", label: "\u5b9e\u76d8\u9762" },
     ];
 
     const PARAM_KEYS = ["api", "api_base", "code"];
@@ -34,7 +35,7 @@
             global.location.href = next.href;
             return;
         } catch (_) {
-            /* file:// 或相对路径回退 */
+            /* file:// fallback */
         }
         const href = global.location.href.split("#")[0].split("?")[0];
         const slash = Math.max(href.lastIndexOf("/"), href.lastIndexOf("\\"));
@@ -81,7 +82,7 @@
         }
     }
 
-    /** @deprecated 使用 renderMenu 内联绑定 */
+    /** @deprecated Use renderMenu. */
     function bindMenuNavigate(menuEl, navigateFn, onAfterNavigate) {
         if (!menuEl) {
             return;

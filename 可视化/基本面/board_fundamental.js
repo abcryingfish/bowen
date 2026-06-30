@@ -62,6 +62,24 @@
         return escapeHtml(value);
     }
 
+    function isEmptyCell(value) {
+        if (value === null || value === undefined || value === "") {
+            return true;
+        }
+        if (typeof value === "number") {
+            return !Number.isFinite(value);
+        }
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return !normalized || normalized === "nan" || normalized === "none" || normalized === "null";
+        }
+        return false;
+    }
+
+    function filterNonEmptyColumns(columns, rows) {
+        return columns.filter((column) => rows.some((row) => !isEmptyCell(row[column.key])));
+    }
+
     function formatCompactNumber(value) {
         const num = Number(value);
         if (!Number.isFinite(num)) {
@@ -159,10 +177,14 @@
     }
 
     function renderTable(payload) {
-        const columns = (payload && payload.columns) || [];
+        const rawColumns = (payload && payload.columns) || [];
         const rows = (payload && payload.rows) || [];
-        if (!columns.length || !rows.length) {
+        if (!rawColumns.length || !rows.length) {
             return `<p class="fundamental-state-msg">暂无${escapeHtml(activeTable)}数据。</p>`;
+        }
+        const columns = filterNonEmptyColumns(rawColumns, rows);
+        if (!columns.length) {
+            return `<p class="fundamental-state-msg">暂无${escapeHtml(activeTable)}有效字段。</p>`;
         }
         const header = `<tr>${columns.map((column) => `<th class="${column.type === "number" ? "num" : ""}">${escapeHtml(column.label || column.key)}</th>`).join("")}</tr>`;
         const body = rows.map((row) => `

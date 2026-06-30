@@ -23,19 +23,20 @@ import polars as pl
 from xtquant import xtdata
 
 BASE_DIR = r"D:\database\qmt_company_data"
+DAILY_DATA_BASE_DIR = r"D:\database\stock_basic_data_daily"
 DEFAULT_SECTOR_NAME = "沪深A股"
 DEFAULT_START_DATE = "2010-01-01"
-DEFAULT_OVERLAP_DAYS = 456
-DEFAULT_BATCH_SIZE = 20
+DEFAULT_OVERLAP_DAYS = 300
+DEFAULT_BATCH_SIZE = 200
 DEFAULT_SLEEP_SEC = 0.0005
 MERGED_FILE_NAME = "merged.parquet"
 MIN_PARQUET_BYTES = 12
 QMT_TABLES = ("Income", "Balance", "CashFlow", "PershareIndex", "Capital")
 QMT_FACTOR_TABLES = ("factor_base_derivative", "factor_metrics")
+FUNDAMENTAL_VALUATION_TABLE = "factor_fundamental_valuation"
 DEDUP_COLUMNS = ("htsc_code", "table_name", "report_date", "announce_date")
 DAILY_FACTOR_DEDUP_COLUMNS = ("htsc_code", "table_name", "time")
 FACTOR_DATE_COLUMN_CANDIDATES = ("time", "trading_day", "date", "m_timetag")
-INSIGHT_VALUATION_BASE_DIR = r"D:\database\stock_financial_statements\stock_valuation_data"
 
 FACTOR_TABLE_FIELDS: dict[str, tuple[str, ...]] = {
     "factor_base_derivative": (
@@ -261,6 +262,10 @@ def _table_base_dir(base_dir: str, table_name: str) -> Path:
     return Path(base_dir) / f"table={table_name}"
 
 
+def _timestamp_token() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+
 def _is_readable_parquet(path: Path) -> bool:
     try:
         return path.is_file() and path.stat().st_size >= MIN_PARQUET_BYTES and not pl.read_parquet(str(path), n_rows=1).is_empty()
@@ -290,6 +295,194 @@ def deduplicate_daily_factor_df(df: pl.DataFrame) -> pl.DataFrame:
     return df.sort([col for col in ("time", "htsc_code") if col in df.columns])
 
 
+def _numeric_series(df: pd.DataFrame, column: str) -> pd.Series:
+    if column in df.columns:
+        return pd.to_numeric(df[column], errors="coerce")
+    return pd.Series(pd.NA, index=df.index, dtype="Float64")
+
+
+def _normalize_statement_input(df: pd.DataFrame, value_columns: list[str], prefix: str) -> pd.DataFrame:
+    if df is None or df.empty:
+        columns = ["htsc_code", f"{prefix}_report_date", f"{prefix}_announce_date", *value_columns]
+        return pd.DataFrame(columns=columns)
+    out = pd.DataFrame()
+    out["htsc_code"] = df["htsc_code"].map(normalize_code)
+    out[f"{prefix}_report_date"] = pd.to_datetime(df["report_date"], errors="coerce").dt.floor("D")
+    out[f"{prefix}_announce_date"] = pd.to_datetime(df["announce_date"], errors="coerce").dt.floor("D")
+    for column in value_columns:
+        out[column] = _numeric_series(df, column)
+    out = out.dropna(subset=["htsc_code", f"{prefix}_report_date", f"{prefix}_announce_date"]).copy()
+    sort_cols = ["htsc_code", f"{prefix}_announce_date", f"{prefix}_report_date"]
+    return out.sort_values(sort_cols).drop_duplicates(sort_cols, keep="last").reset_index(drop=True)
+
+
+def _latest_statement_by_announce(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
+    if df.empty:
+        return df
+    return (
+        df.sort_values(["htsc_code", f"{prefix}_announce_date", f"{prefix}_report_date"])
+        .drop_duplicates(["htsc_code", f"{prefix}_announce_date"], keep="last")
+        .reset_index(drop=True)
+    )
+
+
+def _add_ttm_values(
+    df: pd.DataFrame,
+    value_column: str,
+    output_column: str,
+    report_date_column: str,
+) -> pd.DataFrame:
+    if df.empty:
+        df[output_column] = pd.Series(dtype="float64")
+        return df
+    out = df.copy()
+    out["_report_year"] = out[report_date_column].dt.year
+    out["_report_month"] = out[report_date_column].dt.month
+    lookup = {
+        (row["htsc_code"], int(row["_report_year"]), int(row["_report_month"])): row[value_column]
+        for _, row in out.iterrows()
+    }
+
+    def calc(row: pd.Series) -> float | pd.NA:
+        current = row[value_column]
+        if pd.isna(current):
+            return pd.NA
+        year = int(row["_report_year"])
+        month = int(row["_report_month"])
+        if month == 12:
+            return current
+        annual = lookup.get((row["htsc_code"], year - 1, 12), pd.NA)
+        same_period = lookup.get((row["htsc_code"], year - 1, month), pd.NA)
+        if pd.isna(annual) or pd.isna(same_period):
+            return pd.NA
+        return current + annual - same_period
+
+    out[output_column] = out.apply(calc, axis=1)
+    return out.drop(columns=["_report_year", "_report_month"])
+
+
+def _merge_asof_by_code(left: pd.DataFrame, right: pd.DataFrame, right_on: str) -> pd.DataFrame:
+    if left.empty or right.empty:
+        return left.copy()
+    parts: list[pd.DataFrame] = []
+    for code, left_group in left.groupby("htsc_code", sort=False):
+        right_group = right[right["htsc_code"] == code]
+        if right_group.empty:
+            parts.append(left_group.copy())
+            continue
+        merged = pd.merge_asof(
+            left_group.sort_values("time"),
+            right_group.sort_values(right_on),
+            left_on="time",
+            right_on=right_on,
+            by="htsc_code",
+            direction="backward",
+        )
+        parts.append(merged)
+    if not parts:
+        return left.copy()
+    return pd.concat(parts, ignore_index=True)
+
+
+def build_fundamental_valuation_frame(
+    income_df: pd.DataFrame,
+    balance_df: pd.DataFrame,
+    pershare_df: pd.DataFrame,
+    capital_df: pd.DataFrame,
+    daily_df: pd.DataFrame,
+) -> pd.DataFrame:
+    daily = daily_df.copy()
+    if daily.empty:
+        return pd.DataFrame()
+    daily["htsc_code"] = daily["htsc_code"].map(normalize_code)
+    daily["time"] = pd.to_datetime(daily["time"], errors="coerce").dt.floor("D")
+    daily["close"] = pd.to_numeric(daily["close"], errors="coerce")
+    daily = daily.dropna(subset=["htsc_code", "time", "close"]).sort_values(["htsc_code", "time"])
+    if daily.empty:
+        return pd.DataFrame()
+
+    income = _normalize_statement_input(
+        income_df,
+        ["revenue", "net_profit_incl_min_int_inc_after"],
+        "income",
+    )
+    income = _add_ttm_values(income, "revenue", "revenue_ttm", "income_report_date")
+    income = _add_ttm_values(
+        income,
+        "net_profit_incl_min_int_inc_after",
+        "net_profit_parent_ttm",
+        "income_report_date",
+    )
+    income = _latest_statement_by_announce(income, "income")
+
+    balance = _normalize_statement_input(
+        balance_df,
+        ["tot_shrhldr_eqy_excl_min_int"],
+        "balance",
+    )
+    balance = _latest_statement_by_announce(balance, "balance")
+
+    pershare = _normalize_statement_input(
+        pershare_df,
+        ["equity_roe", "net_roe"],
+        "roe",
+    )
+    pershare = _latest_statement_by_announce(pershare, "roe")
+
+    capital = _normalize_statement_input(
+        capital_df,
+        ["total_capital"],
+        "capital",
+    )
+    capital = _latest_statement_by_announce(capital, "capital")
+
+    out = _merge_asof_by_code(daily, income, "income_announce_date")
+    out = _merge_asof_by_code(out, balance, "balance_announce_date")
+    out = _merge_asof_by_code(out, pershare, "roe_announce_date")
+    out = _merge_asof_by_code(out, capital, "capital_announce_date")
+    out = out.dropna(subset=["income_report_date", "balance_report_date", "capital_report_date"]).copy()
+    if out.empty:
+        return out
+
+    out["revenue"] = out["revenue"].astype(float)
+    out["net_profit_parent"] = out["net_profit_incl_min_int_inc_after"].astype(float)
+    out["equity_parent"] = out["tot_shrhldr_eqy_excl_min_int"].astype(float)
+    out["roe"] = out["equity_roe"].astype(float)
+    out["total_market_val"] = out["close"] * out["total_capital"]
+    out["pe_ttm"] = _safe_ratio(out["total_market_val"], out["net_profit_parent_ttm"])
+    out["pb"] = _safe_ratio(out["total_market_val"], out["equity_parent"])
+    out["table_name"] = FUNDAMENTAL_VALUATION_TABLE
+    out["updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+    columns = [
+        "htsc_code",
+        "table_name",
+        "time",
+        "income_report_date",
+        "income_announce_date",
+        "balance_report_date",
+        "balance_announce_date",
+        "roe_report_date",
+        "roe_announce_date",
+        "capital_report_date",
+        "capital_announce_date",
+        "close",
+        "total_capital",
+        "total_market_val",
+        "revenue",
+        "revenue_ttm",
+        "net_profit_parent",
+        "net_profit_parent_ttm",
+        "equity_parent",
+        "pe_ttm",
+        "pb",
+        "roe",
+        "net_roe",
+        "updated_at",
+    ]
+    return out[[col for col in columns if col in out.columns]].sort_values(["time", "htsc_code"]).reset_index(drop=True)
+
+
 def save_partitioned_parquet(df: pd.DataFrame, base_dir: str, table_name: str) -> list[tuple[int, int]]:
     if df is None or df.empty:
         return []
@@ -315,7 +508,7 @@ def save_partitioned_parquet(df: pd.DataFrame, base_dir: str, table_name: str) -
         month = int(partition_df["month"][0])
         dir_path = _table_base_dir(base_dir, table_name) / f"year={year}" / f"month={month:02d}"
         dir_path.mkdir(parents=True, exist_ok=True)
-        file_path = dir_path / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_year_{year}_month_{month:02d}.parquet"
+        file_path = dir_path / f"{_timestamp_token()}_year_{year}_month_{month:02d}.parquet"
         save_df = partition_df.drop(["year", "month"])
         save_df.write_parquet(str(file_path), compression="zstd")
         touched.append((year, month))
@@ -347,7 +540,7 @@ def save_daily_factor_partitioned_parquet(df: pd.DataFrame, base_dir: str, table
         month = int(partition_df["month"][0])
         dir_path = _table_base_dir(base_dir, table_name) / f"year={year}" / f"month={month:02d}"
         dir_path.mkdir(parents=True, exist_ok=True)
-        file_path = dir_path / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_year_{year}_month_{month:02d}.parquet"
+        file_path = dir_path / f"{_timestamp_token()}_year_{year}_month_{month:02d}.parquet"
         save_df = partition_df.drop(["year", "month"])
         save_df.write_parquet(str(file_path), compression="zstd")
         touched.append((year, month))
@@ -600,76 +793,162 @@ def probe_factor_tables(args: argparse.Namespace, codes: list[str], names: dict[
     return ok
 
 
-def _existing_valuation_paths(base_dir: str, start_date: datetime, end_date: datetime) -> list[str]:
-    base = Path(base_dir)
+def _parquet_reader(paths: list[str]) -> tuple[str, list[str]]:
+    if not paths:
+        raise ValueError("paths must not be empty")
+    placeholders = ", ".join(["?"] * len(paths))
+    return f"read_parquet([{placeholders}], union_by_name=true)", paths
+
+
+def _existing_table_paths(base_dir: str, table_name: str, start_date: datetime | None = None, end_date: datetime | None = None) -> list[str]:
+    table_dir = _table_base_dir(base_dir, table_name)
+    if not table_dir.exists():
+        return []
     paths: list[str] = []
-    cursor = start_date.replace(day=1)
-    end_month = end_date.replace(day=1)
-    while cursor <= end_month:
-        path = base / f"year={cursor.year}" / f"month={cursor.month:02d}" / MERGED_FILE_NAME
-        if _is_readable_parquet(path):
-            paths.append(str(path).replace("\\", "/"))
-        if cursor.month == 12:
-            cursor = cursor.replace(year=cursor.year + 1, month=1)
-        else:
-            cursor = cursor.replace(month=cursor.month + 1)
+    for path in sorted(table_dir.glob("year=*/month=*/merged.parquet")):
+        if not _is_readable_parquet(path):
+            continue
+        if start_date is not None or end_date is not None:
+            try:
+                year = int(path.parent.parent.name.split("=", 1)[1])
+                month = int(path.parent.name.split("=", 1)[1])
+            except Exception:
+                continue
+            partition_start = datetime(year, month, 1)
+            partition_end = datetime(year + int(month == 12), 1 if month == 12 else month + 1, 1) - timedelta(days=1)
+            if start_date is not None and partition_end < start_date:
+                continue
+            if end_date is not None and partition_start > end_date:
+                continue
+        paths.append(str(path).replace("\\", "/"))
     return paths
 
 
-def warn_factor_unit_scale(base_dir: str, touched_by_table: dict[str, set[tuple[int, int]]]) -> None:
-    touched = set().union(*touched_by_table.values()) if touched_by_table else set()
-    if not touched:
-        return
-    min_year, min_month = min(touched)
-    start_date = datetime(min_year, min_month, 1)
-    max_year, max_month = max(touched)
-    end_date = datetime(max_year, max_month, 28) + timedelta(days=4)
-    end_date = end_date - timedelta(days=end_date.day)
-    valuation_paths = _existing_valuation_paths(INSIGHT_VALUATION_BASE_DIR, start_date, end_date)
-    if not valuation_paths:
-        print("[UNIT] 未发现对应旧 Insight 估值 parquet，跳过单位对照。")
+def _existing_daily_paths(daily_base_dir: str, start_date: datetime, end_date: datetime) -> list[str]:
+    base = Path(daily_base_dir)
+    if not base.exists():
+        return []
+    paths: list[str] = []
+    for path in sorted(base.glob("year=*/month=*/merged.parquet")):
+        if not _is_readable_parquet(path):
+            continue
+        try:
+            year = int(path.parent.parent.name.split("=", 1)[1])
+            month = int(path.parent.name.split("=", 1)[1])
+        except Exception:
+            continue
+        partition_start = datetime(year, month, 1)
+        partition_end = datetime(year + int(month == 12), 1 if month == 12 else month + 1, 1) - timedelta(days=1)
+        if partition_end < start_date or partition_start > end_date:
+            continue
+        paths.append(str(path).replace("\\", "/"))
+    return paths
+
+
+def _load_table_frame(base_dir: str, table_name: str, columns: list[str]) -> pd.DataFrame:
+    paths = _existing_table_paths(base_dir, table_name)
+    if not paths:
+        return pd.DataFrame(columns=columns)
+    reader, params = _parquet_reader(paths)
+    select_cols = ", ".join(columns)
+    return duckdb.connect(database=":memory:").execute(f"SELECT {select_cols} FROM {reader}", params).df()
+
+
+def _load_daily_frame(daily_base_dir: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    paths = _existing_daily_paths(daily_base_dir, start_date, end_date)
+    if not paths:
+        return pd.DataFrame(columns=["htsc_code", "time", "close"])
+    reader, params = _parquet_reader(paths)
+    query = f"""
+    SELECT
+        UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+        CAST(time AS TIMESTAMP) AS time,
+        TRY_CAST(close AS DOUBLE) AS close
+    FROM {reader}
+    WHERE time >= ? AND time <= ?
+      AND htsc_code IS NOT NULL
+      AND close IS NOT NULL
+    """
+    return duckdb.connect(database=":memory:").execute(query, [*params, start_date, end_date]).df()
+
+
+def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    denom = pd.to_numeric(denominator, errors="coerce")
+    denom = denom.mask(denom == 0)
+    return pd.to_numeric(numerator, errors="coerce") / denom
+
+
+def save_fundamental_valuation_partitioned_parquet(df: pd.DataFrame, base_dir: str) -> list[tuple[int, int]]:
+    if df is None or df.empty:
+        return []
+    pl_df = (
+        pl.from_pandas(df)
+        .with_columns(
+            pl.col("time").cast(pl.Datetime, strict=False).dt.truncate("1d").alias("time"),
+            pl.col("htsc_code").cast(pl.Utf8).str.to_uppercase().str.strip_chars().alias("htsc_code"),
+            pl.lit(FUNDAMENTAL_VALUATION_TABLE).alias("table_name"),
+        )
+        .drop_nulls(["time", "htsc_code"])
+    )
+    pl_df = deduplicate_daily_factor_df(pl_df)
+    pl_df = pl_df.with_columns(
+        pl.col("time").dt.year().alias("year"),
+        pl.col("time").dt.month().alias("month"),
+    )
+
+    touched: list[tuple[int, int]] = []
+    for partition_df in pl_df.partition_by(["year", "month"]):
+        year = int(partition_df["year"][0])
+        month = int(partition_df["month"][0])
+        dir_path = _table_base_dir(base_dir, FUNDAMENTAL_VALUATION_TABLE) / f"year={year}" / f"month={month:02d}"
+        dir_path.mkdir(parents=True, exist_ok=True)
+        file_path = dir_path / f"{_timestamp_token()}_year_{year}_month_{month:02d}.parquet"
+        save_df = partition_df.drop(["year", "month"])
+        save_df.write_parquet(str(file_path), compression="zstd")
+        touched.append((year, month))
+        print(f"[OK] saved {FUNDAMENTAL_VALUATION_TABLE}: {file_path} ({len(save_df)} rows)")
+    return touched
+
+
+def run_fundamental_valuation_derivation(args: argparse.Namespace, start_date: datetime, end_date: datetime) -> None:
+    required = ["Income", "Balance", "PershareIndex", "Capital"]
+    missing = [table for table in required if not _existing_table_paths(args.base_dir, table)]
+    if missing:
+        print(f"[WARN] skip {FUNDAMENTAL_VALUATION_TABLE}; missing tables: {', '.join(missing)}")
         return
 
-    checks = [
-        ("factor_metrics", "total_mv", "total_market_val"),
-        ("factor_metrics", "pb_ratio", "pb"),
-        ("factor_base_derivative", "circ_market_value", "floating_market_val"),
-    ]
-    con = duckdb.connect(database=":memory:")
-    try:
-        for table, qmt_col, insight_col in checks:
-            table_dir = _table_base_dir(base_dir, table)
-            if not table_dir.exists():
-                continue
-            qmt_paths = [
-                str(table_dir / f"year={year}" / f"month={month:02d}" / MERGED_FILE_NAME).replace("\\", "/")
-                for year, month in touched_by_table.get(table, set())
-                if _is_readable_parquet(table_dir / f"year={year}" / f"month={month:02d}" / MERGED_FILE_NAME)
-            ]
-            if not qmt_paths:
-                continue
-            qmt_reader, qmt_params = _parquet_reader(qmt_paths)
-            val_reader, val_params = _parquet_reader(valuation_paths)
-            sql = f"""
-            SELECT median(abs(CAST(q.{qmt_col} AS DOUBLE)) / nullif(abs(CAST(v.{insight_col} AS DOUBLE)), 0)) AS ratio
-            FROM {qmt_reader} q
-            JOIN {val_reader} v
-              ON q.htsc_code = v.htsc_code
-             AND CAST(q.time AS DATE) = CAST(v.time AS DATE)
-            WHERE q.{qmt_col} IS NOT NULL AND v.{insight_col} IS NOT NULL
-            """
-            ratio_df = con.execute(sql, [*qmt_params, *val_params]).df()
-            ratio = ratio_df.iloc[0]["ratio"] if not ratio_df.empty else None
-            if ratio is None or pd.isna(ratio):
-                print(f"[UNIT] {table}.{qmt_col} 无可对照样本。")
-                continue
-            ratio_float = float(ratio)
-            level = "WARN" if ratio_float < 0.01 or ratio_float > 100 else "OK"
-            print(f"[UNIT-{level}] {table}.{qmt_col} / Insight.{insight_col} median_ratio={ratio_float:.6g}")
-            if ratio_float < 0.01 or ratio_float > 100:
-                print(f"[UNIT-WARN] {table}.{qmt_col} 可能存在元/万/亿单位差异，请人工确认后再替代使用。")
-    finally:
-        con.close()
+    income = _load_table_frame(
+        args.base_dir,
+        "Income",
+        ["htsc_code", "report_date", "announce_date", "revenue", "net_profit_incl_min_int_inc_after"],
+    )
+    balance = _load_table_frame(
+        args.base_dir,
+        "Balance",
+        ["htsc_code", "report_date", "announce_date", "tot_shrhldr_eqy_excl_min_int"],
+    )
+    pershare = _load_table_frame(
+        args.base_dir,
+        "PershareIndex",
+        ["htsc_code", "report_date", "announce_date", "equity_roe", "net_roe"],
+    )
+    capital = _load_table_frame(
+        args.base_dir,
+        "Capital",
+        ["htsc_code", "report_date", "announce_date", "total_capital"],
+    )
+    daily = _load_daily_frame(args.daily_base_dir, start_date, end_date)
+    derived = build_fundamental_valuation_frame(income, balance, pershare, capital, daily)
+    if derived.empty:
+        print(f"[INFO] {FUNDAMENTAL_VALUATION_TABLE} no rows for {start_date.date()} ~ {end_date.date()}")
+        return
+    touched = save_fundamental_valuation_partitioned_parquet(derived, args.base_dir)
+    rebuild_daily_factor_merged_parquets(args.base_dir, FUNDAMENTAL_VALUATION_TABLE, set(touched))
+
+
+def warn_factor_unit_scale(base_dir: str, touched_by_table: dict[str, set[tuple[int, int]]]) -> None:
+    del base_dir, touched_by_table
+    print("[UNIT] 已切换为 QMT 公司数据主链路，跳过旧估值目录单位对照。")
 
 
 def rebuild_existing_tables(base_dir: str, table_names: list[str]) -> None:
@@ -727,6 +1006,8 @@ def run_daily_factor_download(
     total_codes = sum(len(v) for v in tasks_by_start.values())
     if total_codes == 0:
         print("QMT 因子表无需要更新的数据。")
+        if args.derive_valuation:
+            run_fundamental_valuation_derivation(args, derive_start, derive_end)
         return
     print(f"QMT 因子表需更新代码数: {total_codes} | 表: {', '.join(factor_tables)}")
 
@@ -765,9 +1046,24 @@ def run_daily_factor_download(
 def run_download(args: argparse.Namespace) -> None:
     tables = parse_tables_arg(args.tables)
     factor_tables = parse_factor_tables_arg(args.factor_tables)
+    derive_end_text = str(args.derive_end or args.end or "").strip()
+    derive_end = datetime.now() if not derive_end_text else datetime.strptime(derive_end_text, "%Y-%m-%d")
+    derive_end = derive_end.replace(hour=23, minute=59, second=59, microsecond=999999)
+    derive_start_text = str(args.derive_start or "").strip()
+    derive_start = (
+        datetime.strptime(derive_start_text, "%Y-%m-%d")
+        if derive_start_text
+        else derive_end - timedelta(days=max(int(args.derive_lookback_days), 0))
+    )
+    derive_start = derive_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    if args.derive_only:
+        run_fundamental_valuation_derivation(args, derive_start, derive_end)
+        return
     if args.rebuild_only:
         rebuild_existing_tables(args.base_dir, tables)
         rebuild_existing_daily_factor_tables(args.base_dir, factor_tables)
+        if args.derive_valuation:
+            run_fundamental_valuation_derivation(args, derive_start, derive_end)
         return
     end_text = str(args.end or "").strip()
     end_date = datetime.now() if not end_text else datetime.strptime(end_text, "%Y-%m-%d")
@@ -799,6 +1095,8 @@ def run_download(args: argparse.Namespace) -> None:
     total_codes = sum(len(v) for v in tasks_by_start.values())
     if total_codes == 0:
         print("无需要更新的数据。")
+        if args.derive_valuation:
+            run_fundamental_valuation_derivation(args, derive_start, derive_end)
         return
     print(f"需更新代码数: {total_codes}")
 
@@ -826,6 +1124,9 @@ def run_download(args: argparse.Namespace) -> None:
             print(f"[INFO] {table} 无新增分区。")
 
 
+
+    if args.derive_valuation:
+        run_fundamental_valuation_derivation(args, derive_start, derive_end)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="QMT 公司数据下载：财务三表、主要指标、股本结构")
     parser.add_argument("--tables", default="all", help="all 或逗号分隔：Income,Balance,CashFlow,PershareIndex,Capital")
@@ -843,6 +1144,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-dir", default=BASE_DIR, help="输出根目录")
     parser.add_argument("--sleep-sec", type=float, default=DEFAULT_SLEEP_SEC, help="批次间隔秒数")
     parser.add_argument("--rebuild-only", action="store_true", help="只重建已有分区 merged.parquet")
+    parser.add_argument("--daily-base-dir", default=DAILY_DATA_BASE_DIR, help="daily OHLC root for derived PE/PB table")
+    parser.add_argument(
+        "--derive-valuation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="build factor_fundamental_valuation after download/rebuild; use --no-derive-valuation to disable",
+    )
+    parser.add_argument("--derive-only", action="store_true", help="only build factor_fundamental_valuation; do not download raw statements")
+    parser.add_argument("--derive-start", default="", help="derived table start trading day, YYYY-MM-DD; empty uses --derive-lookback-days")
+    parser.add_argument("--derive-end", default="", help="derived table end trading day, YYYY-MM-DD; empty follows --end/today")
+    parser.add_argument("--derive-lookback-days", type=int, default=7, help="lookback days for derived table when --derive-start is empty; default 7")
     parser.add_argument("--probe-factor-tables", action="store_true", help="先小样本探测 QMT 因子表，失败则不写入")
     parser.add_argument("--probe-codes", type=int, default=3, help="因子表探测股票数量，默认 3")
     parser.add_argument("--probe-days", type=int, default=92, help="因子表探测回看天数，默认 92")

@@ -42,7 +42,7 @@ from 筹码结构因子 import (  # noqa: E402
 
 
 DEFAULT_DAILY_BAR_DIR = Path(r"D:\database\stock_basic_data_daily")
-DEFAULT_EQUITY_DIR = Path(r"D:\database\stock_financial_statements\market_equity_data")
+DEFAULT_EQUITY_DIR = Path(r"D:\database\qmt_turnover_data")
 HISTORY_DAYS = 1300
 
 
