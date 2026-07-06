@@ -30,7 +30,7 @@ SAVE_DIR = Path(r"D:\database\bs_dialy")
 TOTAL_RECORD_DIR = Path(r"D:\database\total_record")
 PRICE_BASE_PATH = r"D:\database\stock_basic_data_daily"
 SIGNAL_BASE_PATH = Path(r"D:\database\signal_daily")
-# 与 `ZXW因子/ZXW策略技术因子生成.ipynb` 对齐：`none` | `forward` | `backward`
+# 与 `ZXW因子/ZXW策略技术因子生成.ipynb` 对齐：`none` | `forward` | `backward` | `forward_ratio` | `backward_ratio`
 ADJ_MODE: str = "backward"
 ADJ_BASE_PATH = r"D:\database\stock_adj_daily"
 _OHLC_NAMES = ("open", "high", "low", "close")
@@ -231,8 +231,201 @@ def _zxw_adj_parquet_path() -> str:
     return str(adj_seg).replace("\\", "/") if adj_seg.is_file() else adj_glob
 
 
+def _zxw_adj_wide_glob() -> str:
+    return str(Path(ADJ_BASE_PATH) / "wide_xdy" / "year=*" / "month=*" / "merged.parquet").replace("\\", "/")
+
+
+def _zxw_adj_wide_paths_for_range(query_start_date: str, query_end_exclusive: str) -> list[str]:
+    start = pd.Timestamp(query_start_date).normalize().replace(day=1)
+    end_inclusive = pd.Timestamp(query_end_exclusive).normalize() - pd.Timedelta(days=1)
+    if pd.isna(start) or pd.isna(end_inclusive) or end_inclusive < start:
+        return []
+    end_month = end_inclusive.replace(day=1)
+    wide_root = Path(ADJ_BASE_PATH) / "wide_xdy"
+    paths: list[str] = []
+    month = start
+    while month <= end_month:
+        path = wide_root / f"year={month.year:04d}" / f"month={month.month:02d}" / "merged.parquet"
+        if path.is_file():
+            paths.append(str(path).replace("\\", "/"))
+        month = month + pd.DateOffset(months=1)
+    return paths
+
+
 def _zxw_query_end_inclusive(backtest_end_exclusive: str) -> str:
     return (pd.Timestamp(backtest_end_exclusive).floor("D") - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def _zxw_build_ratio_factor_long_from_wide(wide_df: pd.DataFrame, codes: np.ndarray) -> pd.DataFrame:
+    if wide_df.empty or "htsc_code" not in wide_df.columns:
+        return pd.DataFrame(columns=["htsc_code", "time", "ratio_backward_factor"])
+    code_set = {str(code).strip().upper() for code in codes}
+    rows: list[dict[str, Any]] = []
+    for _, row in wide_df.iterrows():
+        code = str(row.get("htsc_code") or "").strip().upper()
+        if code not in code_set:
+            continue
+        mapping: dict[pd.Timestamp, float] = {}
+        for col in wide_df.columns:
+            if col in {"htsc_code", "year", "month"}:
+                continue
+            day = pd.to_datetime(str(col), format="%Y/%m/%d", errors="coerce")
+            if pd.isna(day):
+                continue
+            value = pd.to_numeric(row[col], errors="coerce")
+            if pd.isna(value):
+                continue
+            mapping[pd.Timestamp(day).normalize()] = float(value)
+        if not mapping:
+            continue
+        series = pd.Series(mapping, dtype=np.float64).sort_index()
+        raw = series.to_numpy(dtype=np.float64)
+        segment_start = np.ones(len(raw), dtype=bool)
+        if len(raw) > 1:
+            segment_start[1:] = raw[1:] != raw[:-1]
+        factors = np.cumprod(np.where(segment_start, raw, 1.0))
+        for day, factor in zip(series.index, factors):
+            rows.append(
+                {
+                    "htsc_code": code,
+                    "time": pd.Timestamp(day).normalize(),
+                    "ratio_backward_factor": float(factor),
+                }
+            )
+    if not rows:
+        return pd.DataFrame(columns=["htsc_code", "time", "ratio_backward_factor"])
+    return pd.DataFrame(rows)
+
+
+def _zxw_ratio_factor_series_from_wide_row(row: pd.Series, columns: pd.Index) -> pd.Series:
+    mapping: dict[pd.Timestamp, float] = {}
+    for col in columns:
+        if col in {"htsc_code", "year", "month"}:
+            continue
+        day = pd.to_datetime(str(col), format="%Y/%m/%d", errors="coerce")
+        if pd.isna(day):
+            continue
+        value = pd.to_numeric(row[col], errors="coerce")
+        if pd.isna(value):
+            continue
+        mapping[pd.Timestamp(day).normalize()] = float(value)
+    if not mapping:
+        return pd.Series(dtype=np.float64)
+    return pd.Series(mapping, dtype=np.float64).sort_index()
+
+
+def _zxw_resolve_ratio_factors_for_days(days: pd.Series, factor_series: pd.Series) -> np.ndarray:
+    if days.empty or factor_series.empty:
+        return np.ones(len(days), dtype=np.float64)
+
+    first_day = factor_series.index.min()
+    last_day = factor_series.index.max()
+    last_factor = float(factor_series.iloc[-1])
+    values: list[float] = []
+    for day_value in days:
+        day = pd.Timestamp(day_value).normalize() if pd.notna(day_value) else pd.NaT
+        factor = factor_series.get(day)
+        if pd.isna(factor):
+            if pd.notna(day) and day > last_day:
+                factor = last_factor
+            elif pd.notna(day) and day < first_day:
+                factor = 1.0
+            else:
+                factor = 1.0
+        values.append(float(factor))
+    return np.asarray(values, dtype=np.float64)
+
+
+def _apply_ratio_factor_series_to_price_df(price_df: pd.DataFrame, wide_df: pd.DataFrame, mode: str) -> pd.DataFrame:
+    if price_df.empty or wide_df.empty or "htsc_code" not in wide_df.columns:
+        return price_df
+
+    out = price_df.copy()
+    ohlc_cols = _zxw_ohlc_cols(out)
+    if not ohlc_cols:
+        raise KeyError("未找到 open/high/low/close 列，无法复权")
+
+    wide = wide_df.copy()
+    wide["htsc_code"] = wide["htsc_code"].astype(str).str.strip().str.upper()
+    parts_by_code: dict[str, list[pd.Series]] = {}
+    for _, row in wide.iterrows():
+        code = str(row.get("htsc_code") or "").strip().upper()
+        if not code:
+            continue
+        series = _zxw_ratio_factor_series_from_wide_row(row, wide.columns)
+        if not series.empty:
+            parts_by_code.setdefault(code, []).append(series)
+
+    if not parts_by_code:
+        return out
+
+    factor_by_code: dict[str, pd.Series] = {}
+    for code, parts in parts_by_code.items():
+        xdy_series = pd.concat(parts).sort_index()
+        xdy_series = xdy_series[~xdy_series.index.duplicated(keep="last")]
+        raw = xdy_series.to_numpy(dtype=np.float64)
+        segment_start = np.ones(len(raw), dtype=bool)
+        if len(raw) > 1:
+            segment_start[1:] = raw[1:] != raw[:-1]
+        factor_by_code[code] = pd.Series(
+            np.cumprod(np.where(segment_start, raw, 1.0)),
+            index=xdy_series.index,
+            dtype=np.float64,
+        )
+
+    for code, idx in out.groupby("htsc_code", sort=False).groups.items():
+        factor_series = factor_by_code.get(str(code).strip().upper())
+        if factor_series is None or factor_series.empty:
+            continue
+        row_pos = out.index.get_indexer(idx)
+        row_days = out.iloc[row_pos]["time"]
+        factors = _zxw_resolve_ratio_factors_for_days(row_days, factor_series)
+        if mode == "forward_ratio":
+            last_factor = float(factor_series.iloc[-1])
+            factors = factors / (last_factor if last_factor != 0.0 else 1.0)
+        values = out.iloc[row_pos][ohlc_cols].to_numpy(dtype=np.float64, copy=True)
+        values = values * factors[:, None]
+        out.iloc[row_pos, out.columns.get_indexer(ohlc_cols)] = values
+    return out
+
+
+def _apply_ratio_ohlc_adj_to_price_df(
+    price_df: pd.DataFrame,
+    *,
+    target_codes: list[str],
+    query_start_date: str,
+    query_end_exclusive: str,
+    mode: str,
+) -> pd.DataFrame:
+    df_multi = price_df.copy()
+    df_multi["htsc_code"] = df_multi["htsc_code"].astype(str).str.strip().str.upper()
+    df_multi["time"] = pd.to_datetime(df_multi["time"], errors="coerce").dt.normalize()
+
+    ordered_codes = sorted({str(c).strip().upper() for c in target_codes if str(c).strip()})
+    if not ordered_codes:
+        return df_multi
+    codes_str = ", ".join([f"'{_sql_escape_htsc(c)}'" for c in ordered_codes])
+    wide_paths = _zxw_adj_wide_paths_for_range(query_start_date, query_end_exclusive)
+    if not wide_paths:
+        return df_multi
+    path_list_sql = ", ".join([_sql_quote_string(p) for p in wide_paths])
+    adj_con = duckdb.connect(database=":memory:")
+    try:
+        wide_df = adj_con.execute(
+            f"""
+            SELECT *
+            FROM read_parquet([{path_list_sql}], hive_partitioning=1, union_by_name=True)
+            WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) IN ({codes_str})
+            """
+        ).df()
+    finally:
+        adj_con.close()
+
+    out = _apply_ratio_factor_series_to_price_df(df_multi, wide_df, mode).reset_index(drop=True)
+    del wide_df
+    gc.collect()
+    out["time"] = pd.to_datetime(out["time"]).dt.floor("D")
+    return out
 
 
 def apply_ohlc_adj_to_price_df(
@@ -243,15 +436,28 @@ def apply_ohlc_adj_to_price_df(
     query_end_exclusive: str,
     adj_mode: str | None = None,
 ) -> pd.DataFrame:
-    """与因子 notebook 一致：工作日展开复权因子、left merge、缺因子=1；仅改 OHLC，volume 不改。"""
+    """复权 OHLC，volume 不改。ratio 模式使用 wide_xdy，ordinary 模式使用分段事件。"""
     mode = str(adj_mode if adj_mode is not None else ADJ_MODE).strip().lower()
-    if mode not in ("none", "forward", "backward"):
-        raise ValueError("ADJ_MODE 须为 none / forward / backward")
+    aliases = {
+        "forward": "forward_ordinary",
+        "backward": "backward_ordinary",
+    }
+    mode = aliases.get(mode, mode)
+    if mode not in ("none", "forward_ordinary", "backward_ordinary", "forward_ratio", "backward_ratio"):
+        raise ValueError("ADJ_MODE 须为 none / forward / backward / forward_ratio / backward_ratio")
     if mode == "none" or price_df.empty:
         out = price_df.copy()
         out["htsc_code"] = out["htsc_code"].astype(str).str.strip().str.upper()
         out["time"] = pd.to_datetime(out["time"], errors="coerce").dt.normalize()
         return out
+    if mode.endswith("_ratio"):
+        return _apply_ratio_ohlc_adj_to_price_df(
+            price_df,
+            target_codes=target_codes,
+            query_start_date=query_start_date,
+            query_end_exclusive=query_end_exclusive,
+            mode=mode,
+        )
 
     query_end_inclusive = _zxw_query_end_inclusive(query_end_exclusive)
     ordered_codes = sorted({str(c).strip().upper() for c in target_codes if str(c).strip()})
@@ -312,7 +518,7 @@ def apply_ohlc_adj_to_price_df(
     if not ohlc_cols:
         raise KeyError("未找到 open/high/low/close 列，无法复权")
 
-    if mode == "forward":
+    if mode == "forward_ordinary":
         su = np.ascontiguousarray(merged["suffix_xdy_cum"].to_numpy(dtype=np.float64))
         for c in ohlc_cols:
             v = np.ascontiguousarray(merged[c].to_numpy(dtype=np.float64))
@@ -1109,6 +1315,7 @@ def build_zxw_rule_bt_dataframe_for_range(
     *,
     init_lookback_calendar_days: int = 0,
     enable_future_halving_mask: bool = True,
+    adj_mode: str | None = None,
 ) -> tuple[pd.DataFrame, list[str]]:
     """
     按代码列表与 [start, end) 构建与脚本一致的回测宽表（可选向后扩展行情用于未来腰斩标记，再裁剪到 end）。
@@ -1151,6 +1358,7 @@ def build_zxw_rule_bt_dataframe_for_range(
         target_codes=codes,
         query_start_date=query_start,
         query_end_exclusive=ext_end,
+        adj_mode=adj_mode,
     )
     bt_df = build_bt_dataframe(
         price_df=price_df,

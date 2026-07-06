@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import sys
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -23,6 +24,7 @@ RECORDS_DIR = Path(__file__).resolve().parent / "records"
 FACTOR_DIR_PREFIX = "factor="
 MERGED_FILE_NAME = "merged.parquet"
 DEFAULT_PERIODS = [1, 3, 5, 10, 20, 60]
+PRICE_ADJUST_MODE = "backward_ratio"
 ALLOWED_GROUP_COUNTS = {5, 8, 10, 20}
 MAX_RECORD_ITEMS = 200
 
@@ -37,6 +39,15 @@ class FactorValidationNotFoundError(FactorValidationError):
 
 class FactorValidationInputError(FactorValidationError):
     pass
+
+
+def apply_ohlc_adj_to_price_df(price_df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
+    bt_dir = str(PROJECT_ROOT / "backtrader")
+    if bt_dir not in sys.path:
+        sys.path.append(bt_dir)
+    from models.zxw_rule_backtest.zxw_view_results_full import apply_ohlc_adj_to_price_df as _apply
+
+    return _apply(price_df, **kwargs)
 
 
 def _sanitize_factor_dir_name(factor_name: str) -> str:
@@ -253,7 +264,20 @@ def _read_price_frame(start: pd.Timestamp, end: pd.Timestamp, codes: list[str], 
     df["time"] = pd.to_datetime(df["time"], errors="coerce").dt.normalize()
     df["close"] = pd.to_numeric(df["close"], errors="coerce")
     df = df[df["htsc_code"].isin(code_set)]
-    return df.dropna(subset=["htsc_code", "time", "close"]).drop_duplicates(["time", "htsc_code"], keep="last")
+    df = df.dropna(subset=["htsc_code", "time", "close"]).drop_duplicates(["time", "htsc_code"], keep="last")
+    if df.empty:
+        return df
+    adjusted = apply_ohlc_adj_to_price_df(
+        df,
+        target_codes=codes,
+        query_start_date=start.strftime("%Y-%m-%d"),
+        query_end_exclusive=(price_end + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+        adj_mode=PRICE_ADJUST_MODE,
+    )
+    adjusted["htsc_code"] = adjusted["htsc_code"].astype(str).str.strip().str.upper()
+    adjusted["time"] = pd.to_datetime(adjusted["time"], errors="coerce").dt.normalize()
+    adjusted["close"] = pd.to_numeric(adjusted["close"], errors="coerce")
+    return adjusted.dropna(subset=["htsc_code", "time", "close"]).drop_duplicates(["time", "htsc_code"], keep="last")
 
 
 def _safe_float(value: Any) -> float | None:
@@ -511,6 +535,7 @@ def calculate_factor_validation(
             "periods": periods,
             "rolling_window": rolling_window,
             "group_count": group_count,
+            "price_adjust_mode": PRICE_ADJUST_MODE,
             "factor_rows": int(len(factor)),
             "price_rows": int(len(price)),
             "server_time": int(time.time()),

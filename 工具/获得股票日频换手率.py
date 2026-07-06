@@ -32,6 +32,7 @@ MIN_PARQUET_BYTES = 12
 PARQUET_WRITE_RETRIES = 5
 PARQUET_WRITE_RETRY_SLEEP_SEC = 0.5
 DEFAULT_LOOKBACK_DAYS = 5
+DEFAULT_START_DATE = "2010-01-01"
 
 
 def _timestamp_token() -> str:
@@ -44,6 +45,40 @@ def _parquet_pattern(base_dir: str) -> str:
 
 def _capital_pattern(capital_base_dir: str) -> str:
     return str(Path(capital_base_dir) / "table=Capital" / "year=*" / "month=*" / MERGED_FILE_NAME).replace("\\", "/")
+
+
+def scan_latest_turnover_time(base_dir: str) -> datetime | None:
+    parquet_pattern = _parquet_pattern(base_dir)
+    try:
+        con = duckdb.connect()
+        latest_df = con.execute(
+            """
+            SELECT MAX(CAST(time AS TIMESTAMP)) AS latest_time
+            FROM read_parquet(?, hive_partitioning=1, union_by_name=true)
+            WHERE time IS NOT NULL
+            """,
+            [parquet_pattern],
+        ).df()
+    except Exception:
+        return None
+    finally:
+        try:
+            con.close()
+        except Exception:
+            pass
+    if latest_df.empty or pd.isna(latest_df.loc[0, "latest_time"]):
+        return None
+    return pd.to_datetime(latest_df.loc[0, "latest_time"]).floor("D").to_pydatetime()
+
+
+def resolve_default_start_date(base_dir: str, end_date: datetime) -> str:
+    latest_time = scan_latest_turnover_time(base_dir)
+    if latest_time is None:
+        return DEFAULT_START_DATE
+    start_time = latest_time - timedelta(days=DEFAULT_LOOKBACK_DAYS)
+    if start_time > end_date:
+        start_time = end_date
+    return start_time.strftime("%Y-%m-%d")
 
 
 def normalize_code(code: str) -> str:
@@ -324,15 +359,16 @@ def main() -> None:
     parser.add_argument("--base-dir", default=BASE_DIR, help="QMT 换手率输出目录")
     parser.add_argument("--daily-base-dir", default=DAILY_BASE_DIR, help="QMT 日 K 数据目录")
     parser.add_argument("--capital-base-dir", default=CAPITAL_BASE_DIR, help="QMT 公司数据根目录")
-    default_start = (datetime.now() - timedelta(days=DEFAULT_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
-    parser.add_argument("--start", default=default_start, help="开始日期 YYYY-MM-DD，默认回溯 5 天")
+    parser.add_argument("--start", default="", help="开始日期 YYYY-MM-DD，默认从本地最新换手率回溯 5 天")
     parser.add_argument("--end", default=datetime.now().strftime("%Y-%m-%d"), help="结束日期 YYYY-MM-DD")
     parser.add_argument("--codes", default="", help="逗号分隔股票代码；空表示全量")
     args = parser.parse_args()
 
     codes = parse_codes(args.codes)
-    print(f"QMT 换手率计算: {args.start} ~ {args.end} | codes={len(codes) or 'ALL'}")
-    daily, capital = load_source_frames(args.daily_base_dir, args.capital_base_dir, args.start, args.end, codes)
+    end_date = datetime.strptime(args.end, "%Y-%m-%d")
+    start = args.start or resolve_default_start_date(args.base_dir, end_date)
+    print(f"QMT 换手率计算: {start} ~ {args.end} | codes={len(codes) or 'ALL'}")
+    daily, capital = load_source_frames(args.daily_base_dir, args.capital_base_dir, start, args.end, codes)
     print(f"日 K 行数: {len(daily)} | Capital 行数: {len(capital)}")
     result = calculate_turnover_frame(daily, capital)
     if result.empty:

@@ -38,6 +38,12 @@ INIT_LOOKBACK_CALENDAR_DAYS = 1100
 INIT_PER_STOCK_CAP = 0.02
 
 
+def _neutralize_strong_sell_signal(bt_df: pd.DataFrame) -> pd.DataFrame:
+    out = bt_df.copy()
+    out["strong_sell_signal"] = 0.0
+    return out
+
+
 def _load_zxw() -> Any:
     global _zxw_mod
     if _zxw_mod is not None:
@@ -90,7 +96,7 @@ def run(
 
     strat_params = default_strategy_params()
 
-    p("读取行情与信号", 20, "加载宽表（去前视）并合并前端买入/卖出因子")
+    p("读取行情与信号", 20, "加载宽表（去前视）并合并前端买入因子")
     zxw = _load_zxw()
     bt_df, actual_codes = zxw.build_zxw_rule_bt_dataframe_for_range(
         codes,
@@ -98,12 +104,14 @@ def run(
         end_date,
         init_lookback_calendar_days=INIT_LOOKBACK_CALENDAR_DAYS,
         enable_future_halving_mask=False,
+        adj_mode="backward_ratio",
     )
     if bt_df.empty or not actual_codes:
         raise ValueError("目标标的和日期范围内没有有效回测数据")
 
     bt_df = merge_strong_buy_signal(bt_df, frontend_buy_rules, frontend_buy_operator)
     bt_df = merge_strong_sell_signal(bt_df, frontend_sell_rules, frontend_sell_operator)
+    bt_df = _neutralize_strong_sell_signal(bt_df)
 
     p("基本面过滤", 35, "过滤强买：PE<50、PB<6、ROE>10、营业收入同比>10")
     valuation_df, indicator_df = load_base_threshold_frames(actual_codes, start_date, end_date)
@@ -164,6 +172,7 @@ def run(
         "backtest_engine": "models/zxw_factor_check_base_threshold + zxw_view_results_full 宽表",
         "strategy_class": "FactorCheckProfitThresholdDualAssumptionZxwStrategy",
         "enable_future_halving_mask": False,
+        "adj_mode": "backward_ratio",
         "daily_move_limit": DEFAULT_DAILY_MOVE_LIMIT,
         "init_lookback_calendar_days": INIT_LOOKBACK_CALENDAR_DAYS,
         "init_per_stock_cap": INIT_PER_STOCK_CAP,
@@ -181,6 +190,7 @@ def run(
         "frontend_sell_rules": sell_rules_payload,
         "frontend_buy_operator": frontend_buy_operator,
         "frontend_sell_operator": frontend_sell_operator,
+        "frontend_sell_signal_effective": False,
         "exhaustive_traversal": False,
     }
     summary_payload = result.get("summary_payload", {})
@@ -189,7 +199,7 @@ def run(
             {
                 "回测标的": actual_codes,
                 "买入组合逻辑": f"ZXW_FACTOR_CHECK_BUY ({frontend_buy_operator}) + 基本面阈值过滤",
-                "卖出组合逻辑": f"ZXW_FACTOR_CHECK_SELL ({frontend_sell_operator})",
+                "卖出组合逻辑": "仅按盈利阈值卖出，前端卖出因子不参与交易",
                 "基本面过滤": "仅保留 PE<50、PB<6、ROE>10、营业收入同比>10 的强买信号；"
                 "PE/PB按信号日前最近日频估值；ROE/营业收入同比按信号日前最近已公告Q4年报数据。",
                 "基本面过滤统计": base_filter_stats,
@@ -197,7 +207,8 @@ def run(
                 f"单日 |收盘/昨收-1|>{DEFAULT_DAILY_MOVE_LIMIT:.1%} 时该标的当天不可买卖；"
                 f"收盘价>持仓均价×{DEFAULT_FULL_PROFIT_MULTIPLIER:.0f} 时清仓并解除买入锁定；"
                 f"持仓均价×{DEFAULT_HALF_PROFIT_MULTIPLIER:.1f}<收盘价<持仓均价×{DEFAULT_FULL_PROFIT_MULTIPLIER:.0f} 时仅半仓卖出一次，未清仓前禁止再买；"
-                "强买=前端买入因子且通过基本面阈值，尽量买到2%；强卖=前端卖出因子≥1 无条件清仓；"
+                "强买=前端买入因子且通过基本面阈值，尽量买到2%；前端卖出因子仅记录在配置中，"
+                "不参与首日回溯过滤、现金估算、补仓筛选或清仓；"
                 "卖完且强买处理完后现金仍≥10%则等额补仓（可突破2%），无持仓则保持空仓；无参数穷举。",
                 "回测配置": config_payload,
             }

@@ -47,10 +47,11 @@ MERGED_FILE_NAME = "merged.parquet"
 DATA_FREQUENCY = "1m"
 MAX_RETRIES = 3
 REQUEST_SLEEP_SECONDS = 0.1
-DEFAULT_MAX_YEAR = 2026
+DEFAULT_MAX_YEAR = datetime.now().year
 DEFAULT_END_DATETIME = ""
 LOOKBACK_DAYS = 7
 AFTER_CLOSE_CLEANUP_TIME = (15, 30)
+DEFAULT_MARKET_CLOSE_TIME = (15, 0)
 
 
 def normalize_code(code: str) -> str:
@@ -77,6 +78,15 @@ def is_after_close_cleanup_time(now: datetime | None = None) -> bool:
     current = now or datetime.now()
     hour, minute = AFTER_CLOSE_CLEANUP_TIME
     return (current.hour, current.minute) >= (hour, minute)
+
+
+def resolve_default_end_datetime(now: datetime | None = None) -> datetime:
+    current = (now or datetime.now()).replace(second=0, microsecond=0)
+    close_hour, close_minute = DEFAULT_MARKET_CLOSE_TIME
+    close_time = current.replace(hour=close_hour, minute=close_minute)
+    if current > close_time:
+        return close_time
+    return current
 
 
 def cleanup_realtime_sqlite_cache_after_close(now: datetime | None = None) -> list[Path]:
@@ -576,7 +586,7 @@ def parse_args() -> argparse.Namespace:
         "--max-year",
         type=int,
         default=DEFAULT_MAX_YEAR,
-        help="下载/落盘的最大年份（含该年，默认 2026）",
+        help="下载/落盘的最大年份（含该年，默认当前年份）",
     )
     parser.add_argument(
         "--sleep-sec",
@@ -613,7 +623,7 @@ def main() -> None:
     max_save_time = datetime(args.max_year, 12, 31, 23, 59, 0)
     end_s = (args.end or "").strip()
     if not end_s:
-        time_end_date = min(now, max_save_time)
+        time_end_date = min(resolve_default_end_datetime(now), max_save_time)
     elif len(end_s) > 10:
         time_end_date = datetime.strptime(end_s, "%Y-%m-%d %H:%M:%S").replace(second=0, microsecond=0)
     else:

@@ -38,16 +38,15 @@
                 <label class="field-label">滚动窗口<input id="rolling-window" class="field" type="number" min="2" step="1" value="60"></label>
                 <label class="field-label">分组数量<select id="group-count" class="field"><option value="5">5</option><option value="8">8</option><option value="10">10</option><option value="20">20</option></select></label>
                 <button id="run-btn" class="primary-btn" type="button">运行检验</button>
-                <button id="save-record-btn" class="secondary-btn" type="button" disabled>保存成果</button>
                 <div id="status-line" class="status-line">等待选择因子</div>
             </section>
         </aside>
         <section class="scroll-deck" id="scroll-deck">
-            <section class="deck-panel" id="panel-quality"><div class="panel-head"><span>01</span><h1>基础数据质量</h1></div><div class="metric-grid" id="quality-cards"></div><div id="quality-chart" class="chart-box"></div></section>
-            <section class="deck-panel" id="panel-ic"><div class="panel-head"><span>02</span><h1>IC / RankIC / 累计 IC</h1></div><div id="ic-summary" class="summary-table"></div><div id="cum-ic-chart" class="chart-box tall"></div></section>
-            <section class="deck-panel" id="panel-rolling"><div class="panel-head"><span>03</span><h1>滚动 IC</h1></div><div id="rolling-ic-chart" class="chart-box tall"></div></section>
-            <section class="deck-panel" id="panel-groups"><div class="panel-head"><span>04</span><h1>分组收益</h1></div><div id="group-chart" class="chart-box tall"></div><div id="group-table" class="summary-table"></div></section>
-            <section class="deck-panel" id="panel-events"><div class="panel-head"><span>05</span><h1>信号事件研究</h1></div><div id="event-summary" class="summary-table"></div><div id="event-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-quality"><div class="panel-head"><span>01</span><h1>基础数据质量</h1><span class="help-tag" tabindex="0" aria-label="基础数据质量说明">❓<span class="help-popover">检查因子每天有多少有效股票、覆盖股票池比例、异常值比例和全空日期，先确认样本是否可靠。</span></span></div><div class="metric-grid" id="quality-cards"></div><div id="quality-chart" class="chart-box"></div></section>
+            <section class="deck-panel" id="panel-ic"><div class="panel-head"><span>02</span><h1>IC / RankIC / 累计 IC</h1><span class="help-tag" tabindex="0" aria-label="IC 检验说明">❓<span class="help-popover">逐日计算因子值与未来收益的 Pearson IC 和 Spearman RankIC，均值、胜率和累计 IC 用来看方向是否稳定。</span></span></div><div id="ic-summary" class="summary-table"></div><div id="cum-ic-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-rolling"><div class="panel-head"><span>03</span><h1>滚动 IC</h1><span class="help-tag" tabindex="0" aria-label="滚动 IC 说明">❓<span class="help-popover">按设置的滚动窗口平滑 IC、RankIC 和 ICIR，观察因子有效性在不同时间段是否衰减或反转。</span></span></div><div id="rolling-ic-chart" class="chart-box tall"></div></section>
+            <section class="deck-panel" id="panel-groups"><div class="panel-head"><span>04</span><h1>分组收益</h1><span class="help-tag" tabindex="0" aria-label="分组收益说明">❓<span class="help-popover">每天按因子值高低分成多组，统计各组未来收益和累计曲线，检验高低分组是否有清晰收益差异。</span></span></div><div id="group-chart" class="chart-box tall"></div><div id="group-table" class="summary-table"></div></section>
+            <section class="deck-panel" id="panel-events"><div class="panel-head"><span>05</span><h1>信号事件研究</h1><span class="help-tag" tabindex="0" aria-label="信号事件研究说明">❓<span class="help-popover">二值因子取 value&gt;0 为事件；连续因子取每日前 20% 为事件，统计触发后多个持有周期的收益和胜率。</span></span></div><div id="event-summary" class="summary-table"></div><div id="event-chart" class="chart-box tall"></div></section>
             <section class="deck-panel" id="panel-records"><div class="panel-head"><span>06</span><h1>我的因子成果</h1></div><div id="records-list" class="records-list"></div></section>
         </section>
     </main>

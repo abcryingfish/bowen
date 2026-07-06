@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>del.py 交易逻辑流程图</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #667085;
+      --line: #ccd5e1;
+      --blue: #2563eb;
+      --green: #138a65;
+      --orange: #c46a1b;
+      --red: #c93d4a;
+      --ink: #314155;
+      --shadow: 0 10px 28px rgba(31, 41, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: #202a36;
+      color: #fff;
+      padding: 28px 32px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 0;
+      color: #d7dee8;
+      max-width: 1080px;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section {
+      margin: 0 0 20px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid #e4e7ec;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 21px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 18px 0 10px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .meta div,
+    .note {
+      padding: 12px 14px;
+      border: 1px solid #e4e7ec;
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    code {
+      font-family: Consolas, "Microsoft YaHei UI", monospace;
+      background: #eef2f7;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .flow-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    svg {
+      min-width: 1120px;
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .box {
+      fill: #fff;
+      stroke: var(--line);
+      stroke-width: 1.5;
+      rx: 8;
+      filter: drop-shadow(0 4px 8px rgba(49, 65, 85, 0.08));
+    }
+
+    .start { fill: #e8f1ff; stroke: var(--blue); }
+    .buy { fill: #eaf7f1; stroke: var(--green); }
+    .sell { fill: #fff3e6; stroke: var(--orange); }
+    .guard { fill: #fff0f2; stroke: var(--red); }
+    .io { fill: #f2f5f9; stroke: #718096; }
+
+    .label {
+      font-size: 15px;
+      font-weight: 700;
+      fill: var(--ink);
+    }
+
+    .small {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+
+    .arrow {
+      stroke: #7a8797;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+
+    .detail-flow {
+      min-width: 900px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(360px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    .lane {
+      border: 1px solid #d9e0ea;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 12px;
+      min-height: 100%;
+    }
+
+    .lane-title {
+      margin: 0 0 12px;
+      padding: 9px 10px;
+      border-radius: 6px;
+      color: #fff;
+      background: #314155;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .step {
+      position: relative;
+      margin: 0 0 22px;
+      padding: 12px 12px 12px 40px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(49, 65, 85, 0.06);
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -18px;
+      width: 1px;
+      height: 14px;
+      background: #9aa7b8;
+    }
+
+    .step:last-child::after { display: none; }
+
+    .step-num {
+      position: absolute;
+      left: 12px;
+      top: 13px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #314155;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #253245;
+      font-size: 14px;
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .step.start-step { border-color: #b8cdf8; background: #f3f7ff; }
+    .step.io-step { border-color: #cfd8e3; background: #fbfcfe; }
+    .step.guard-step { border-color: #f0b7bf; background: #fff8f9; }
+    .step.buy-step { border-color: #a9dbc9; background: #f1fbf6; }
+    .step.sell-step { border-color: #efc89e; background: #fff8ef; }
+
+    .flow-note {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      header {
+        padding: 18px 0;
+        background: #fff;
+        color: var(--text);
+      }
+
+      header p {
+        color: var(--muted);
+      }
+
+      main {
+        max-width: none;
+        padding: 0;
+      }
+
+      section {
+        box-shadow: none;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .flow-wrap {
+        overflow: visible;
+      }
+
+      .detail-flow {
+        min-width: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .lane {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .step {
+        box-shadow: none;
+      }
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid #e4e7ec;
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #253245;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    li { margin: 6px 0; }
+
+    .tag {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e8eef8;
+      color: #29476d;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .warn {
+      border-color: #f2bac1;
+      background: #fff7f8;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e4e7ec;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f5f9;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>del.py 交易逻辑流程图</h1>
+    <p>根据 <code>del.py</code>（源码编码：GBK）提取，本文档本身使用 UTF-8 编码。只描述现有逻辑，不改动业务代码。</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>文件定位</h2>
+      <div class="meta">
+        <div><strong>脚本角色：</strong>通达信预警信号到 QMT/xtquant 委托执行的自动交易脚本。</div>
+        <div><strong>主入口：</strong><code>init(C)</code> 初始化，<code>on_timer(C)</code> 每 3 秒轮询。</div>
+        <div><strong>核心链路：</strong>读预警文件 → 防重 → 生成委托 → 盘口追单 → 写 response。</div>
+        <div><strong>关键文件：</strong><code>buy.txt</code>、<code>buy_response_YYYYMMDD.txt</code>、<code>trade_record_log.txt</code>、<code>position_cost.json</code>。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>主流程图</h2>
+      <div class="flow-wrap">
+        <div class="detail-flow" role="img" aria-label="del.py 细化主流程图">
+          <div class="lane">
+            <div class="lane-title">A. 启动与定时器</div>
+            <div class="step start-step"><span class="step-num">1</span><strong><code>init(C)</code> 启动</strong><span>写“策略启动测试日志”，进入初始化链路。</span></div>
+            <div class="step io-step"><span class="step-num">2</span><strong>检查 XML 配置</strong><span><code>create_xml_if_not_exists()</code> 不存在则创建，随后清空预警文件并返回。</span></div>
+            <div class="step io-step"><span class="step-num">3</span><strong>读取界面参数</strong><span><code>set_param()</code> 写入开始/结束时间、最大买入数、价格类型、预警文件、防重规则等。</span></div>
+            <div class="step io-step"><span class="step-num">4</span><strong>设置资金账号</strong><span><code>set_account()</code> 读取 <code>account</code> 并执行 <code>C.set_account(g.accID)</code>。</span></div>
+            <div class="step guard-step"><span class="step-num">5</span><strong>启动时清理</strong><span>若当天 response 不存在则清空 <code>buy.txt</code>；随后撤掉启动前所有委托。</span></div>
+            <div class="step io-step"><span class="step-num">6</span><strong>导出成本快照</strong><span><code>export_official_position_costs()</code> 查询持仓和历史成交，写官方/历史成本文件。</span></div>
+            <div class="step start-step"><span class="step-num">7</span><strong>注册定时器</strong><span><code>C.run_time("on_timer", "3nSecond", ...)</code>，之后循环进入主轮询。</span></div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-title">B. 每轮 on_timer</div>
+            <div class="step start-step"><span class="step-num">8</span><strong><code>on_timer(C)</code> 进入</strong><span>读取当前时间，先做 15:35 后的空仓成本清理。</span></div>
+            <div class="step guard-step"><span class="step-num">9</span><strong>交易时间过滤</strong><span>早于开始时间或晚于结束时间，直接返回，不读预警。</span></div>
+            <div class="step guard-step"><span class="step-num">10</span><strong>处理未完成委托</strong><span><code>check_unfinished_orders()</code> 扫 ORDER，可能撤单、等待 tick、构造补单。</span></div>
+            <div class="step io-step"><span class="step-num">11</span><strong>读取 <code>buy.txt</code></strong><span><code>load_tdx_signal()</code> 按 7 列读取：代码、名称、时间、价格、涨跌幅、量、公式。</span></div>
+            <div class="step guard-step"><span class="step-num">12</span><strong>预警为空则返回</strong><span>文件不存在、读取异常或 DataFrame 为空时，本轮结束。</span></div>
+            <div class="step guard-step"><span class="step-num">13</span><strong>识别买卖标记</strong><span><code>add_signal_flags()</code>：<code>弱卖</code> 标记卖出，<code>五日内六级</code> 标记买入。</span></div>
+            <div class="step guard-step"><span class="step-num">14</span><strong>丢弃无关公式</strong><span>只保留 <code>is_sell == 1</code> 或 <code>is_buy == 1</code> 的预警行。</span></div>
+            <div class="step io-step"><span class="step-num">15</span><strong>加载当天 response</strong><span><code>load_tdx_response()</code> 读取 <code>buy_response_YYYYMMDD.txt</code>，不存在则用空表。</span></div>
+            <div class="step guard-step"><span class="step-num">16</span><strong>response 防重</strong><span>按配置选择 <code>stock_code + is_sell</code> 或 <code>stock_code + datetime + formula</code> 作为已处理键。</span></div>
+            <div class="step guard-step"><span class="step-num">17</span><strong>没有新增预警则返回</strong><span>防重过滤后为空，本轮结束；否则写“新增预警”日志。</span></div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-title">C. 逐条预警转委托</div>
+            <div class="step start-step"><span class="step-num">18</span><strong>逐行遍历新增预警</strong><span>每一行都会先转成 <code>signal_info</code>，后续追加处理结果。</span></div>
+            <div class="step guard-step"><span class="step-num">19</span><strong>最大买入标的数检查</strong><span>买入信号且 response 中已成交买入股票数达到上限，则直接生成 <code>skipped</code>。</span></div>
+            <div class="step start-step"><span class="step-num">20</span><strong><code>convert_order()</code></strong><span>设置方向：卖出为 <code>24</code>，买入为 <code>23</code>；补市场后缀。</span></div>
+            <div class="step guard-step"><span class="step-num">21</span><strong>涨跌幅过滤</strong><span>30/688 超过 19.5%，60/00 超过 9.5%，设置 <code>trade_amount = 0</code> 并跳过。</span></div>
+            <div class="step buy-step"><span class="step-num">22</span><strong>买入分支</strong><span>只接受 <code>五日内六级</code>；读取总资产和当前持仓市值，目标是补到总资产 2%。</span></div>
+            <div class="step buy-step"><span class="step-num">23</span><strong>买入金额计算</strong><span><code>buy_amount = total_asset * target_ratio - current_value</code>；小于等于 0 则跳过。</span></div>
+            <div class="step sell-step"><span class="step-num">24</span><strong>卖出分支</strong><span>查询持仓；没有持仓、可用为 0、成本为空、当前价为空都设置卖出数量为 0。</span></div>
+            <div class="step sell-step"><span class="step-num">25</span><strong>卖出成本与分档</strong><span>优先历史成交流水成本，兜底官方成本；150% 卖半，200% 清仓。</span></div>
+            <div class="step io-step"><span class="step-num">26</span><strong>生成委托日志</strong><span>把转换后的 <code>order</code> 写入“生成委托信息”。</span></div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-title">D. 盘口执行与结果写回</div>
+            <div class="step start-step"><span class="step-num">27</span><strong><code>do_order(C, order)</code></strong><span>若 <code>trade_amount &lt;= 0</code>，直接返回 <code>skipped</code>。</span></div>
+            <div class="step io-step"><span class="step-num">28</span><strong>读取追单参数</strong><span>默认：撤单等待 <code>1 tick</code>，重新下单等待 <code>2 tick</code>，盘口最大轮数 <code>10</code>，最大滑点比例 <code>0.03</code>。</span></div>
+            <div class="step buy-step"><span class="step-num">29</span><strong>买入追单</strong><span>取卖一价量，滑点超限则等待；按金额折算一手整数后提交限价单。</span></div>
+            <div class="step sell-step"><span class="step-num">30</span><strong>卖出追单</strong><span>取买一价量，滑点超限则等待；按剩余卖出量提交限价单。</span></div>
+            <div class="step io-step"><span class="step-num">31</span><strong>提交、等待、撤单</strong><span><code>submit_limit_order()</code> 下单，等待 tick，查询成交量，再撤残单。</span></div>
+            <div class="step io-step"><span class="step-num">32</span><strong>维护成交状态</strong><span>买入成交后更新 <code>position_cost.json</code>；150% 卖半成交后标记 <code>half_sell_done</code>。</span></div>
+            <div class="step io-step"><span class="step-num">33</span><strong>生成处理结果</strong><span><code>make_process_result()</code> 输出 <code>filled</code>、<code>partial_filled</code>、<code>submitted</code>、<code>skipped</code> 或 <code>failed</code>。</span></div>
+            <div class="step io-step"><span class="step-num">34</span><strong>追加到 response 表</strong><span><code>add_process_result_to_signal()</code> 加上状态、原因、委托号、成交量、剩余量、处理时间。</span></div>
+            <div class="step io-step"><span class="step-num">35</span><strong>保存 response</strong><span><code>save_tdx_signal_response()</code> 用 GBK 写回制表符文本。</span></div>
+            <div class="step io-step"><span class="step-num">36</span><strong>收尾日志</strong><span>保存后记录账户、持仓、委托、成交，并再次导出官方/历史成本。</span></div>
+          </div>
+        </div>
+        <p class="flow-note">读图顺序：先从 A 泳道完成启动，再进入 B 泳道的每轮轮询；B 过滤出新增预警后，进入 C 逐条转委托，最后由 D 执行并写回 response。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>分支逻辑</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>买入链路</h3>
+          <ul>
+            <li><span class="tag">信号</span><code>formula == "五日内六级"</code> 才允许买入。</li>
+            <li><span class="tag">仓位</span>读取账户总资产，单票目标市值为 <code>总资产 * 单次买入仓位比例</code>，默认 2%。</li>
+            <li><span class="tag">金额</span>若当前持仓市值已达到目标，跳过；否则按差额生成买入金额。</li>
+            <li><span class="tag">执行</span>盘口追单吃卖一，按卖一价和卖一量折算一手整数，成交后维护 <code>position_cost.json</code>。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>卖出链路</h3>
+          <ul>
+            <li><span class="tag">持仓</span>先确认股票在持仓池且可用数量大于 0。</li>
+            <li><span class="tag">成本</span>优先使用历史成交流水成本，失败时用官方持仓成本兜底。</li>
+            <li><span class="tag">分档</span>当前价达到成本 150% 时卖出 50%，达到 200% 时清仓。</li>
+            <li><span class="tag">执行</span>盘口追单吃买一，按买一量和剩余卖出量循环提交限价单。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>未完成委托处理</h3>
+          <ul>
+            <li><span class="tag">扫描</span><code>check_unfinished_orders()</code> 查询 ORDER，筛选未完成委托。</li>
+            <li><span class="tag">买入</span>已有部分成交则回填自维护成本；若目标仓位已达成，撤同股票未完成买单。</li>
+            <li><span class="tag">补单</span>撤原委托，等待 tick，再按剩余数量构造重试委托。</li>
+            <li><span class="tag">防重</span>已处理的委托号进入 <code>g.retried_order_ids</code>，避免重复补单。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>文件和日志</h3>
+          <ul>
+            <li><span class="tag">输入</span><code>buy.txt</code> 为通达信预警输入，列包含代码、名称、时间、价格、涨跌幅、量、公式。</li>
+            <li><span class="tag">输出</span><code>buy_response_YYYYMMDD.txt</code> 记录每条信号处理状态。</li>
+            <li><span class="tag">日志</span><code>trade_record_log.txt</code> 记录参数、预警、委托、成交、持仓和异常。</li>
+            <li><span class="tag">成本</span><code>position_cost.json</code> 存买入累计金额、累计股数、成本价和 150% 卖半标记。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>追单参数细节</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>参数</th>
+            <th>默认值</th>
+            <th>代码使用位置</th>
+            <th>含义</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>撤单等待tick数</code></td>
+            <td><code>1</code></td>
+            <td><code>do_order()</code> 每次提交限价单后</td>
+            <td>下单后等待 1 个盘口 tick，再查询成交量并撤掉剩余未成交委托。</td>
+          </tr>
+          <tr>
+            <td><code>重新下单等待tick数</code></td>
+            <td><code>2</code></td>
+            <td><code>do_order()</code> 盘口为空、滑点超限、本轮未全部成交后；<code>check_unfinished_orders()</code> 撤原单后</td>
+            <td>不立即重试，等待 2 个盘口 tick，让盘口刷新后再取新对手价。</td>
+          </tr>
+          <tr>
+            <td><code>盘口最大轮数</code></td>
+            <td><code>10</code></td>
+            <td><code>do_order()</code> 买入追单、卖出追单、未完成买入补单循环</td>
+            <td>最多尝试 10 轮盘口追单；每轮可能提交一次限价单，也可能因为盘口为空或滑点超限只等待不下单。</td>
+          </tr>
+          <tr>
+            <td><code>最大滑点比例</code></td>
+            <td><code>0.03</code></td>
+            <td><code>is_slippage_exceeded(signal_price, quote_price, max_slippage_ratio)</code></td>
+            <td>对手价相对预警价偏离超过 3% 时，本轮不下单，等待重新下单 tick 后再看盘口。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>关键函数索引</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>函数</th>
+            <th>作用</th>
+            <th>主要调用</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>init(C)</code></td>
+            <td>初始化配置、账户、response 清理、启动撤单、导出成本，并注册定时器。</td>
+            <td><code>create_xml_if_not_exists</code>、<code>set_param</code>、<code>set_account</code>、<code>cancel_all_orders_on_startup</code></td>
+          </tr>
+          <tr>
+            <td><code>on_timer(C)</code></td>
+            <td>交易时间内读取预警，过滤重复和无效信号，逐条生成委托并写 response。</td>
+            <td><code>check_unfinished_orders</code>、<code>load_tdx_signal</code>、<code>convert_order</code>、<code>do_order</code></td>
+          </tr>
+          <tr>
+            <td><code>convert_order(order_info)</code></td>
+            <td>把预警行转换成交易委托，包含涨跌幅过滤、买入仓位计算、卖出分档计算。</td>
+            <td><code>add_market_suffix</code>、<code>get_total_asset</code>、<code>get_history_position_cost_price</code></td>
+          </tr>
+          <tr>
+            <td><code>do_order(C, order)</code></td>
+            <td>按盘口对手价追单，控制滑点，循环提交限价单、等待成交并撤残单。</td>
+            <td><code>get_best_opposite_quote</code>、<code>submit_limit_order</code>、<code>get_order_traded_volume</code>、<code>cancel_order_if_possible</code></td>
+          </tr>
+          <tr>
+            <td><code>check_unfinished_orders(C)</code></td>
+            <td>处理历史未完成委托，撤单后按剩余数量补单，并维护买入成本。</td>
+            <td><code>is_unfinished_order</code>、<code>build_retry_order</code>、<code>do_order</code></td>
+          </tr>
+          <tr>
+            <td><code>save_tdx_signal_response(df, path)</code></td>
+            <td>标准化 response 列，GBK 写回文本，并导出交易/持仓/成本快照。</td>
+            <td><code>normalize_response_columns</code>、<code>log_all_trade_records</code>、<code>log_current_positions</code>、<code>export_official_position_costs</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>注意点</h2>
+      <div class="note warn">
+        <strong>潜在变量问题：</strong><code>convert_order()</code> 的 150% 卖出分支使用了 <code>self_cost_info.get('half_sell_done')</code>，但在当前函数片段内没有看到 <code>self_cost_info</code> 的赋值。这里没有修改业务逻辑，只在流程图中标注为需要人工复核的点。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

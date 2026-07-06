@@ -26,6 +26,7 @@ import polars as pl
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MORPH_DIR = PROJECT_ROOT / "形态趋势通道因子"
 DEFAULT_MARKET_EQUITY_PATH = r"D:\database\stock_basic_data_daily"
+DEFAULT_ADJ_WIDE_BASE_PATH = r"D:\database\stock_adj_daily\wide_xdy"
 DEFAULT_OUTPUT_BASE = r"D:\database\signal_daily_形态\candlestick_no_vol"
 DEFAULT_CODES = ""
 DEFAULT_BATCH_SIZE = 0
@@ -35,6 +36,7 @@ DEFAULT_LOOKBACK_DAYS = 0
 LOOKBACK_BUFFER_DAYS = 20
 INCREMENTAL_SAVE_SCRIPT = PROJECT_ROOT / "工具" / "形态面增量信号保存.py"
 _PATTERN_LOOKBACK_INTERNAL = 45
+_OHLC_COLUMNS = ["open", "high", "low", "close"]
 
 
 def _load_pattern_class():
@@ -304,7 +306,7 @@ def _filter_signals_by_stock_plan(
         if bounds is None:
             return False
         plan_start, plan_end = bounds
-        event_dt = pd.Timestamp(_date_to_yyyymmdd(row["Date"]), format="%Y%m%d").floor("D")
+        event_dt = _yyyymmdd_to_ts(_date_to_yyyymmdd(row["Date"]))
         return plan_start <= event_dt <= plan_end
 
     mask = signals_df.apply(_keep, axis=1)
@@ -366,7 +368,7 @@ def _filter_signals_to_missing_pairs(
     def _pair(row) -> tuple[str, pd.Timestamp, str]:
         return (
             str(row["Contract"]).upper(),
-            pd.Timestamp(_date_to_yyyymmdd(row["Date"]), format="%Y%m%d").floor("D"),
+            _yyyymmdd_to_ts(_date_to_yyyymmdd(row["Date"])),
             str(row["signal_name"]),
         )
 
@@ -483,12 +485,126 @@ def _wide_ohlcv_from_long(rows: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFram
     return open_prices, high_prices, low_prices, close_prices, volume
 
 
+def _backward_factor_series(xdy_series: pd.Series) -> pd.Series:
+    values = pd.to_numeric(xdy_series, errors="coerce").astype(np.float64).sort_index()
+    values = values.replace([np.inf, -np.inf], np.nan).dropna()
+    if values.empty:
+        return pd.Series(dtype=np.float64)
+    raw_values = values.to_numpy(dtype=np.float64)
+    segment_start = np.ones(len(raw_values), dtype=bool)
+    if len(raw_values) > 1:
+        segment_start[1:] = raw_values[1:] != raw_values[:-1]
+    segment_factors = np.where(segment_start, raw_values, 1.0)
+    return pd.Series(np.cumprod(segment_factors), index=values.index, dtype=np.float64)
+
+
+def load_wide_xdy_series(
+    adj_wide_base_path: str,
+    target_codes: list[str] | None = None,
+) -> dict[str, pd.Series]:
+    base = Path(adj_wide_base_path)
+    if not base.exists():
+        print(f"[ADJ] 复权 wide_xdy 目录不存在，跳过比例后复权: {adj_wide_base_path}")
+        return {}
+
+    paths = sorted(base.glob("year=*/month=*/merged.parquet"))
+    if not paths:
+        print(f"[ADJ] 未找到 wide_xdy merged.parquet，跳过比例后复权: {adj_wide_base_path}")
+        return {}
+
+    code_filter = {str(c).strip().upper() for c in target_codes} if target_codes else None
+    series_by_code: dict[str, list[pd.Series]] = {}
+
+    for path in paths:
+        try:
+            frame = pd.read_parquet(path)
+        except Exception as exc:
+            print(f"[WARN] 读取复权 wide_xdy 失败: {path} | {exc}")
+            continue
+        if frame.empty:
+            continue
+
+        code_col = "htsc_code" if "htsc_code" in frame.columns else frame.columns[0]
+        frame[code_col] = frame[code_col].astype(str).str.strip().str.upper()
+        if code_filter:
+            frame = frame[frame[code_col].isin(code_filter)]
+        if frame.empty:
+            continue
+
+        date_cols = []
+        for col in frame.columns:
+            if col == code_col:
+                continue
+            day = pd.to_datetime(str(col), format="%Y/%m/%d", errors="coerce")
+            if pd.isna(day):
+                continue
+            date_cols.append((col, pd.Timestamp(day).normalize()))
+        if not date_cols:
+            continue
+
+        for _, row in frame.iterrows():
+            code = str(row[code_col]).strip().upper()
+            values = {}
+            for col, day in date_cols:
+                value = pd.to_numeric(row[col], errors="coerce")
+                if pd.isna(value):
+                    continue
+                values[day] = float(value)
+            if values:
+                series_by_code.setdefault(code, []).append(pd.Series(values, dtype=np.float64))
+
+    out: dict[str, pd.Series] = {}
+    for code, parts in series_by_code.items():
+        merged = pd.concat(parts).sort_index()
+        merged = merged[~merged.index.duplicated(keep="last")]
+        out[code] = merged
+    print(f"[ADJ] 加载 wide_xdy 比例复权因子 {len(out)} 只")
+    return out
+
+
+def apply_ratio_backward_adjustment(rows: pd.DataFrame, xdy_by_code: dict[str, pd.Series]) -> pd.DataFrame:
+    if rows.empty or not xdy_by_code:
+        return rows
+
+    out = rows.copy()
+    out["htsc_code"] = out["htsc_code"].astype(str).str.strip().str.upper()
+    days = pd.to_datetime(out["date_key"].astype(str), format="%Y%m%d", errors="coerce").dt.normalize()
+    adjusted_rows = 0
+
+    for code, idx in out.groupby("htsc_code", sort=False).groups.items():
+        xdy_series = xdy_by_code.get(code)
+        if xdy_series is None or xdy_series.empty:
+            continue
+        factors_by_day = _backward_factor_series(xdy_series)
+        if factors_by_day.empty:
+            continue
+
+        row_pos = out.index.get_indexer(idx)
+        row_days = days.iloc[row_pos]
+        first_day = factors_by_day.index.min()
+        last_day = factors_by_day.index.max()
+        last_factor = float(factors_by_day.iloc[-1])
+        factors = row_days.map(factors_by_day).astype(float)
+        factors = factors.mask(row_days > last_day, last_factor)
+        factors = factors.mask(row_days < first_day, 1.0)
+        factors = factors.fillna(1.0).to_numpy(dtype=np.float64)
+
+        values = out.iloc[row_pos][_OHLC_COLUMNS].to_numpy(dtype=np.float64, copy=True)
+        values = values * factors[:, None]
+        out.iloc[row_pos, out.columns.get_indexer(_OHLC_COLUMNS)] = values
+        adjusted_rows += int(len(row_pos))
+
+    print(f"[ADJ] wide_xdy backward 比例后复权 rows={adjusted_rows} / {len(out)}")
+    return out
+
+
 def load_ohlcv_from_duckdb(
     market_equity_path: str,
     *,
     query_start_date: str,
     query_end_date: str,
     target_codes: list[str] | None = None,
+    adj_wide_base_path: str = DEFAULT_ADJ_WIDE_BASE_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if not os.path.isdir(market_equity_path):
         raise FileNotFoundError(f"日 K 数据目录不存在: {market_equity_path}")
@@ -499,8 +615,8 @@ def load_ohlcv_from_duckdb(
         "high IS NOT NULL",
         "low IS NOT NULL",
         "close IS NOT NULL",
-        f"CAST(strftime({_BAR_TIME_SQL}, '%Y-%m-%d') AS DATE) >= DATE ?",
-        f"CAST(strftime({_BAR_TIME_SQL}, '%Y-%m-%d') AS DATE) <= DATE ?",
+        f"CAST(strftime({_BAR_TIME_SQL}, '%Y-%m-%d') AS DATE) >= CAST(? AS DATE)",
+        f"CAST(strftime({_BAR_TIME_SQL}, '%Y-%m-%d') AS DATE) <= CAST(? AS DATE)",
         "UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'",
     ]
     params: list = [parquet_glob, query_start_date, query_end_date]
@@ -538,6 +654,11 @@ def load_ohlcv_from_duckdb(
 
     rows["date_key"] = pd.to_datetime(rows["bar_time"], errors="coerce").dt.strftime("%Y%m%d").astype("int64")
     rows = rows.dropna(subset=["date_key"])
+    xdy_by_code = load_wide_xdy_series(
+        adj_wide_base_path,
+        target_codes=target_codes,
+    )
+    rows = apply_ratio_backward_adjustment(rows, xdy_by_code)
     print(
         f"[UNSTACK] long_rows={len(rows)} codes={rows['htsc_code'].nunique()} "
         f"dates={rows['date_key'].nunique()} window={query_start_date}~{query_end_date}"
@@ -684,6 +805,7 @@ def _run_pipeline_once(
     plan_df: pd.DataFrame,
     target_codes: list[str] | None,
     check_missing_pairs: bool,
+    adj_wide_base_path: str,
 ) -> int:
     need_codes = _plan_codes(plan_df)
     load_codes = target_codes if target_codes else None
@@ -695,6 +817,7 @@ def _run_pipeline_once(
         query_start_date=query_start_date,
         query_end_date=query_end_date,
         target_codes=load_codes,
+        adj_wide_base_path=adj_wide_base_path,
     )
 
     if need_codes:
@@ -755,6 +878,11 @@ def main() -> None:
         help=">0 时分批（legacy）；0=单次全市场查询（默认，对齐 notebook）",
     )
     parser.add_argument("--market-equity-path", default=DEFAULT_MARKET_EQUITY_PATH)
+    parser.add_argument(
+        "--adj-wide-base-path",
+        default=DEFAULT_ADJ_WIDE_BASE_PATH,
+        help="比例后复权 wide_xdy 根目录；默认 D:\\database\\stock_adj_daily\\wide_xdy",
+    )
     parser.add_argument("--output-base", default=DEFAULT_OUTPUT_BASE)
     parser.add_argument(
         "--merge",
@@ -880,6 +1008,7 @@ def main() -> None:
                 plan_df=batch_plan,
                 target_codes=batch_codes,
                 check_missing_pairs=check_missing,
+                adj_wide_base_path=args.adj_wide_base_path,
             )
     else:
         total_events = _run_pipeline_once(
@@ -892,6 +1021,7 @@ def main() -> None:
             plan_df=plan_df,
             target_codes=target_codes,
             check_missing_pairs=check_missing,
+            adj_wide_base_path=args.adj_wide_base_path,
         )
 
     print(

@@ -50,11 +50,18 @@ class FactorCheckProfitThresholdDualAssumptionZxwStrategy(FactorCheckDualAssumpt
         ]
 
     def _held_for_emergency(self, sorted_ds: list[Any]) -> list[Any]:
-        return [
-            d
-            for d in super()._held_for_emergency(sorted_ds)
-            if not self._is_buy_locked_after_partial_sell(d)
-        ]
+        held: list[Any] = []
+        for d in sorted_ds:
+            if self._is_buy_locked_after_partial_sell(d):
+                continue
+            if self.getposition(d).size > 0 or self._planned_buy_value(d) > 1e-6:
+                held.append(d)
+        return held
+
+    def _estimated_post_normal_cash(self, sorted_ds: list[Any]) -> float:
+        del sorted_ds
+        planned_spend = sum(self._bar_planned_buy_value.values())
+        return max(0.0, float(self.broker.getcash()) - planned_spend)
 
     def _profit_multiple(self, data: Any) -> float:
         pos = self.getposition(data)

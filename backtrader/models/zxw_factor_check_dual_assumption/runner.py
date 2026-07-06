@@ -92,6 +92,7 @@ def run(
         end_date,
         init_lookback_calendar_days=INIT_LOOKBACK_CALENDAR_DAYS,
         enable_future_halving_mask=False,
+        adj_mode="backward_ratio",
     )
     if bt_df.empty or not actual_codes:
         raise ValueError("目标标的和日期范围内没有有效回测数据")
@@ -147,6 +148,7 @@ def run(
         "backtest_engine": "models/zxw_factor_check_dual_assumption + zxw_view_results_full 宽表",
         "strategy_class": "FactorCheckDualAssumptionZxwStrategy",
         "enable_future_halving_mask": False,
+        "adj_mode": "backward_ratio",
         "daily_move_limit": DEFAULT_DAILY_MOVE_LIMIT,
         "init_lookback_calendar_days": INIT_LOOKBACK_CALENDAR_DAYS,
         "init_per_stock_cap": INIT_PER_STOCK_CAP,
