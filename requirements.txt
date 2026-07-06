@@ -1,1 +1,43 @@
-pypinyin>=0.55.0
+# Core data stack
+numpy>=2.2,<3
+pandas>=2.3,<3
+polars>=1.39,<2
+pyarrow>=23,<24
+duckdb>=1.5,<2
+openpyxl>=3.1,<4
+
+# Backtest / quant research
+backtrader>=1.9.78,<2
+optuna>=4.8,<5
+scipy>=1.15,<2
+scikit-learn>=1.7,<2
+empyrical>=0.5,<1
+pyfolio>=0.9,<1
+vectorbt>=1.0,<2
+
+# Visualization / notebooks / reports
+matplotlib>=3.10,<4
+seaborn>=0.13,<1
+plotly>=6.7,<7
+jupyterlab>=4.5,<5
+notebook>=7.5,<8
+ipykernel>=6.29,<7
+ipywidgets>=8.1,<9
+pillow>=12,<13
+python-docx>=1.2,<2
+
+# Utilities
+pypinyin>=0.55,<1
+requests>=2.33,<3
+dateparser>=1.4,<2
+tqdm>=4.67,<5
+schedule>=1.2,<2
+psutil>=7.2,<8
+
+# Tests
+pytest>=9,<10
+
+# Vendor / Windows-only packages used by local scripts:
+# - xtquant / xttrader: install from QMT/XtQuant client environment, not public PyPI.
+# - talib (import name: talib): install TA-Lib wheel matching local Python/Windows.
+# - insight_python / insight_py_win: install from the Huatai Insight SDK package.
