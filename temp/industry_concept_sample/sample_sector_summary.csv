@@ -1,0 +1,13 @@
+﻿snapshot_date,snapshot_time,sector_name,sector_kind_guess,stock_count,markets,source_api
+2026-07-06,2026-07-06 22:59:42,沪深A股,市场板块,5204,"{""SH"": 2308, ""SZ"": 2896}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,沪深京A股,市场板块,5552,"{""BJ"": 348, ""SH"": 2308, ""SZ"": 2896}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,GICS1金融,GICS行业,509,"{""HK"": 384, ""SH"": 84, ""SZ"": 41}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,GICS2银行,GICS行业,91,"{""HK"": 49, ""SH"": 33, ""SZ"": 9}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,SW1银行,申万行业/指数,42,"{""SH"": 33, ""SZ"": 9}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,SW2半导体,申万行业/指数,180,"{""BJ"": 4, ""SH"": 138, ""SZ"": 38}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,SW3机器人,申万行业/指数,20,"{""BJ"": 3, ""SH"": 9, ""SZ"": 8}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,THY2白酒,通达信行业,19,"{""SH"": 11, ""SZ"": 8}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,TGNDeepSeek概念,概念,768,"{""BJ"": 25, ""SH"": 322, ""SZ"": 421}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,TDGN5G概念,概念,452,"{""BJ"": 11, ""SH"": 144, ""SZ"": 297}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,GN机器人,概念,741,"{""SH"": 261, ""SZ"": 480}",xtdata.get_stock_list_in_sector
+2026-07-06,2026-07-06 22:59:42,新能源车,其他,50,"{""BJ"": 1, ""SH"": 17, ""SZ"": 32}",xtdata.get_stock_list_in_sector

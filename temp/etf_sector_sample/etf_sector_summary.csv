@@ -1,0 +1,8 @@
+﻿snapshot_date,snapshot_time,sector_name,exists_in_get_sector_list,etf_count,markets,source_api
+2026-07-07,2026-07-07 09:29:54,沪深ETF,True,1640,"{""SH"": 939, ""SZ"": 701}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,沪市ETF,True,939,"{""SH"": 939}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,深市ETF,True,701,"{""SZ"": 701}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,ETF股票型,True,1244,"{""SH"": 703, ""SZ"": 541}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,ETF行业指数,True,72,"{""SH"": 39, ""SZ"": 33}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,ETF主题指数,True,301,"{""SH"": 190, ""SZ"": 111}",xtdata.get_stock_list_in_sector
+2026-07-07,2026-07-07 09:29:54,ETF跨境型,True,240,"{""SH"": 124, ""SZ"": 116}",xtdata.get_stock_list_in_sector

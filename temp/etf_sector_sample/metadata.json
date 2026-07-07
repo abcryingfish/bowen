@@ -1,0 +1,104 @@
+{
+  "snapshot_time": "2026-07-07 09:29:54",
+  "apis_used": [
+    "xtdata.download_sector_data()",
+    "xtdata.get_sector_list()",
+    "xtdata.get_stock_list_in_sector(sector_name)"
+  ],
+  "note": "这些 ETF 分类返回的是当前本地板块快照中的 ETF 代码列表，不是 ETF 持仓成分股。",
+  "sectors": [
+    "沪深ETF",
+    "沪市ETF",
+    "深市ETF",
+    "ETF股票型",
+    "ETF行业指数",
+    "ETF主题指数",
+    "ETF跨境型"
+  ],
+  "summary": [
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "沪深ETF",
+      "exists_in_get_sector_list": true,
+      "etf_count": 1640,
+      "markets": "{\"SH\": 939, \"SZ\": 701}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "沪市ETF",
+      "exists_in_get_sector_list": true,
+      "etf_count": 939,
+      "markets": "{\"SH\": 939}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "深市ETF",
+      "exists_in_get_sector_list": true,
+      "etf_count": 701,
+      "markets": "{\"SZ\": 701}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "ETF股票型",
+      "exists_in_get_sector_list": true,
+      "etf_count": 1244,
+      "markets": "{\"SH\": 703, \"SZ\": 541}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "ETF行业指数",
+      "exists_in_get_sector_list": true,
+      "etf_count": 72,
+      "markets": "{\"SH\": 39, \"SZ\": 33}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "ETF主题指数",
+      "exists_in_get_sector_list": true,
+      "etf_count": 301,
+      "markets": "{\"SH\": 190, \"SZ\": 111}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    },
+    {
+      "snapshot_date": "2026-07-07",
+      "snapshot_time": "2026-07-07 09:29:54",
+      "sector_name": "ETF跨境型",
+      "exists_in_get_sector_list": true,
+      "etf_count": 240,
+      "markets": "{\"SH\": 124, \"SZ\": 116}",
+      "source_api": "xtdata.get_stock_list_in_sector"
+    }
+  ],
+  "output_files": [
+    "etf_sector_summary.csv",
+    "etf_sector_members_all.csv",
+    "etf_sector_members_all.json",
+    "沪深ETF.csv",
+    "沪市ETF.csv",
+    "深市ETF.csv",
+    "ETF股票型.csv",
+    "ETF行业指数.csv",
+    "ETF主题指数.csv",
+    "ETF跨境型.csv",
+    "沪深ETF.json",
+    "沪市ETF.json",
+    "深市ETF.json",
+    "ETF股票型.json",
+    "ETF行业指数.json",
+    "ETF主题指数.json",
+    "ETF跨境型.json",
+    "metadata.json",
+    "README.md"
+  ]
+}

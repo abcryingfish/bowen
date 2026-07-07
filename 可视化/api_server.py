@@ -86,10 +86,13 @@ from 量化因子有效性检验.factor_validation_service import (
     FactorValidationError,
     FactorValidationInputError,
     FactorValidationNotFoundError,
+    create_factor_validation_job,
     delete_factor_validation_record,
+    get_factor_validation_job,
     list_factor_validation_factors,
     list_factor_validation_records,
-    run_factor_validation,
+    list_stock_pool_files,
+    list_universe_stocks,
     save_factor_validation_record,
 )
 
@@ -248,8 +251,20 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_factor_validation_factors()
             return
 
+        if parsed.path == "/api/factor-validation/universe":
+            self._handle_factor_validation_universe(query)
+            return
+
+        if parsed.path == "/api/factor-validation/stock-pools":
+            self._handle_factor_validation_stock_pools()
+            return
+
         if parsed.path == "/api/factor-validation/records":
             self._handle_factor_validation_records()
+            return
+
+        if parsed.path == "/api/factor-validation/jobs":
+            self._handle_factor_validation_job_status(query)
             return
 
         if parsed.path == "/api/market/signal":
@@ -856,10 +871,32 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             self._send_factor_validation_error(exc)
 
+    def _handle_factor_validation_universe(self, query: dict[str, list[str]]) -> None:
+        try:
+            keyword = self._first_query_value(query, "q")
+            limit_raw = self._first_query_value(query, "limit")
+            limit = int(limit_raw) if str(limit_raw or "").strip() else None
+            self._send_json(HTTPStatus.OK, list_universe_stocks(query=keyword, limit=limit))
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_stock_pools(self) -> None:
+        try:
+            self._send_json(HTTPStatus.OK, list_stock_pool_files())
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
     def _handle_factor_validation_run(self) -> None:
         try:
             payload = self._read_json_body()
-            self._send_json(HTTPStatus.OK, run_factor_validation(payload))
+            self._send_json(HTTPStatus.ACCEPTED, create_factor_validation_job(payload))
+        except Exception as exc:  # noqa: BLE001
+            self._send_factor_validation_error(exc)
+
+    def _handle_factor_validation_job_status(self, query: dict[str, list[str]]) -> None:
+        try:
+            job_id = self._first_query_value(query, "id")
+            self._send_json(HTTPStatus.OK, get_factor_validation_job(str(job_id or "")))
         except Exception as exc:  # noqa: BLE001
             self._send_factor_validation_error(exc)
 

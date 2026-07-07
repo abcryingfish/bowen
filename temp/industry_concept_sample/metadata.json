@@ -1,0 +1,35 @@
+{
+  "snapshot_time": "2026-07-06 22:59:42",
+  "doc_url": "https://dict.thinktrader.net/dictionary/industry.html?id=7kT126#获取行业概念数据",
+  "apis_used": [
+    "xtdata.download_sector_data()",
+    "xtdata.get_sector_list()",
+    "xtdata.get_stock_list_in_sector(sector_name)"
+  ],
+  "important_note": "这些接口没有日期参数，返回的是本地下载后的当前行业/概念/板块分类快照；不能直接按日期获取最近几天历史成分。这里按 snapshot_time 保存当前样例。",
+  "sector_count": 7095,
+  "selected_sector_count": 12,
+  "selected_sectors": [
+    "沪深A股",
+    "沪深京A股",
+    "GICS1金融",
+    "GICS2银行",
+    "SW1银行",
+    "SW2半导体",
+    "SW3机器人",
+    "THY2白酒",
+    "TGNDeepSeek概念",
+    "TDGN5G概念",
+    "GN机器人",
+    "新能源车"
+  ],
+  "output_files": [
+    "sector_list_all.csv",
+    "sector_list_all.json",
+    "sample_sector_summary.csv",
+    "sample_sector_constituents.csv",
+    "sample_sector_constituents.json",
+    "metadata.json",
+    "README.md"
+  ]
+}

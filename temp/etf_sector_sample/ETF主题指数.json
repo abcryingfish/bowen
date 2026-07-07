@@ -1,0 +1,2711 @@
+[
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 1,
+    "etf_code": "510010.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 2,
+    "etf_code": "510060.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 3,
+    "etf_code": "510090.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 4,
+    "etf_code": "510110.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 5,
+    "etf_code": "510120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 6,
+    "etf_code": "510150.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 7,
+    "etf_code": "510160.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 8,
+    "etf_code": "510170.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 9,
+    "etf_code": "510190.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 10,
+    "etf_code": "510270.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 11,
+    "etf_code": "510410.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 12,
+    "etf_code": "510440.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 13,
+    "etf_code": "510770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 14,
+    "etf_code": "510810.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 15,
+    "etf_code": "510880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 16,
+    "etf_code": "510990.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 17,
+    "etf_code": "512070.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 18,
+    "etf_code": "512120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 19,
+    "etf_code": "512170.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 20,
+    "etf_code": "512220.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 21,
+    "etf_code": "512290.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 22,
+    "etf_code": "512390.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 23,
+    "etf_code": "512400.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 24,
+    "etf_code": "512530.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 25,
+    "etf_code": "512560.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 26,
+    "etf_code": "512580.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 27,
+    "etf_code": "512590.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 28,
+    "etf_code": "512650.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 29,
+    "etf_code": "512660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 30,
+    "etf_code": "512670.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 31,
+    "etf_code": "512680.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 32,
+    "etf_code": "512690.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 33,
+    "etf_code": "512710.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 34,
+    "etf_code": "512720.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 35,
+    "etf_code": "512760.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 36,
+    "etf_code": "512770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 37,
+    "etf_code": "512780.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 38,
+    "etf_code": "512810.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 39,
+    "etf_code": "512870.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 40,
+    "etf_code": "512930.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 41,
+    "etf_code": "512950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 42,
+    "etf_code": "512960.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 43,
+    "etf_code": "512970.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 44,
+    "etf_code": "512980.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 45,
+    "etf_code": "513020.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 46,
+    "etf_code": "513150.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 47,
+    "etf_code": "513230.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 48,
+    "etf_code": "515000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 49,
+    "etf_code": "515030.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 50,
+    "etf_code": "515050.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 51,
+    "etf_code": "515070.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 52,
+    "etf_code": "515080.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 53,
+    "etf_code": "515090.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 54,
+    "etf_code": "515110.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 55,
+    "etf_code": "515120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 56,
+    "etf_code": "515150.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 57,
+    "etf_code": "515170.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 58,
+    "etf_code": "515180.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 59,
+    "etf_code": "515200.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 60,
+    "etf_code": "515250.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 61,
+    "etf_code": "515260.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 62,
+    "etf_code": "515320.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 63,
+    "etf_code": "515400.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 64,
+    "etf_code": "515500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 65,
+    "etf_code": "515570.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 66,
+    "etf_code": "515580.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 67,
+    "etf_code": "515600.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 68,
+    "etf_code": "515630.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 69,
+    "etf_code": "515650.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 70,
+    "etf_code": "515680.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 71,
+    "etf_code": "515690.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 72,
+    "etf_code": "515700.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 73,
+    "etf_code": "515710.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 74,
+    "etf_code": "515750.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 75,
+    "etf_code": "515760.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 76,
+    "etf_code": "515790.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 77,
+    "etf_code": "515890.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 78,
+    "etf_code": "515900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 79,
+    "etf_code": "515920.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 80,
+    "etf_code": "515950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 81,
+    "etf_code": "515980.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 82,
+    "etf_code": "515990.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 83,
+    "etf_code": "516000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 84,
+    "etf_code": "516010.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 85,
+    "etf_code": "516020.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 86,
+    "etf_code": "516050.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 87,
+    "etf_code": "516060.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 88,
+    "etf_code": "516070.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 89,
+    "etf_code": "516080.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 90,
+    "etf_code": "516090.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 91,
+    "etf_code": "516100.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 92,
+    "etf_code": "516120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 93,
+    "etf_code": "516130.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 94,
+    "etf_code": "516150.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 95,
+    "etf_code": "516160.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 96,
+    "etf_code": "516180.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 97,
+    "etf_code": "516190.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 98,
+    "etf_code": "516220.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 99,
+    "etf_code": "516260.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 100,
+    "etf_code": "516270.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 101,
+    "etf_code": "516290.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 102,
+    "etf_code": "516320.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 103,
+    "etf_code": "516330.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 104,
+    "etf_code": "516350.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 105,
+    "etf_code": "516360.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 106,
+    "etf_code": "516380.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 107,
+    "etf_code": "516390.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 108,
+    "etf_code": "516480.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 109,
+    "etf_code": "516500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 110,
+    "etf_code": "516510.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 111,
+    "etf_code": "516520.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 112,
+    "etf_code": "516530.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 113,
+    "etf_code": "516550.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 114,
+    "etf_code": "516560.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 115,
+    "etf_code": "516570.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 116,
+    "etf_code": "516580.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 117,
+    "etf_code": "516590.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 118,
+    "etf_code": "516600.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 119,
+    "etf_code": "516620.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 120,
+    "etf_code": "516630.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 121,
+    "etf_code": "516640.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 122,
+    "etf_code": "516650.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 123,
+    "etf_code": "516660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 124,
+    "etf_code": "516670.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 125,
+    "etf_code": "516680.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 126,
+    "etf_code": "516690.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 127,
+    "etf_code": "516700.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 128,
+    "etf_code": "516710.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 129,
+    "etf_code": "516730.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 130,
+    "etf_code": "516760.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 131,
+    "etf_code": "516770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 132,
+    "etf_code": "516780.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 133,
+    "etf_code": "516800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 134,
+    "etf_code": "516810.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 135,
+    "etf_code": "516820.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 136,
+    "etf_code": "516830.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 137,
+    "etf_code": "516850.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 138,
+    "etf_code": "516860.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 139,
+    "etf_code": "516880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 140,
+    "etf_code": "516890.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 141,
+    "etf_code": "516900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 142,
+    "etf_code": "516910.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 143,
+    "etf_code": "516920.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 144,
+    "etf_code": "516930.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 145,
+    "etf_code": "516950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 146,
+    "etf_code": "516960.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 147,
+    "etf_code": "517000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 148,
+    "etf_code": "517010.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 149,
+    "etf_code": "517050.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 150,
+    "etf_code": "517060.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 151,
+    "etf_code": "517080.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 152,
+    "etf_code": "517100.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 153,
+    "etf_code": "517110.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 154,
+    "etf_code": "517120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 155,
+    "etf_code": "517160.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 156,
+    "etf_code": "517170.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 157,
+    "etf_code": "517200.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 158,
+    "etf_code": "517270.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 159,
+    "etf_code": "517280.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 160,
+    "etf_code": "517330.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 161,
+    "etf_code": "517350.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 162,
+    "etf_code": "517360.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 163,
+    "etf_code": "517390.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 164,
+    "etf_code": "517550.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 165,
+    "etf_code": "517660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 166,
+    "etf_code": "517770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 167,
+    "etf_code": "517800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 168,
+    "etf_code": "517880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 169,
+    "etf_code": "517960.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 170,
+    "etf_code": "560000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 171,
+    "etf_code": "560560.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 172,
+    "etf_code": "560660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 173,
+    "etf_code": "560800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 174,
+    "etf_code": "561100.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 175,
+    "etf_code": "561130.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 176,
+    "etf_code": "561310.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 177,
+    "etf_code": "561500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 178,
+    "etf_code": "561600.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 179,
+    "etf_code": "561800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 180,
+    "etf_code": "561900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 181,
+    "etf_code": "561910.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 182,
+    "etf_code": "562300.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 183,
+    "etf_code": "562360.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 184,
+    "etf_code": "562500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 185,
+    "etf_code": "562510.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 186,
+    "etf_code": "562800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 187,
+    "etf_code": "562880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 188,
+    "etf_code": "562900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 189,
+    "etf_code": "562910.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 190,
+    "etf_code": "562950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 191,
+    "etf_code": "159608.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 192,
+    "etf_code": "159613.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 193,
+    "etf_code": "159701.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 194,
+    "etf_code": "159702.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 195,
+    "etf_code": "159703.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 196,
+    "etf_code": "159708.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 197,
+    "etf_code": "159709.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 198,
+    "etf_code": "159710.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 199,
+    "etf_code": "159713.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 200,
+    "etf_code": "159715.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 201,
+    "etf_code": "159717.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 202,
+    "etf_code": "159720.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 203,
+    "etf_code": "159723.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 204,
+    "etf_code": "159725.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 205,
+    "etf_code": "159728.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 206,
+    "etf_code": "159729.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 207,
+    "etf_code": "159731.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 208,
+    "etf_code": "159733.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 209,
+    "etf_code": "159736.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 210,
+    "etf_code": "159738.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 211,
+    "etf_code": "159739.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 212,
+    "etf_code": "159743.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 213,
+    "etf_code": "159748.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 214,
+    "etf_code": "159752.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 215,
+    "etf_code": "159755.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 216,
+    "etf_code": "159757.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 217,
+    "etf_code": "159761.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 218,
+    "etf_code": "159763.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 219,
+    "etf_code": "159766.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 220,
+    "etf_code": "159767.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 221,
+    "etf_code": "159770.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 222,
+    "etf_code": "159773.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 223,
+    "etf_code": "159775.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 224,
+    "etf_code": "159777.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 225,
+    "etf_code": "159779.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 226,
+    "etf_code": "159786.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 227,
+    "etf_code": "159790.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 228,
+    "etf_code": "159793.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 229,
+    "etf_code": "159795.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 230,
+    "etf_code": "159804.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 231,
+    "etf_code": "159805.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 232,
+    "etf_code": "159806.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 233,
+    "etf_code": "159807.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 234,
+    "etf_code": "159811.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 235,
+    "etf_code": "159815.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 236,
+    "etf_code": "159819.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 237,
+    "etf_code": "159824.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 238,
+    "etf_code": "159825.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 239,
+    "etf_code": "159827.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 240,
+    "etf_code": "159828.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 241,
+    "etf_code": "159835.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 242,
+    "etf_code": "159837.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 243,
+    "etf_code": "159838.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 244,
+    "etf_code": "159839.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 245,
+    "etf_code": "159840.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 246,
+    "etf_code": "159843.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 247,
+    "etf_code": "159847.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 248,
+    "etf_code": "159849.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 249,
+    "etf_code": "159851.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 250,
+    "etf_code": "159852.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 251,
+    "etf_code": "159853.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 252,
+    "etf_code": "159855.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 253,
+    "etf_code": "159856.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 254,
+    "etf_code": "159857.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 255,
+    "etf_code": "159858.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 256,
+    "etf_code": "159859.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 257,
+    "etf_code": "159861.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 258,
+    "etf_code": "159862.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 259,
+    "etf_code": "159863.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 260,
+    "etf_code": "159864.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 261,
+    "etf_code": "159865.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 262,
+    "etf_code": "159867.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 263,
+    "etf_code": "159869.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 264,
+    "etf_code": "159870.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 265,
+    "etf_code": "159871.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 266,
+    "etf_code": "159872.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 267,
+    "etf_code": "159875.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 268,
+    "etf_code": "159876.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 269,
+    "etf_code": "159880.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 270,
+    "etf_code": "159881.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 271,
+    "etf_code": "159885.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 272,
+    "etf_code": "159886.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 273,
+    "etf_code": "159888.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 274,
+    "etf_code": "159889.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 275,
+    "etf_code": "159890.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 276,
+    "etf_code": "159895.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 277,
+    "etf_code": "159896.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 278,
+    "etf_code": "159897.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 279,
+    "etf_code": "159905.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 280,
+    "etf_code": "159906.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 281,
+    "etf_code": "159909.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 282,
+    "etf_code": "159932.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 283,
+    "etf_code": "159951.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 284,
+    "etf_code": "159959.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 285,
+    "etf_code": "159962.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 286,
+    "etf_code": "159965.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 287,
+    "etf_code": "159966.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 288,
+    "etf_code": "159967.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 289,
+    "etf_code": "159973.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 290,
+    "etf_code": "159974.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 291,
+    "etf_code": "159976.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 292,
+    "etf_code": "159978.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 293,
+    "etf_code": "159979.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 294,
+    "etf_code": "159983.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 295,
+    "etf_code": "159984.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 296,
+    "etf_code": "159986.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 297,
+    "etf_code": "159987.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 298,
+    "etf_code": "159992.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 299,
+    "etf_code": "159994.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 300,
+    "etf_code": "159997.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF主题指数",
+    "rank_in_return": 301,
+    "etf_code": "159998.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  }
+]

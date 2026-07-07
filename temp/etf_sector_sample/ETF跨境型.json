@@ -1,0 +1,2162 @@
+[
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 1,
+    "etf_code": "510900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 2,
+    "etf_code": "513000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 3,
+    "etf_code": "513010.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 4,
+    "etf_code": "513020.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 5,
+    "etf_code": "513030.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 6,
+    "etf_code": "513040.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 7,
+    "etf_code": "513050.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 8,
+    "etf_code": "513060.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 9,
+    "etf_code": "513070.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 10,
+    "etf_code": "513080.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 11,
+    "etf_code": "513090.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 12,
+    "etf_code": "513100.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 13,
+    "etf_code": "513110.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 14,
+    "etf_code": "513120.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 15,
+    "etf_code": "513130.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 16,
+    "etf_code": "513140.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 17,
+    "etf_code": "513150.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 18,
+    "etf_code": "513160.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 19,
+    "etf_code": "513170.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 20,
+    "etf_code": "513180.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 21,
+    "etf_code": "513190.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 22,
+    "etf_code": "513200.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 23,
+    "etf_code": "513210.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 24,
+    "etf_code": "513220.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 25,
+    "etf_code": "513230.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 26,
+    "etf_code": "513240.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 27,
+    "etf_code": "513260.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 28,
+    "etf_code": "513280.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 29,
+    "etf_code": "513290.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 30,
+    "etf_code": "513300.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 31,
+    "etf_code": "513310.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 32,
+    "etf_code": "513320.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 33,
+    "etf_code": "513330.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 34,
+    "etf_code": "513350.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 35,
+    "etf_code": "513360.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 36,
+    "etf_code": "513380.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 37,
+    "etf_code": "513390.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 38,
+    "etf_code": "513400.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 39,
+    "etf_code": "513500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 40,
+    "etf_code": "513520.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 41,
+    "etf_code": "513530.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 42,
+    "etf_code": "513550.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 43,
+    "etf_code": "513560.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 44,
+    "etf_code": "513580.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 45,
+    "etf_code": "513590.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 46,
+    "etf_code": "513600.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 47,
+    "etf_code": "513620.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 48,
+    "etf_code": "513630.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 49,
+    "etf_code": "513650.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 50,
+    "etf_code": "513660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 51,
+    "etf_code": "513690.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 52,
+    "etf_code": "513700.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 53,
+    "etf_code": "513720.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 54,
+    "etf_code": "513730.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 55,
+    "etf_code": "513750.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 56,
+    "etf_code": "513770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 57,
+    "etf_code": "513780.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 58,
+    "etf_code": "513800.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 59,
+    "etf_code": "513810.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 60,
+    "etf_code": "513820.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 61,
+    "etf_code": "513830.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 62,
+    "etf_code": "513850.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 63,
+    "etf_code": "513860.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 64,
+    "etf_code": "513870.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 65,
+    "etf_code": "513880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 66,
+    "etf_code": "513890.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 67,
+    "etf_code": "513900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 68,
+    "etf_code": "513910.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 69,
+    "etf_code": "513920.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 70,
+    "etf_code": "513930.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 71,
+    "etf_code": "513950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 72,
+    "etf_code": "513970.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 73,
+    "etf_code": "513980.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 74,
+    "etf_code": "513990.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 75,
+    "etf_code": "520500.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 76,
+    "etf_code": "520510.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 77,
+    "etf_code": "520520.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 78,
+    "etf_code": "520530.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 79,
+    "etf_code": "520550.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 80,
+    "etf_code": "520560.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 81,
+    "etf_code": "520570.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 82,
+    "etf_code": "520580.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 83,
+    "etf_code": "520590.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 84,
+    "etf_code": "520600.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 85,
+    "etf_code": "520610.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 86,
+    "etf_code": "520620.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 87,
+    "etf_code": "520630.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 88,
+    "etf_code": "520650.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 89,
+    "etf_code": "520660.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 90,
+    "etf_code": "520670.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 91,
+    "etf_code": "520680.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 92,
+    "etf_code": "520690.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 93,
+    "etf_code": "520700.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 94,
+    "etf_code": "520710.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 95,
+    "etf_code": "520720.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 96,
+    "etf_code": "520730.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 97,
+    "etf_code": "520760.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 98,
+    "etf_code": "520770.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 99,
+    "etf_code": "520780.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 100,
+    "etf_code": "520790.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 101,
+    "etf_code": "520810.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 102,
+    "etf_code": "520820.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 103,
+    "etf_code": "520830.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 104,
+    "etf_code": "520840.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 105,
+    "etf_code": "520850.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 106,
+    "etf_code": "520860.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 107,
+    "etf_code": "520870.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 108,
+    "etf_code": "520880.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 109,
+    "etf_code": "520890.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 110,
+    "etf_code": "520900.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 111,
+    "etf_code": "520910.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 112,
+    "etf_code": "520920.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 113,
+    "etf_code": "520930.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 114,
+    "etf_code": "520940.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 115,
+    "etf_code": "520950.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 116,
+    "etf_code": "520960.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 117,
+    "etf_code": "520970.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 118,
+    "etf_code": "520980.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 119,
+    "etf_code": "520990.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 120,
+    "etf_code": "526000.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 121,
+    "etf_code": "526010.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 122,
+    "etf_code": "526030.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 123,
+    "etf_code": "526050.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 124,
+    "etf_code": "526070.SH",
+    "market": "SH",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 125,
+    "etf_code": "159010.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 126,
+    "etf_code": "159015.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 127,
+    "etf_code": "159028.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 128,
+    "etf_code": "159040.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 129,
+    "etf_code": "159100.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 130,
+    "etf_code": "159101.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 131,
+    "etf_code": "159102.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 132,
+    "etf_code": "159105.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 133,
+    "etf_code": "159109.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 134,
+    "etf_code": "159117.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 135,
+    "etf_code": "159118.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 136,
+    "etf_code": "159120.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 137,
+    "etf_code": "159121.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 138,
+    "etf_code": "159125.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 139,
+    "etf_code": "159126.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 140,
+    "etf_code": "159127.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 141,
+    "etf_code": "159128.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 142,
+    "etf_code": "159130.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 143,
+    "etf_code": "159131.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 144,
+    "etf_code": "159132.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 145,
+    "etf_code": "159135.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 146,
+    "etf_code": "159137.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 147,
+    "etf_code": "159143.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 148,
+    "etf_code": "159152.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 149,
+    "etf_code": "159167.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 150,
+    "etf_code": "159169.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 151,
+    "etf_code": "159170.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 152,
+    "etf_code": "159179.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 153,
+    "etf_code": "159185.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 154,
+    "etf_code": "159186.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 155,
+    "etf_code": "159191.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 156,
+    "etf_code": "159196.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 157,
+    "etf_code": "159198.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 158,
+    "etf_code": "159202.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 159,
+    "etf_code": "159210.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 160,
+    "etf_code": "159217.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 161,
+    "etf_code": "159220.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 162,
+    "etf_code": "159237.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 163,
+    "etf_code": "159239.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 164,
+    "etf_code": "159245.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 165,
+    "etf_code": "159251.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 166,
+    "etf_code": "159262.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 167,
+    "etf_code": "159265.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 168,
+    "etf_code": "159266.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 169,
+    "etf_code": "159268.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 170,
+    "etf_code": "159269.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 171,
+    "etf_code": "159271.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 172,
+    "etf_code": "159277.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 173,
+    "etf_code": "159280.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 174,
+    "etf_code": "159281.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 175,
+    "etf_code": "159285.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 176,
+    "etf_code": "159286.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 177,
+    "etf_code": "159297.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 178,
+    "etf_code": "159302.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 179,
+    "etf_code": "159303.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 180,
+    "etf_code": "159312.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 181,
+    "etf_code": "159316.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 182,
+    "etf_code": "159318.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 183,
+    "etf_code": "159323.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 184,
+    "etf_code": "159329.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 185,
+    "etf_code": "159331.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 186,
+    "etf_code": "159333.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 187,
+    "etf_code": "159365.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 188,
+    "etf_code": "159366.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 189,
+    "etf_code": "159501.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 190,
+    "etf_code": "159502.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 191,
+    "etf_code": "159506.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 192,
+    "etf_code": "159509.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 193,
+    "etf_code": "159513.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 194,
+    "etf_code": "159518.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 195,
+    "etf_code": "159519.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 196,
+    "etf_code": "159529.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 197,
+    "etf_code": "159545.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 198,
+    "etf_code": "159557.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 199,
+    "etf_code": "159561.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 200,
+    "etf_code": "159567.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 201,
+    "etf_code": "159568.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 202,
+    "etf_code": "159569.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 203,
+    "etf_code": "159570.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 204,
+    "etf_code": "159577.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 205,
+    "etf_code": "159605.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 206,
+    "etf_code": "159607.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 207,
+    "etf_code": "159612.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 208,
+    "etf_code": "159615.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 209,
+    "etf_code": "159632.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 210,
+    "etf_code": "159636.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 211,
+    "etf_code": "159655.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 212,
+    "etf_code": "159659.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 213,
+    "etf_code": "159660.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 214,
+    "etf_code": "159687.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 215,
+    "etf_code": "159688.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 216,
+    "etf_code": "159691.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 217,
+    "etf_code": "159696.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 218,
+    "etf_code": "159699.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 219,
+    "etf_code": "159711.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 220,
+    "etf_code": "159712.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 221,
+    "etf_code": "159718.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 222,
+    "etf_code": "159726.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 223,
+    "etf_code": "159735.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 224,
+    "etf_code": "159740.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 225,
+    "etf_code": "159741.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 226,
+    "etf_code": "159742.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 227,
+    "etf_code": "159747.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 228,
+    "etf_code": "159750.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 229,
+    "etf_code": "159751.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 230,
+    "etf_code": "159776.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 231,
+    "etf_code": "159788.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 232,
+    "etf_code": "159792.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 233,
+    "etf_code": "159822.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 234,
+    "etf_code": "159850.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 235,
+    "etf_code": "159866.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 236,
+    "etf_code": "159892.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 237,
+    "etf_code": "159920.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 238,
+    "etf_code": "159941.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 239,
+    "etf_code": "159954.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "ETF跨境型",
+    "rank_in_return": 240,
+    "etf_code": "159960.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  }
+]

@@ -128,6 +128,17 @@ body {
     margin-top: 5px;
 }
 
+.stock-select {
+    min-height: 132px;
+    max-height: 180px;
+    overflow: auto;
+    font-size: 12px;
+}
+
+.stock-summary {
+    margin-top: 6px;
+}
+
 .primary-btn,
 .secondary-btn {
     cursor: pointer;
@@ -174,7 +185,7 @@ body {
     padding: 7px 8px;
     border: 1px solid transparent;
     border-radius: 6px;
-    cursor: grab;
+    cursor: pointer;
     color: var(--text);
     background: #101720;
     margin-bottom: 4px;
@@ -189,18 +200,39 @@ body {
 
 .factor-drop-zone {
     margin-top: 10px;
-    border: 1px dashed var(--line);
+    border: 1px solid var(--line);
     border-radius: 8px;
     min-height: 42px;
     display: grid;
-    place-items: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
     color: var(--muted);
     font-size: 12px;
+    background: #0f1520;
 }
 
-.factor-drop-zone.drag-over {
+.adjust-mode-option {
+    display: grid;
+    place-items: center;
+    min-height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.adjust-mode-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.adjust-mode-option.active {
     color: var(--accent-2);
-    border-color: var(--accent-2);
+    border-color: var(--accent);
+    background: #14233a;
 }
 
 .selected-factor {
@@ -218,6 +250,8 @@ body {
     font-size: 12px;
     min-height: 34px;
     padding-top: 8px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
 
 .status-line.error {

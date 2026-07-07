@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
-import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
 import time
 import uuid
@@ -194,6 +194,13 @@ def build_stock_fill_plan(
     """按股票生成补写计划，语义对齐 notebook 的 build_factor_fill_plan。"""
     start_dt = pd.Timestamp(start_date).floor("D")
     end_dt = pd.Timestamp(end_date).floor("D")
+    latest_values = [
+        pd.Timestamp(value).floor("D")
+        for value in signal_latest.values()
+        if value is not None and pd.notna(value)
+    ]
+    incremental_mark = max(latest_values) if latest_values else start_dt
+    effective_start_dt = max(start_dt, incremental_mark)
     rewind_days = int(lookback_days) + int(LOOKBACK_BUFFER_DAYS)
     rows: list[dict[str, object]] = []
 
@@ -205,11 +212,11 @@ def build_stock_fill_plan(
         last_dt = signal_latest.get(code)
 
         if last_dt is None:
-            plan_start = start_dt
+            plan_start = effective_start_dt
             status = "missing"
-            reason = "该股票尚无形态 events"
+            reason = f"该股票尚无形态 events，按全市场 mark={incremental_mark.date()} 增量补写"
         elif last_dt < target_end:
-            plan_start = max(start_dt, (last_dt - pd.Timedelta(days=rewind_days)).floor("D"))
+            plan_start = max(effective_start_dt, (last_dt - pd.Timedelta(days=rewind_days)).floor("D"))
             status = "stale"
             reason = f"events 末日={last_dt.date()}，需补到 {target_end.date()}"
         else:
@@ -784,14 +791,351 @@ def write_partitioned_outputs(
             print(f"[WRITE] events {year}-{int(month):02d} rows={len(out)} -> {part_path.name}")
 
 
+
+# ---- Inline logic from 工具/形态面增量信号保存.py ----
+FACTOR_KEY_COLS = ["time", "htsc_code"]
+EVENT_KEY_COLS = ["time", "htsc_code", "signal_name"]
+DEFAULT_BASE_DIR = r"D:\database\signal_daily_形态\candlestick_no_vol"
+EVENTS_DIR_NAME = "events"
+
+
+def _align_polars_schema(df: pl.DataFrame, columns_order: list[str]) -> pl.DataFrame:
+    aligned = df
+    for col in columns_order:
+        if col not in aligned.columns:
+            aligned = aligned.with_columns(pl.lit(None).alias(col))
+    return aligned.select(columns_order)
+
+
+def _merge_with_priority(
+    old_df: pl.DataFrame,
+    new_df: pl.DataFrame,
+    key_cols: list[str],
+    *,
+    prefer_new: bool,
+) -> pl.DataFrame:
+    """prefer_new=False 时旧 merged 优先（历史全量）；True 时新 part 优先（增量更新）。"""
+    all_cols = list(dict.fromkeys([*old_df.columns, *new_df.columns]))
+    value_cols = [c for c in all_cols if c not in key_cols]
+
+    old_prio, new_prio = (1, 0) if prefer_new else (0, 1)
+    old_aligned = (
+        _align_polars_schema(old_df, all_cols)
+        .sort(key_cols)
+        .unique(subset=key_cols, keep="last")
+        .with_columns(pl.lit(old_prio).alias("__prio"))
+    )
+    new_aligned = (
+        _align_polars_schema(new_df, all_cols)
+        .sort(key_cols)
+        .unique(subset=key_cols, keep="last")
+        .with_columns(pl.lit(new_prio).alias("__prio"))
+    )
+
+    agg_exprs = [pl.col(c).drop_nulls().first().alias(c) for c in value_cols]
+    merged = (
+        pl.concat([old_aligned, new_aligned], how="vertical_relaxed")
+        .sort([*key_cols, "__prio"])
+        .group_by(key_cols, maintain_order=True)
+        .agg(agg_exprs)
+        .select(all_cols)
+        .sort(key_cols)
+    )
+    return merged
+
+
+def _merge_preserve_old_values(
+    old_df: pl.DataFrame,
+    new_df: pl.DataFrame,
+    key_cols: list[str],
+) -> pl.DataFrame:
+    return _merge_with_priority(old_df, new_df, key_cols, prefer_new=False)
+
+
+def _cleanup_tmp_file(tmp_path: str) -> None:
+    if os.path.exists(tmp_path):
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
+def _write_parquet_atomic_with_retry(
+    df: pl.DataFrame,
+    file_path: str,
+    *,
+    compression: str = "snappy",
+    max_retries: int = 60,
+    sleep_seconds: float = 1.0,
+) -> None:
+    dir_path = os.path.dirname(file_path)
+    os.makedirs(dir_path, exist_ok=True)
+    tmp_dir = os.path.join(dir_path, ".__tmp_writes__")
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    last_error: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        tmp_path = os.path.join(
+            tmp_dir,
+            f"tmp_{os.getpid()}_{int(time.time() * 1000)}_{uuid.uuid4().hex}.bin",
+        )
+        try:
+            df.write_parquet(tmp_path, compression=compression)
+            os.replace(tmp_path, file_path)
+            return
+        except OSError as exc:
+            last_error = exc
+            _cleanup_tmp_file(tmp_path)
+            if attempt == 1 or attempt % 5 == 0:
+                print(f"[WARN] 写入被占用，等待重试: {file_path} ({attempt}/{max_retries})")
+            time.sleep(sleep_seconds)
+
+    raise OSError(f"写入 parquet 失败: {file_path}") from last_error
+
+
+def _move_corrupt_parquet(file_path: str, reason: str) -> None:
+    corrupt_path = f"{file_path}.corrupt.{int(time.time())}"
+    print(f"[WARN] 历史分区不可读，已备份: {file_path} -> {corrupt_path}，原因: {reason}")
+    try:
+        os.replace(file_path, corrupt_path)
+    except OSError as exc:
+        print(f"[WARN] 备份损坏文件失败: {exc}")
+
+
+def _read_existing_partition(file_path: str, key_cols: list[str]) -> pl.DataFrame | None:
+    if not os.path.exists(file_path):
+        return None
+
+    try:
+        if os.path.getsize(file_path) < 12:
+            _move_corrupt_parquet(file_path, "文件小于 12 字节")
+            return None
+        df = pl.read_parquet(file_path)
+        casts = [
+            pl.col("time").cast(pl.Datetime),
+            pl.col("htsc_code").cast(pl.Utf8),
+        ]
+        if "signal_name" in df.columns:
+            casts.append(pl.col("signal_name").cast(pl.Utf8))
+        return df.with_columns(casts)
+    except Exception as exc:
+        _move_corrupt_parquet(file_path, repr(exc))
+        return None
+
+
+def _resolve_factor_month_dirs(
+    base_dir: Path,
+    factor: str | None,
+    year: int | None,
+    month: int | None,
+) -> list[Path]:
+    if factor:
+        factor_dirs = [base_dir / f"factor={factor}"]
+    else:
+        factor_dirs = sorted(base_dir.glob("factor=*"))
+
+    month_dirs: list[Path] = []
+    for factor_dir in factor_dirs:
+        if not factor_dir.exists():
+            continue
+        year_dirs = [factor_dir / f"year={int(year)}"] if year else sorted(factor_dir.glob("year=*"))
+        for year_dir in year_dirs:
+            if not year_dir.exists():
+                continue
+            cur_month_dirs = (
+                [year_dir / f"month={int(month):02d}"]
+                if month
+                else sorted(year_dir.glob("month=*"))
+            )
+            for month_dir in cur_month_dirs:
+                if month_dir.exists():
+                    month_dirs.append(month_dir)
+    return month_dirs
+
+
+def _resolve_events_month_dirs(
+    base_dir: Path,
+    year: int | None,
+    month: int | None,
+) -> list[Path]:
+    events_base = base_dir / EVENTS_DIR_NAME
+    if not events_base.exists():
+        return []
+
+    month_dirs: list[Path] = []
+    year_dirs = [events_base / f"year={int(year)}"] if year else sorted(events_base.glob("year=*"))
+    for year_dir in year_dirs:
+        if not year_dir.exists():
+            continue
+        cur_month_dirs = (
+            [year_dir / f"month={int(month):02d}"]
+            if month
+            else sorted(year_dir.glob("month=*"))
+        )
+        for month_dir in cur_month_dirs:
+            if month_dir.exists():
+                month_dirs.append(month_dir)
+    return month_dirs
+
+
+def compact_month_partition(
+    month_dir: Path,
+    *,
+    key_cols: list[str],
+    keep_parts: bool = False,
+    prefer_new: bool = False,
+) -> tuple[int, int]:
+    part_paths = sorted(month_dir.glob("part_*.parquet"))
+    if not part_paths:
+        return 0, 0
+
+    merged_path = month_dir / "merged.parquet"
+    new_frames = [pl.read_parquet(str(path)) for path in part_paths if path.stat().st_size >= 12]
+    if not new_frames:
+        print(f"[SKIP] 无有效 part 文件: {month_dir}")
+        return 0, 0
+
+    new_df = (
+        pl.concat(new_frames, how="vertical_relaxed", rechunk=True)
+        .sort(key_cols)
+        .unique(subset=key_cols, keep="last")
+        .sort(key_cols)
+    )
+
+    old_df = _read_existing_partition(str(merged_path), key_cols)
+    if old_df is None:
+        save_df = new_df
+        print(f"[NEW] {month_dir} 新建 merged (新 {len(new_df)})")
+    else:
+        save_df = _merge_with_priority(old_df, new_df, key_cols, prefer_new=prefer_new)
+        tag = "新优先" if prefer_new else "旧优先"
+        print(f"[MERGE/{tag}] {month_dir} (旧 {len(old_df)} + 新 {len(new_df)} => {len(save_df)})")
+
+    _write_parquet_atomic_with_retry(save_df, str(merged_path), compression="snappy")
+
+    if not keep_parts:
+        for path in part_paths:
+            try:
+                path.unlink()
+            except OSError as exc:
+                print(f"[WARN] 删除 part 文件失败: {path}，原因: {exc}")
+
+    return len(part_paths), len(save_df)
+
+
+def _default_workers() -> int:
+    cpu = os.cpu_count() or 4
+    return max(1, min(4, cpu))
+
+
+def _compact_task(
+    month_dir: Path,
+    key_cols: list[str],
+    keep_parts: bool,
+    prefer_new: bool,
+) -> tuple[Path, int, int]:
+    parts, rows = compact_month_partition(
+        month_dir,
+        key_cols=key_cols,
+        keep_parts=keep_parts,
+        prefer_new=prefer_new,
+    )
+    return month_dir, parts, rows
+
+
+def _run_compact_jobs(
+    month_dirs: list[Path],
+    *,
+    key_cols: list[str],
+    keep_parts: bool,
+    workers: int,
+    label: str,
+    prefer_new: bool = False,
+) -> tuple[int, int]:
+    if not month_dirs:
+        print(f"没有找到需要处理的 {label} 月份目录。")
+        return 0, 0
+
+    print(f"待处理 {label} 月份目录数: {len(month_dirs)}，workers={max(1, int(workers))}")
+    total_parts = 0
+    touched_months = 0
+    workers = max(1, int(workers))
+
+    if workers == 1 or len(month_dirs) <= 1:
+        for month_dir in month_dirs:
+            parts, _ = compact_month_partition(
+                month_dir,
+                key_cols=key_cols,
+                keep_parts=keep_parts,
+                prefer_new=prefer_new,
+            )
+            if parts > 0:
+                touched_months += 1
+                total_parts += parts
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(_compact_task, month_dir, key_cols, keep_parts, prefer_new): month_dir
+                for month_dir in month_dirs
+            }
+            for future in as_completed(futures):
+                month_dir = futures[future]
+                try:
+                    _, parts, _rows = future.result()
+                except Exception as exc:
+                    print(f"[ERROR] 处理失败: {month_dir}，原因: {exc}")
+                    continue
+                if parts > 0:
+                    touched_months += 1
+                    total_parts += parts
+
+    print(f"{label} 处理完成: 命中月份 {touched_months}，合并 part 文件总数 {total_parts}")
+    return touched_months, total_parts
+
+
 def run_incremental_save(output_base: Path, python_exe: str, *, prefer_new: bool = False) -> None:
-    cmd = [python_exe, str(INCREMENTAL_SAVE_SCRIPT), "--base-dir", str(output_base)]
-    if prefer_new:
-        cmd.append("--prefer-new")
-    print(f"[RUN] {' '.join(cmd)}")
-    completed = subprocess.run(cmd, check=False)
-    if completed.returncode != 0:
-        raise RuntimeError(f"形态面增量信号保存失败，exit={completed.returncode}")
+    """Inline version of 形态面增量信号保存.py for this combined script.
+
+    python_exe is kept in the signature for CLI compatibility with the
+    original generator; the combined version no longer starts a subprocess.
+    """
+    _ = python_exe
+    base_dir = Path(output_base)
+    if not base_dir.exists():
+        raise FileNotFoundError(f"base_dir 不存在: {base_dir}")
+
+    workers = _default_workers()
+    print(f"[RUN] inline 形态面增量信号保存 --base-dir {base_dir} --prefer-new={prefer_new}")
+
+    factor_month_dirs = _resolve_factor_month_dirs(
+        base_dir=base_dir,
+        factor=None,
+        year=None,
+        month=None,
+    )
+    _run_compact_jobs(
+        factor_month_dirs,
+        key_cols=FACTOR_KEY_COLS,
+        keep_parts=False,
+        workers=workers,
+        label="factor",
+        prefer_new=prefer_new,
+    )
+
+    events_month_dirs = _resolve_events_month_dirs(
+        base_dir=base_dir,
+        year=None,
+        month=None,
+    )
+    _run_compact_jobs(
+        events_month_dirs,
+        key_cols=EVENT_KEY_COLS,
+        keep_parts=False,
+        workers=workers,
+        label="events",
+        prefer_new=prefer_new,
+    )
+
 
 
 def _run_pipeline_once(
@@ -887,7 +1231,12 @@ def main() -> None:
     parser.add_argument(
         "--merge",
         action="store_true",
-        help="写 part 后自动合并 merged（默认不合并，对齐 notebook）",
+        help="兼容旧参数；合并版默认会在写 part 后自动合并 merged",
+    )
+    parser.add_argument(
+        "--no-merge",
+        action="store_true",
+        help="只写 part_*.parquet，不执行内置 merged 合并",
     )
     parser.add_argument(
         "--mode",
@@ -1028,9 +1377,9 @@ def main() -> None:
         f"[TOTAL] mode={mode} codes={len(need_codes)} "
         f"write≈{effective_start.date()}~{effective_end.date()} new_events={total_events}"
     )
-    print("说明: 本流程只追加 part_*.parquet；merged 合并请另行运行 形态面增量信号保存.py")
+    print("说明: 合并版默认会在写 part_*.parquet 后执行内置 merged 合并。")
 
-    if args.merge and total_events > 0:
+    if not args.no_merge and total_events > 0:
         run_incremental_save(output_base, args.python_exe, prefer_new=True)
 
     print("[DONE] 形态蜡烛信号生成完成")

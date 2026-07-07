@@ -71,6 +71,7 @@ from temp_today_market_cache import (
 MINUTE_BASE_PATH = r"D:\database\stock_basic_data_mins"
 DAILY_BASE_PATH = r"D:\database\stock_basic_data_daily"
 INDEX_DAILY_BASE_PATH = r"D:\database\index_data_daily"
+ETF_DAILY_BASE_PATH = r"D:\database\ETF_basic_data_daily"
 PORTFOLIO_MINUTE_BASE_PATH = r"D:\database\stock_portfolio_data_mins"
 PORTFOLIO_DAILY_BASE_PATH = r"D:\database\stock_portfolio_data_daily"
 SIGNAL_DAILY_BASE_PATH = r"D:\database\signal_daily"
@@ -79,6 +80,7 @@ MORPH_CANDLESTICK_SOURCE_DIR = "candlestick_no_vol"
 MORPH_CANDLESTICK_MANIFEST_FILE = "morph_candlestick_manifest.json"
 MORPH_CANDLESTICK_LEVELS = frozenset({"level1", "level2", "level3"})
 STOCK_UNIVERSE_PATH = Path(__file__).resolve().parent.parent / "全市场股票代码" / "universe.parquet"
+ETF_UNIVERSE_PATH = Path(r"D:\database\ETF_sector_members") / "etf_universe.parquet"
 BACKTEST_SUMMARY_BASE_PATH = Path(r"D:\database\total_record")
 BACKTEST_POSITION_BASE_PATH = Path(r"D:\database\bs_dialy")
 PORTFOLIO_PICT_BASE_PATH = Path(r"D:\database\store_porfolio_pict")
@@ -105,6 +107,7 @@ INDEX_CODE_LABELS: dict[str, str] = {
     "399001.SZ": "深证成指",
 }
 _index_market_code_cache: set[str] | None = None
+_etf_market_code_cache: set[str] | None = None
 FACTOR_DIR_PREFIX = "factor="
 BACKTEST_SUMMARY_FILE_GLOB = "summary_*.json"
 BACKTEST_POSITION_FILE_GLOB = "position_log_*.parquet"
@@ -419,6 +422,9 @@ _factor_catalog_cache: dict[str, Any] = {"data": None, "loaded_at": 0.0}
 _stock_universe_lock = Lock()
 _stock_universe_cache: list[dict[str, str]] = []
 _stock_universe_mtime: float = 0.0
+_etf_universe_lock = Lock()
+_etf_universe_cache: list[dict[str, str]] = []
+_etf_universe_mtime: float = 0.0
 
 
 def _build_name_pinyin_aliases(name: str) -> tuple[str, ...]:
@@ -531,6 +537,31 @@ def is_index_market_code(code: str) -> bool:
     return bool(parsed) and parsed in get_index_market_code_set()
 
 
+def _refresh_etf_market_code_cache() -> set[str]:
+    """合并 ETF universe 与 ETF 日频分区中已落盘的 htsc_code。"""
+    global _etf_market_code_cache
+    codes: set[str] = {str(item["code"]).upper() for item in _load_etf_universe_records() if item.get("code")}
+    if os.path.exists(ETF_DAILY_BASE_PATH):
+        try:
+            codes.update(c.upper() for c in _scan_all_codes_from_path(ETF_DAILY_BASE_PATH))
+        except MarketDataError:
+            pass
+    _etf_market_code_cache = codes
+    return codes
+
+
+def get_etf_market_code_set() -> set[str]:
+    if _etf_market_code_cache is None:
+        return _refresh_etf_market_code_cache()
+    return _etf_market_code_cache
+
+
+def is_etf_market_code(code: str) -> bool:
+    """是否为 ETF 日频代码（走 ETF_basic_data_daily）。"""
+    parsed = str(code or "").strip().upper()
+    return bool(parsed) and parsed in get_etf_market_code_set()
+
+
 def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
     """返回可选指数列表，供组合结果页 portfolio-extra-select 使用。"""
     if force_refresh:
@@ -600,6 +631,10 @@ def get_base_path_by_code_and_interval(code: str, interval: str, run_tag: str | 
         if interval != "1day":
             raise MarketDataValidationError("指数数据当前仅支持 interval=1day")
         return INDEX_DAILY_BASE_PATH
+    if is_etf_market_code(code):
+        if interval != "1day":
+            raise MarketDataValidationError("ETF 数据当前仅支持 interval=1day")
+        return ETF_DAILY_BASE_PATH
     return get_base_path_by_interval(interval)
 
 
@@ -2033,6 +2068,56 @@ def _load_stock_universe_records(force_refresh: bool = False) -> list[dict[str, 
 def _stock_universe_codes() -> list[str]:
     return [str(item["code"]) for item in _load_stock_universe_records() if item.get("code")]
 
+
+def _load_etf_universe_records(force_refresh: bool = False) -> list[dict[str, str]]:
+    """加载 ETF 代码缓存（htsc_code / name / pinyin_initials）。"""
+    global _etf_universe_cache, _etf_universe_mtime
+    path = Path(ETF_UNIVERSE_PATH)
+    if not path.is_file():
+        return []
+
+    mtime = path.stat().st_mtime
+    with _etf_universe_lock:
+        if not force_refresh and _etf_universe_cache and mtime == _etf_universe_mtime:
+            return list(_etf_universe_cache)
+
+        conn = duckdb.connect(database=":memory:")
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS code,
+                    COALESCE(CAST(name AS VARCHAR), '') AS name,
+                    COALESCE(CAST(pinyin_initials AS VARCHAR), '') AS pinyin_initials,
+                    COALESCE(CAST(security_type AS VARCHAR), 'etf') AS security_type
+                FROM read_parquet(?)
+                WHERE htsc_code IS NOT NULL
+                  AND TRIM(CAST(htsc_code AS VARCHAR)) <> ''
+                ORDER BY code
+                """,
+                [str(path)],
+            ).fetchall()
+        finally:
+            conn.close()
+
+        records: list[dict[str, str]] = []
+        for row in rows:
+            if not row or not row[0]:
+                continue
+            records.append(
+                {
+                    "code": str(row[0]).strip().upper(),
+                    "name": str(row[1] or "").strip(),
+                    "pinyin_initials": str(row[2] or "").strip().upper(),
+                    "security_type": str(row[3] or "etf").strip().lower() or "etf",
+                    "name_pinyin_aliases": _build_name_pinyin_aliases(row[1] or ""),
+                }
+            )
+        _etf_universe_cache = records
+        _etf_universe_mtime = mtime
+        return list(records)
+
+
 def _scan_all_codes_from_path(base_path: str) -> list[str]:
     merged_files = _list_all_merged_files(base_path)
     if not merged_files:
@@ -2460,6 +2545,9 @@ def search_market_codes(
     query_upper = query.upper()
 
     universe_records = _load_stock_universe_records()
+    etf_records = _load_etf_universe_records()
+    if etf_records:
+        universe_records = list(universe_records) + list(etf_records)
     matched_items: list[dict[str, str]] = []
     seen_codes: set[str] = set()
 
@@ -2473,6 +2561,7 @@ def search_market_codes(
                 "code": code,
                 "name": str(item.get("name") or "").strip(),
                 "pinyin_initials": str(item.get("pinyin_initials") or "").strip().upper(),
+                "security_type": str(item.get("security_type") or "").strip().lower(),
             }
         )
 
@@ -2537,6 +2626,9 @@ def search_market_codes(
         if os.path.exists(portfolio_base_path):
             portfolio_codes = _scan_all_codes_from_path(portfolio_base_path)
             all_codes = list(dict.fromkeys(all_codes + portfolio_codes))
+        if parsed_interval == "1day" and os.path.exists(ETF_DAILY_BASE_PATH):
+            etf_codes = _scan_all_codes_from_path(ETF_DAILY_BASE_PATH)
+            all_codes = list(dict.fromkeys(all_codes + etf_codes))
 
         portfolio_matches = [
             code for code in PORTFOLIO_CURVE_CODES

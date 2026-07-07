@@ -5,11 +5,12 @@ import math
 import os
 import re
 import sys
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import duckdb
 import pandas as pd
@@ -18,15 +19,36 @@ VIS_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = VIS_ROOT.parent
 SIGNAL_DAILY_BASE_PATH = Path(r"D:\database\signal_daily")
 DAILY_BASE_PATH = Path(r"D:\database\stock_basic_data_daily")
-UNIVERSE_CSV_PATH = PROJECT_ROOT / "\u534e\u6cf0\u6570\u636e\u83b7\u53d6" / "ALL_A_\u5168\u5e02\u573a\u80a1\u7968_20260626.csv"
+STOCK_POOL_DIR = PROJECT_ROOT / "\u534e\u6cf0\u6570\u636e\u83b7\u53d6"
+UNIVERSE_CSV_PATH = STOCK_POOL_DIR / "ALL_A_\u5168\u5e02\u573a\u80a1\u7968_20260626.csv"
 FACTOR_CATALOG_PATH = PROJECT_ROOT / "\u56e0\u5b50\u5206\u7c7b" / "factor_catalog.json"
 RECORDS_DIR = Path(__file__).resolve().parent / "records"
 FACTOR_DIR_PREFIX = "factor="
 MERGED_FILE_NAME = "merged.parquet"
 DEFAULT_PERIODS = [1, 3, 5, 10, 20, 60]
 PRICE_ADJUST_MODE = "backward_ratio"
+PRICE_ADJUST_NONE = "none"
+ALLOWED_PRICE_ADJUST_MODES = {PRICE_ADJUST_NONE, PRICE_ADJUST_MODE}
 ALLOWED_GROUP_COUNTS = {5, 8, 10, 20}
 MAX_RECORD_ITEMS = 200
+MAX_JOB_ITEMS = 50
+CODE_COLUMN_CANDIDATES = (
+    "stock_code",
+    "etf_code",
+    "htsc_code",
+    "code",
+    "股票代码",
+    "证券代码",
+    "ETF代码",
+    "基金代码",
+)
+NAME_COLUMN_CANDIDATES = ("stock_name", "etf_name", "name", "股票名称", "证券名称", "ETF名称", "基金名称")
+CSV_ENCODINGS = ("utf-8-sig", "utf-8", "gb18030")
+STOCK_POOL_SUFFIXES = {".csv", ".xlsx", ".xls"}
+STOCK_CODE_RE = re.compile(r"^\d{6}\.(?:SH|SZ|BJ)$")
+
+_jobs_lock = threading.Lock()
+_jobs: dict[str, dict[str, Any]] = {}
 
 
 class FactorValidationError(Exception):
@@ -39,6 +61,125 @@ class FactorValidationNotFoundError(FactorValidationError):
 
 class FactorValidationInputError(FactorValidationError):
     pass
+
+
+def _error_payload(exc: Exception) -> dict[str, str]:
+    if isinstance(exc, FactorValidationInputError):
+        code = "INVALID_ARGUMENT"
+    elif isinstance(exc, FactorValidationNotFoundError):
+        code = "DATA_NOT_FOUND"
+    elif isinstance(exc, FactorValidationError):
+        code = "FACTOR_VALIDATION_ERROR"
+    else:
+        code = "INTERNAL_ERROR"
+    return {"code": code, "message": str(exc)}
+
+
+def _job_public_view(job: dict[str, Any]) -> dict[str, Any]:
+    return dict(job)
+
+
+def _set_factor_validation_job(job_id: str, **updates: Any) -> None:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        if not job:
+            return
+        job.update(updates)
+        job["updated_at"] = int(time.time())
+
+
+def create_factor_validation_job(
+    payload: dict[str, Any],
+    runner: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    job_id = uuid.uuid4().hex[:16]
+    now = int(time.time())
+    job = {
+        "job_id": job_id,
+        "status": "queued",
+        "stage": "排队中",
+        "message": "任务已提交，等待后台线程启动",
+        "progress": 1,
+        "created_at": now,
+        "updated_at": now,
+        "started_at": None,
+        "finished_at": None,
+        "elapsed_seconds": 0,
+        "request": dict(payload),
+        "result": None,
+        "error": None,
+    }
+    with _jobs_lock:
+        _jobs[job_id] = job
+        stale_ids = sorted(_jobs, key=lambda key: _jobs[key].get("created_at", 0), reverse=True)[MAX_JOB_ITEMS:]
+        for stale_id in stale_ids:
+            _jobs.pop(stale_id, None)
+
+    worker = threading.Thread(
+        target=_run_factor_validation_job,
+        args=(job_id, dict(payload), runner or run_factor_validation),
+        daemon=True,
+        name=f"factor-validation-{job_id}",
+    )
+    worker.start()
+    return _job_public_view(job)
+
+
+def _run_factor_validation_job(
+    job_id: str,
+    payload: dict[str, Any],
+    runner: Callable[[dict[str, Any]], dict[str, Any]],
+) -> None:
+    started = time.time()
+    _set_factor_validation_job(
+        job_id,
+        status="running",
+        stage="计算中",
+        message="正在读取因子和行情数据，长区间会占用较多时间",
+        progress=10,
+        started_at=int(started),
+    )
+    try:
+        result = runner(payload)
+        finished = time.time()
+        _set_factor_validation_job(
+            job_id,
+            status="done",
+            stage="完成",
+            message="计算完成",
+            progress=100,
+            finished_at=int(finished),
+            elapsed_seconds=round(finished - started, 3),
+            result=result,
+            error=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        finished = time.time()
+        _set_factor_validation_job(
+            job_id,
+            status="failed",
+            stage="失败",
+            message=str(exc),
+            progress=100,
+            finished_at=int(finished),
+            elapsed_seconds=round(finished - started, 3),
+            result=None,
+            error=_error_payload(exc),
+        )
+
+
+def get_factor_validation_job(job_id: str) -> dict[str, Any]:
+    safe_id = re.sub(r"[^0-9A-Za-z_-]", "", str(job_id or "").strip())
+    if not safe_id:
+        raise FactorValidationInputError("任务 id 无效")
+    with _jobs_lock:
+        job = _jobs.get(safe_id)
+        if not job:
+            raise FactorValidationNotFoundError("任务不存在或服务已重启")
+        view = _job_public_view(job)
+    if view.get("started_at") and view.get("status") == "running":
+        view["elapsed_seconds"] = round(time.time() - float(view["started_at"]), 3)
+    return view
 
 
 def apply_ohlc_adj_to_price_df(price_df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
@@ -186,24 +327,157 @@ def _parse_positive_int(value: Any, default: int, field_name: str) -> int:
     return parsed
 
 
-def _load_universe_codes(path: Path = UNIVERSE_CSV_PATH) -> list[str]:
+def _parse_price_adjust_mode(value: Any) -> str:
+    mode = str(value or PRICE_ADJUST_NONE).strip()
+    if mode not in ALLOWED_PRICE_ADJUST_MODES:
+        raise FactorValidationInputError("price_adjust_mode 仅支持 none/backward_ratio")
+    return mode
+
+
+def _normalize_stock_code(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _resolve_stock_pool_path(file_name: Any, pool_dir: Path = STOCK_POOL_DIR) -> Path:
+    name = str(file_name or "").strip()
+    if not name:
+        return UNIVERSE_CSV_PATH
+    if Path(name).name != name:
+        raise FactorValidationInputError("stock_pool_file 只能传文件名，不能包含路径")
+    path = (pool_dir / name).resolve()
+    root = pool_dir.resolve()
+    if root not in path.parents:
+        raise FactorValidationInputError("stock_pool_file 不在股票池目录内")
+    if path.suffix.lower() not in STOCK_POOL_SUFFIXES:
+        raise FactorValidationInputError("股票池文件仅支持 csv/xlsx/xls")
+    return path
+
+
+def list_stock_pool_files(pool_dir: Path = STOCK_POOL_DIR) -> dict[str, Any]:
+    if not pool_dir.exists():
+        raise FactorValidationNotFoundError(f"股票池目录不存在: {pool_dir}")
+    items = []
+    for path in sorted(pool_dir.iterdir(), key=lambda item: item.name.lower()):
+        if not path.is_file() or path.suffix.lower() not in STOCK_POOL_SUFFIXES:
+            continue
+        items.append({
+            "name": path.name,
+            "label": path.stem,
+            "extension": path.suffix.lower(),
+            "size": path.stat().st_size,
+            "mtime": int(path.stat().st_mtime),
+            "is_default": path.resolve() == UNIVERSE_CSV_PATH.resolve(),
+        })
+    return {"root": str(pool_dir), "count": len(items), "items": items}
+
+
+def _read_universe_file(path: Path) -> pd.DataFrame:
     if not path.exists():
-        raise FactorValidationNotFoundError(f"股票池 CSV 不存在: {path}")
-    df = pd.read_csv(path, encoding="utf-8-sig")
-    col = "stock_code" if "stock_code" in df.columns else "htsc_code"
-    if col not in df.columns:
-        raise FactorValidationInputError("股票池 CSV 缺少 stock_code/htsc_code 列")
-    codes = (
-        df[col]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .loc[lambda s: s.str.contains(r"^\d{6}\.(SH|SZ|BJ)$", regex=True, na=False)]
-        .drop_duplicates()
-        .tolist()
-    )
+        raise FactorValidationNotFoundError(f"股票池文件不存在: {path}")
+    suffix = path.suffix.lower()
+    if suffix in {".xlsx", ".xls"}:
+        try:
+            return pd.read_excel(path)
+        except Exception as exc:  # noqa: BLE001
+            raise FactorValidationInputError(f"股票池 Excel 读取失败: {path.name} | {exc}") from exc
+    if suffix != ".csv":
+        raise FactorValidationInputError("股票池文件仅支持 csv/xlsx/xls")
+    last_exc: Exception | None = None
+    for encoding in CSV_ENCODINGS:
+        try:
+            return pd.read_csv(path, encoding=encoding)
+        except UnicodeDecodeError as exc:
+            last_exc = exc
+    raise FactorValidationInputError(f"股票池 CSV 编码无法识别: {last_exc}") from last_exc
+
+
+def _first_existing_column(columns: list[str], candidates: tuple[str, ...]) -> str | None:
+    normalized = {str(col).strip().lower(): col for col in columns}
+    for candidate in candidates:
+        found = normalized.get(candidate.lower())
+        if found is not None:
+            return found
+    return None
+
+
+def _load_universe_items(path: Path = UNIVERSE_CSV_PATH) -> list[dict[str, str]]:
+    df = _read_universe_file(path)
+    columns = [str(col).strip() for col in df.columns]
+    code_col = _first_existing_column(columns, CODE_COLUMN_CANDIDATES)
+    if not code_col:
+        raise FactorValidationInputError("股票池文件缺少 stock_code/etf_code/htsc_code/code/股票代码 列")
+    name_col = _first_existing_column(columns, NAME_COLUMN_CANDIDATES)
+
+    work = pd.DataFrame({"code": df[code_col].map(_normalize_stock_code)})
+    work["name"] = df[name_col].fillna("").astype(str).str.strip() if name_col else ""
+    work = work.loc[work["code"].str.contains(STOCK_CODE_RE, regex=True, na=False)]
+    work = work.drop_duplicates(subset=["code"], keep="first").sort_values("code")
+    items = [{"code": str(row.code), "name": str(row.name)} for row in work.itertuples(index=False)]
+    if not items:
+        raise FactorValidationNotFoundError("股票池文件没有有效股票代码")
+    return items
+
+
+def list_universe_stocks(
+    path: Path = UNIVERSE_CSV_PATH,
+    query: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    items = _load_universe_items(path)
+    keyword = str(query or "").strip().lower()
+    if keyword:
+        items = [
+            item for item in items
+            if keyword in item["code"].lower() or keyword in item["name"].lower()
+        ]
+    if limit and limit > 0:
+        items = items[:limit]
+    return {
+        "stock_pool": "ALL_A",
+        "source": str(path),
+        "count": len(items),
+        "items": items,
+    }
+
+
+def _load_universe_codes(path: Path = UNIVERSE_CSV_PATH) -> list[str]:
+    return [item["code"] for item in _load_universe_items(path)]
+
+
+def _coerce_payload_codes(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw_items = re.split(r"[\s,;，；]+", value)
+    elif isinstance(value, (list, tuple, set)):
+        raw_items = list(value)
+    else:
+        raw_items = [value]
+    codes: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_items:
+        code = _normalize_stock_code(raw)
+        if not STOCK_CODE_RE.match(code) or code in seen:
+            continue
+        seen.add(code)
+        codes.append(code)
+    return codes
+
+
+def resolve_universe_codes(
+    payload: dict[str, Any],
+    path: Path = UNIVERSE_CSV_PATH,
+    pool_dir: Path = STOCK_POOL_DIR,
+) -> list[str]:
+    selected_path = _resolve_stock_pool_path(payload.get("stock_pool_file"), pool_dir) if payload.get("stock_pool_file") else path
+    all_codes = _load_universe_codes(selected_path)
+    selected = _coerce_payload_codes(payload.get("stock_codes") or payload.get("stock_code"))
+    if not selected:
+        return all_codes
+    available = set(all_codes)
+    codes = [code for code in selected if code in available]
     if not codes:
-        raise FactorValidationNotFoundError("股票池 CSV 没有有效股票代码")
+        raise FactorValidationNotFoundError("选中的股票不在股票池 CSV 中")
     return codes
 
 
@@ -237,7 +511,13 @@ def _read_factor_frame(factor_name: str, start: pd.Timestamp, end: pd.Timestamp,
     return df.dropna(subset=["htsc_code", "time"]).drop_duplicates(["time", "htsc_code"], keep="last")
 
 
-def _read_price_frame(start: pd.Timestamp, end: pd.Timestamp, codes: list[str], max_period: int) -> pd.DataFrame:
+def _read_price_frame(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    codes: list[str],
+    max_period: int,
+    price_adjust_mode: str,
+) -> pd.DataFrame:
     price_end = end + pd.Timedelta(days=max_period * 3 + 14)
     paths = _build_month_partition_paths(DAILY_BASE_PATH, start, price_end)
     if not paths:
@@ -267,12 +547,14 @@ def _read_price_frame(start: pd.Timestamp, end: pd.Timestamp, codes: list[str], 
     df = df.dropna(subset=["htsc_code", "time", "close"]).drop_duplicates(["time", "htsc_code"], keep="last")
     if df.empty:
         return df
+    if price_adjust_mode == PRICE_ADJUST_NONE:
+        return df
     adjusted = apply_ohlc_adj_to_price_df(
         df,
         target_codes=codes,
         query_start_date=start.strftime("%Y-%m-%d"),
         query_end_exclusive=(price_end + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
-        adj_mode=PRICE_ADJUST_MODE,
+        adj_mode=price_adjust_mode,
     )
     adjusted["htsc_code"] = adjusted["htsc_code"].astype(str).str.strip().str.upper()
     adjusted["time"] = pd.to_datetime(adjusted["time"], errors="coerce").dt.normalize()
@@ -503,6 +785,7 @@ def calculate_factor_validation(
     periods: list[int],
     rolling_window: int,
     group_count: int,
+    price_adjust_mode: str = PRICE_ADJUST_NONE,
 ) -> dict[str, Any]:
     if group_count not in ALLOWED_GROUP_COUNTS:
         raise FactorValidationInputError("分组数仅支持 5、8、10、20")
@@ -535,7 +818,7 @@ def calculate_factor_validation(
             "periods": periods,
             "rolling_window": rolling_window,
             "group_count": group_count,
-            "price_adjust_mode": PRICE_ADJUST_MODE,
+            "price_adjust_mode": price_adjust_mode,
             "factor_rows": int(len(factor)),
             "price_rows": int(len(price)),
             "server_time": int(time.time()),
@@ -555,16 +838,17 @@ def run_factor_validation(payload: dict[str, Any]) -> dict[str, Any]:
     periods = _parse_periods(payload.get("periods"))
     rolling_window = _parse_positive_int(payload.get("rolling_window"), 60, "rolling_window")
     group_count = _parse_positive_int(payload.get("group_count"), 5, "group_count")
+    price_adjust_mode = _parse_price_adjust_mode(payload.get("price_adjust_mode"))
     if group_count not in ALLOWED_GROUP_COUNTS:
         raise FactorValidationInputError("group_count 仅支持 5、8、10、20")
-    codes = _load_universe_codes()
+    codes = resolve_universe_codes(payload)
     factor_df = _read_factor_frame(factor_name, start, end, codes)
-    price_df = _read_price_frame(start, end, codes, max(periods))
+    price_df = _read_price_frame(start, end, codes, max(periods), price_adjust_mode)
     if factor_df.empty:
         raise FactorValidationNotFoundError("所选股票池和时间段内没有因子数据")
     if price_df.empty:
         raise FactorValidationNotFoundError("所选股票池和时间段内没有行情数据")
-    return calculate_factor_validation(
+    result = calculate_factor_validation(
         factor_df=factor_df,
         price_df=price_df,
         universe_codes=codes,
@@ -574,7 +858,16 @@ def run_factor_validation(payload: dict[str, Any]) -> dict[str, Any]:
         periods=periods,
         rolling_window=rolling_window,
         group_count=group_count,
+        price_adjust_mode=price_adjust_mode,
     )
+    result["meta"]["selected_stock_count"] = len(codes)
+    stock_pool_file = str(payload.get("stock_pool_file") or "").strip()
+    if stock_pool_file:
+        result["meta"]["stock_pool"] = stock_pool_file
+        result["meta"]["stock_pool_file"] = stock_pool_file
+    if _coerce_payload_codes(payload.get("stock_codes") or payload.get("stock_code")):
+        result["meta"]["stock_pool"] = "SELECTED_CSV"
+    return result
 
 
 def _record_path(record_id: str, records_dir: Path = RECORDS_DIR) -> Path:

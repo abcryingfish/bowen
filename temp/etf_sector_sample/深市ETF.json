@@ -1,0 +1,6311 @@
+[
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 1,
+    "etf_code": "159960.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 2,
+    "etf_code": "159056.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 3,
+    "etf_code": "159022.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 4,
+    "etf_code": "159120.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 5,
+    "etf_code": "159816.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 6,
+    "etf_code": "159862.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 7,
+    "etf_code": "159350.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 8,
+    "etf_code": "159226.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 9,
+    "etf_code": "159649.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 10,
+    "etf_code": "159337.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 11,
+    "etf_code": "159758.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 12,
+    "etf_code": "159235.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 13,
+    "etf_code": "159241.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 14,
+    "etf_code": "159045.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 15,
+    "etf_code": "159031.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 16,
+    "etf_code": "159907.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 17,
+    "etf_code": "159973.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 18,
+    "etf_code": "159805.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 19,
+    "etf_code": "159871.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 20,
+    "etf_code": "159147.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 21,
+    "etf_code": "159133.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 22,
+    "etf_code": "159528.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 23,
+    "etf_code": "159899.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 24,
+    "etf_code": "159213.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 25,
+    "etf_code": "159608.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 26,
+    "etf_code": "159267.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 27,
+    "etf_code": "159796.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 28,
+    "etf_code": "159311.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 29,
+    "etf_code": "159365.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 30,
+    "etf_code": "159189.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 31,
+    "etf_code": "159592.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 32,
+    "etf_code": "159857.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 33,
+    "etf_code": "159161.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 34,
+    "etf_code": "159115.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 35,
+    "etf_code": "159063.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 36,
+    "etf_code": "159017.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 37,
+    "etf_code": "159569.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 38,
+    "etf_code": "159172.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 39,
+    "etf_code": "159106.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 40,
+    "etf_code": "159581.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 41,
+    "etf_code": "159830.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 42,
+    "etf_code": "159098.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 43,
+    "etf_code": "159070.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 44,
+    "etf_code": "159687.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 45,
+    "etf_code": "159200.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 46,
+    "etf_code": "159302.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 47,
+    "etf_code": "159719.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 48,
+    "etf_code": "159376.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 49,
+    "etf_code": "159536.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 50,
+    "etf_code": "159887.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 51,
+    "etf_code": "159159.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 52,
+    "etf_code": "159542.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 53,
+    "etf_code": "159985.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 54,
+    "etf_code": "159919.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 55,
+    "etf_code": "159630.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 56,
+    "etf_code": "159732.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 57,
+    "etf_code": "159329.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 58,
+    "etf_code": "159657.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 59,
+    "etf_code": "159623.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 60,
+    "etf_code": "159238.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 61,
+    "etf_code": "159755.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 62,
+    "etf_code": "159721.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 63,
+    "etf_code": "159525.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 64,
+    "etf_code": "159551.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 65,
+    "etf_code": "159808.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 66,
+    "etf_code": "159996.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 67,
+    "etf_code": "159048.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 68,
+    "etf_code": "159368.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 69,
+    "etf_code": "159773.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 70,
+    "etf_code": "159707.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 71,
+    "etf_code": "159380.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 72,
+    "etf_code": "159699.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 73,
+    "etf_code": "159671.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 74,
+    "etf_code": "159605.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 75,
+    "etf_code": "159958.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 76,
+    "etf_code": "159086.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 77,
+    "etf_code": "159118.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 78,
+    "etf_code": "159577.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 79,
+    "etf_code": "159009.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 80,
+    "etf_code": "159849.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 81,
+    "etf_code": "159197.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 82,
+    "etf_code": "159510.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 83,
+    "etf_code": "159788.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 84,
+    "etf_code": "159393.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 85,
+    "etf_code": "159760.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 86,
+    "etf_code": "159279.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 87,
+    "etf_code": "159662.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 88,
+    "etf_code": "159616.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 89,
+    "etf_code": "159291.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 90,
+    "etf_code": "159651.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 91,
+    "etf_code": "159625.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 92,
+    "etf_code": "159138.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 93,
+    "etf_code": "159523.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 94,
+    "etf_code": "159892.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 95,
+    "etf_code": "159557.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 96,
+    "etf_code": "159029.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 97,
+    "etf_code": "159530.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 98,
+    "etf_code": "159881.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 99,
+    "etf_code": "159869.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 100,
+    "etf_code": "159740.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 101,
+    "etf_code": "159642.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 102,
+    "etf_code": "159259.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 103,
+    "etf_code": "159636.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 104,
+    "etf_code": "159516.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 105,
+    "etf_code": "159562.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 106,
+    "etf_code": "159179.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 107,
+    "etf_code": "159191.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 108,
+    "etf_code": "159939.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 109,
+    "etf_code": "159093.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 110,
+    "etf_code": "159297.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 111,
+    "etf_code": "159610.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 112,
+    "etf_code": "159766.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 113,
+    "etf_code": "159309.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 114,
+    "etf_code": "159712.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 115,
+    "etf_code": "159395.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 116,
+    "etf_code": "159677.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 117,
+    "etf_code": "159218.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 118,
+    "etf_code": "159603.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 119,
+    "etf_code": "159386.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 120,
+    "etf_code": "159775.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 121,
+    "etf_code": "159701.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 122,
+    "etf_code": "159182.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 123,
+    "etf_code": "159599.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 124,
+    "etf_code": "159828.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 125,
+    "etf_code": "159505.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 126,
+    "etf_code": "159571.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 127,
+    "etf_code": "159628.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 128,
+    "etf_code": "159233.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 129,
+    "etf_code": "159247.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 130,
+    "etf_code": "159331.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 131,
+    "etf_code": "159141.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 132,
+    "etf_code": "159135.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 133,
+    "etf_code": "159877.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 134,
+    "etf_code": "159901.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 135,
+    "etf_code": "159975.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 136,
+    "etf_code": "159043.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 137,
+    "etf_code": "159037.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 138,
+    "etf_code": "159810.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 139,
+    "etf_code": "159864.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 140,
+    "etf_code": "159152.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 141,
+    "etf_code": "159549.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 142,
+    "etf_code": "159126.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 143,
+    "etf_code": "159050.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 144,
+    "etf_code": "159912.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 145,
+    "etf_code": "159966.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 146,
+    "etf_code": "159220.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 147,
+    "etf_code": "159739.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 148,
+    "etf_code": "159322.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 149,
+    "etf_code": "159356.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 150,
+    "etf_code": "159934.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 151,
+    "etf_code": "159940.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 152,
+    "etf_code": "159587.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 153,
+    "etf_code": "159836.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 154,
+    "etf_code": "159842.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 155,
+    "etf_code": "159100.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 156,
+    "etf_code": "159783.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 157,
+    "etf_code": "159398.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 158,
+    "etf_code": "159370.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 159,
+    "etf_code": "159206.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 160,
+    "etf_code": "159272.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 161,
+    "etf_code": "159669.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 162,
+    "etf_code": "159681.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 163,
+    "etf_code": "159363.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 164,
+    "etf_code": "159778.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 165,
+    "etf_code": "159790.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 166,
+    "etf_code": "159692.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 167,
+    "etf_code": "159289.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 168,
+    "etf_code": "159215.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 169,
+    "etf_code": "159261.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 170,
+    "etf_code": "159065.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 171,
+    "etf_code": "159011.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 172,
+    "etf_code": "159167.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 173,
+    "etf_code": "159508.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 174,
+    "etf_code": "159113.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 175,
+    "etf_code": "159825.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 176,
+    "etf_code": "159851.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 177,
+    "etf_code": "159371.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 178,
+    "etf_code": "159305.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 179,
+    "etf_code": "159399.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 180,
+    "etf_code": "159782.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 181,
+    "etf_code": "159680.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 182,
+    "etf_code": "158000.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 183,
+    "etf_code": "159273.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 184,
+    "etf_code": "159207.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 185,
+    "etf_code": "159941.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 186,
+    "etf_code": "159935.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 187,
+    "etf_code": "159003.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 188,
+    "etf_code": "159077.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 189,
+    "etf_code": "159101.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 190,
+    "etf_code": "159175.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 191,
+    "etf_code": "159843.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 192,
+    "etf_code": "159586.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 193,
+    "etf_code": "159837.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 194,
+    "etf_code": "159010.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 195,
+    "etf_code": "159952.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 196,
+    "etf_code": "159850.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 197,
+    "etf_code": "159595.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 198,
+    "etf_code": "159824.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 199,
+    "etf_code": "159112.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 200,
+    "etf_code": "159509.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 201,
+    "etf_code": "159166.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 202,
+    "etf_code": "159791.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 203,
+    "etf_code": "159779.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 204,
+    "etf_code": "159362.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 205,
+    "etf_code": "159316.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 206,
+    "etf_code": "159260.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 207,
+    "etf_code": "159288.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 208,
+    "etf_code": "159876.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 209,
+    "etf_code": "159140.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 210,
+    "etf_code": "159036.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 211,
+    "etf_code": "159042.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 212,
+    "etf_code": "159974.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 213,
+    "etf_code": "159246.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 214,
+    "etf_code": "159232.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 215,
+    "etf_code": "159629.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 216,
+    "etf_code": "159330.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 217,
+    "etf_code": "159255.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 218,
+    "etf_code": "159221.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 219,
+    "etf_code": "159357.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 220,
+    "etf_code": "159323.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 221,
+    "etf_code": "159738.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 222,
+    "etf_code": "159127.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 223,
+    "etf_code": "159153.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 224,
+    "etf_code": "159865.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 225,
+    "etf_code": "159811.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 226,
+    "etf_code": "159967.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 227,
+    "etf_code": "159913.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 228,
+    "etf_code": "159051.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 229,
+    "etf_code": "159611.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 230,
+    "etf_code": "159665.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 231,
+    "etf_code": "159296.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 232,
+    "etf_code": "159713.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 233,
+    "etf_code": "159767.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 234,
+    "etf_code": "159190.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 235,
+    "etf_code": "159178.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 236,
+    "etf_code": "159563.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 237,
+    "etf_code": "159517.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 238,
+    "etf_code": "159938.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 239,
+    "etf_code": "159570.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 240,
+    "etf_code": "159183.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 241,
+    "etf_code": "159285.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 242,
+    "etf_code": "159602.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 243,
+    "etf_code": "159219.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 244,
+    "etf_code": "159676.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 245,
+    "etf_code": "159700.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 246,
+    "etf_code": "159387.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 247,
+    "etf_code": "159991.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 248,
+    "etf_code": "159556.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 249,
+    "etf_code": "159139.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 250,
+    "etf_code": "159726.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 251,
+    "etf_code": "159752.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 252,
+    "etf_code": "159650.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 253,
+    "etf_code": "159735.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 254,
+    "etf_code": "159741.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 255,
+    "etf_code": "159637.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 256,
+    "etf_code": "159258.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 257,
+    "etf_code": "159643.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 258,
+    "etf_code": "159982.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 259,
+    "etf_code": "159028.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 260,
+    "etf_code": "159545.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 261,
+    "etf_code": "159531.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 262,
+    "etf_code": "159880.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 263,
+    "etf_code": "159400.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 264,
+    "etf_code": "159087.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 265,
+    "etf_code": "159959.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 266,
+    "etf_code": "159185.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 267,
+    "etf_code": "159576.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 268,
+    "etf_code": "159119.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 269,
+    "etf_code": "159502.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 270,
+    "etf_code": "159381.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 271,
+    "etf_code": "159706.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 272,
+    "etf_code": "159369.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 273,
+    "etf_code": "159670.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 274,
+    "etf_code": "159283.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 275,
+    "etf_code": "159698.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 276,
+    "etf_code": "159715.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 277,
+    "etf_code": "159761.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 278,
+    "etf_code": "159392.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 279,
+    "etf_code": "159290.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 280,
+    "etf_code": "159617.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 281,
+    "etf_code": "159663.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 282,
+    "etf_code": "159278.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 283,
+    "etf_code": "159008.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 284,
+    "etf_code": "159565.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 285,
+    "etf_code": "159511.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 286,
+    "etf_code": "159196.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 287,
+    "etf_code": "159848.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 288,
+    "etf_code": "159631.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 289,
+    "etf_code": "159645.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 290,
+    "etf_code": "159328.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 291,
+    "etf_code": "159747.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 292,
+    "etf_code": "159543.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 293,
+    "etf_code": "159158.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 294,
+    "etf_code": "159537.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 295,
+    "etf_code": "159886.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 296,
+    "etf_code": "159918.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 297,
+    "etf_code": "159550.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 298,
+    "etf_code": "159895.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 299,
+    "etf_code": "159997.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 300,
+    "etf_code": "159239.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 301,
+    "etf_code": "159622.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 302,
+    "etf_code": "159656.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 303,
+    "etf_code": "159720.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 304,
+    "etf_code": "159160.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 305,
+    "etf_code": "159856.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 306,
+    "etf_code": "159593.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 307,
+    "etf_code": "159188.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 308,
+    "etf_code": "159822.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 309,
+    "etf_code": "159954.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 310,
+    "etf_code": "159920.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 311,
+    "etf_code": "159016.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 312,
+    "etf_code": "159062.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 313,
+    "etf_code": "159695.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 314,
+    "etf_code": "159266.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 315,
+    "etf_code": "159609.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 316,
+    "etf_code": "159212.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 317,
+    "etf_code": "159310.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 318,
+    "etf_code": "159797.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 319,
+    "etf_code": "159275.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 320,
+    "etf_code": "159201.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 321,
+    "etf_code": "159686.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 322,
+    "etf_code": "159377.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 323,
+    "etf_code": "159718.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 324,
+    "etf_code": "159303.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 325,
+    "etf_code": "159845.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 326,
+    "etf_code": "159831.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 327,
+    "etf_code": "159107.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 328,
+    "etf_code": "159173.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 329,
+    "etf_code": "159568.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 330,
+    "etf_code": "159005.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 331,
+    "etf_code": "159071.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 332,
+    "etf_code": "159933.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 333,
+    "etf_code": "159099.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 334,
+    "etf_code": "159351.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 335,
+    "etf_code": "159325.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 336,
+    "etf_code": "159253.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 337,
+    "etf_code": "159227.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 338,
+    "etf_code": "159023.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 339,
+    "etf_code": "159057.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 340,
+    "etf_code": "159961.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 341,
+    "etf_code": "159915.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 342,
+    "etf_code": "159863.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 343,
+    "etf_code": "159121.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 344,
+    "etf_code": "159155.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 345,
+    "etf_code": "159972.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 346,
+    "etf_code": "159906.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 347,
+    "etf_code": "159030.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 348,
+    "etf_code": "159529.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 349,
+    "etf_code": "159132.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 350,
+    "etf_code": "159898.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 351,
+    "etf_code": "159146.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 352,
+    "etf_code": "159870.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 353,
+    "etf_code": "159804.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 354,
+    "etf_code": "159336.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 355,
+    "etf_code": "159240.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 356,
+    "etf_code": "159375.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 357,
+    "etf_code": "159301.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 358,
+    "etf_code": "159786.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 359,
+    "etf_code": "159277.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 360,
+    "etf_code": "159618.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 361,
+    "etf_code": "159203.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 362,
+    "etf_code": "159945.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 363,
+    "etf_code": "159931.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 364,
+    "etf_code": "159007.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 365,
+    "etf_code": "159105.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 366,
+    "etf_code": "159171.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 367,
+    "etf_code": "159847.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 368,
+    "etf_code": "159582.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 369,
+    "etf_code": "159199.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 370,
+    "etf_code": "159060.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 371,
+    "etf_code": "159956.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 372,
+    "etf_code": "159922.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 373,
+    "etf_code": "159820.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 374,
+    "etf_code": "159591.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 375,
+    "etf_code": "159116.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 376,
+    "etf_code": "159162.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 377,
+    "etf_code": "159795.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 378,
+    "etf_code": "159366.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 379,
+    "etf_code": "159709.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 380,
+    "etf_code": "159312.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 381,
+    "etf_code": "159210.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 382,
+    "etf_code": "159697.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 383,
+    "etf_code": "159872.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 384,
+    "etf_code": "159806.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 385,
+    "etf_code": "159130.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 386,
+    "etf_code": "159032.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 387,
+    "etf_code": "159998.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 388,
+    "etf_code": "159046.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 389,
+    "etf_code": "159970.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 390,
+    "etf_code": "159242.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 391,
+    "etf_code": "159659.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 392,
+    "etf_code": "159236.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 393,
+    "etf_code": "159251.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 394,
+    "etf_code": "159225.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 395,
+    "etf_code": "159353.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 396,
+    "etf_code": "159748.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 397,
+    "etf_code": "159327.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 398,
+    "etf_code": "159889.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 399,
+    "etf_code": "159538.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 400,
+    "etf_code": "159123.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 401,
+    "etf_code": "159157.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 402,
+    "etf_code": "159861.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 403,
+    "etf_code": "159021.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 404,
+    "etf_code": "159055.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 405,
+    "etf_code": "159615.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 406,
+    "etf_code": "159661.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 407,
+    "etf_code": "159292.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 408,
+    "etf_code": "159689.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 409,
+    "etf_code": "159390.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 410,
+    "etf_code": "159717.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 411,
+    "etf_code": "159763.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 412,
+    "etf_code": "159378.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 413,
+    "etf_code": "159567.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 414,
+    "etf_code": "159108.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 415,
+    "etf_code": "159513.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 416,
+    "etf_code": "159948.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 417,
+    "etf_code": "159500.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 418,
+    "etf_code": "159187.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 419,
+    "etf_code": "159859.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 420,
+    "etf_code": "159085.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 421,
+    "etf_code": "159019.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 422,
+    "etf_code": "159281.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 423,
+    "etf_code": "159606.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 424,
+    "etf_code": "159672.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 425,
+    "etf_code": "159269.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 426,
+    "etf_code": "159770.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 427,
+    "etf_code": "159383.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 428,
+    "etf_code": "159798.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 429,
+    "etf_code": "159909.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 430,
+    "etf_code": "159995.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 431,
+    "etf_code": "159552.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 432,
+    "etf_code": "159149.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 433,
+    "etf_code": "159526.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 434,
+    "etf_code": "159339.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 435,
+    "etf_code": "159620.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 436,
+    "etf_code": "159731.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 437,
+    "etf_code": "159745.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 438,
+    "etf_code": "159228.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 439,
+    "etf_code": "159633.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 440,
+    "etf_code": "159647.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 441,
+    "etf_code": "159541.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 442,
+    "etf_code": "159535.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 443,
+    "etf_code": "159929.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 444,
+    "etf_code": "159181.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 445,
+    "etf_code": "159169.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 446,
+    "etf_code": "159572.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 447,
+    "etf_code": "159506.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 448,
+    "etf_code": "159385.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 449,
+    "etf_code": "159776.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 450,
+    "etf_code": "159600.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 451,
+    "etf_code": "159287.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 452,
+    "etf_code": "159711.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 453,
+    "etf_code": "159396.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 454,
+    "etf_code": "159613.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 455,
+    "etf_code": "159208.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 456,
+    "etf_code": "159667.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 457,
+    "etf_code": "159561.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 458,
+    "etf_code": "159515.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 459,
+    "etf_code": "159838.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 460,
+    "etf_code": "159589.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 461,
+    "etf_code": "159192.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 462,
+    "etf_code": "159635.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 463,
+    "etf_code": "159641.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 464,
+    "etf_code": "159358.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 465,
+    "etf_code": "159743.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 466,
+    "etf_code": "159547.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 467,
+    "etf_code": "159533.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 468,
+    "etf_code": "159128.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 469,
+    "etf_code": "159968.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 470,
+    "etf_code": "159980.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 471,
+    "etf_code": "159891.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 472,
+    "etf_code": "159520.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 473,
+    "etf_code": "159039.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 474,
+    "etf_code": "159993.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 475,
+    "etf_code": "159249.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 476,
+    "etf_code": "159652.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 477,
+    "etf_code": "159750.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 478,
+    "etf_code": "159110.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 479,
+    "etf_code": "159852.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 480,
+    "etf_code": "159597.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 481,
+    "etf_code": "159012.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 482,
+    "etf_code": "159066.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 483,
+    "etf_code": "159691.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 484,
+    "etf_code": "159679.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 485,
+    "etf_code": "159262.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 486,
+    "etf_code": "159216.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 487,
+    "etf_code": "159360.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 488,
+    "etf_code": "159388.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 489,
+    "etf_code": "159793.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 490,
+    "etf_code": "159271.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 491,
+    "etf_code": "159205.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 492,
+    "etf_code": "159299.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 493,
+    "etf_code": "159682.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 494,
+    "etf_code": "159780.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 495,
+    "etf_code": "159768.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 496,
+    "etf_code": "159373.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 497,
+    "etf_code": "159307.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 498,
+    "etf_code": "159841.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 499,
+    "etf_code": "159835.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 500,
+    "etf_code": "159103.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 501,
+    "etf_code": "159518.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 502,
+    "etf_code": "159177.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 503,
+    "etf_code": "159001.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 504,
+    "etf_code": "159943.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 505,
+    "etf_code": "159937.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 506,
+    "etf_code": "159355.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 507,
+    "etf_code": "159321.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 508,
+    "etf_code": "159257.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 509,
+    "etf_code": "159223.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 510,
+    "etf_code": "159638.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 511,
+    "etf_code": "159027.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 512,
+    "etf_code": "159053.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 513,
+    "etf_code": "159965.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 514,
+    "etf_code": "159867.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 515,
+    "etf_code": "159813.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 516,
+    "etf_code": "159125.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 517,
+    "etf_code": "159151.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 518,
+    "etf_code": "159976.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 519,
+    "etf_code": "159902.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 520,
+    "etf_code": "159040.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 521,
+    "etf_code": "159136.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 522,
+    "etf_code": "159559.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 523,
+    "etf_code": "159142.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 524,
+    "etf_code": "159800.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 525,
+    "etf_code": "159332.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 526,
+    "etf_code": "159729.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 527,
+    "etf_code": "159230.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 528,
+    "etf_code": "159910.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 529,
+    "etf_code": "159964.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 530,
+    "etf_code": "159052.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 531,
+    "etf_code": "159026.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 532,
+    "etf_code": "159150.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 533,
+    "etf_code": "159812.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 534,
+    "etf_code": "159866.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 535,
+    "etf_code": "159320.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 536,
+    "etf_code": "159639.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 537,
+    "etf_code": "159222.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 538,
+    "etf_code": "159256.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 539,
+    "etf_code": "159728.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 540,
+    "etf_code": "159333.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 541,
+    "etf_code": "159231.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 542,
+    "etf_code": "159245.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 543,
+    "etf_code": "159041.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 544,
+    "etf_code": "159035.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 545,
+    "etf_code": "159903.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 546,
+    "etf_code": "159977.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 547,
+    "etf_code": "159801.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 548,
+    "etf_code": "159875.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 549,
+    "etf_code": "159143.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 550,
+    "etf_code": "159558.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 551,
+    "etf_code": "159137.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 552,
+    "etf_code": "159217.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 553,
+    "etf_code": "159263.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 554,
+    "etf_code": "159678.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 555,
+    "etf_code": "159690.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 556,
+    "etf_code": "159792.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 557,
+    "etf_code": "159389.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 558,
+    "etf_code": "159315.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 559,
+    "etf_code": "159361.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 560,
+    "etf_code": "159827.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 561,
+    "etf_code": "159596.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 562,
+    "etf_code": "159165.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 563,
+    "etf_code": "159111.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 564,
+    "etf_code": "159013.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 565,
+    "etf_code": "159925.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 566,
+    "etf_code": "159176.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 567,
+    "etf_code": "159519.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 568,
+    "etf_code": "159102.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 569,
+    "etf_code": "159834.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 570,
+    "etf_code": "159840.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 571,
+    "etf_code": "159936.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 572,
+    "etf_code": "159298.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 573,
+    "etf_code": "159270.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 574,
+    "etf_code": "159306.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 575,
+    "etf_code": "159372.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 576,
+    "etf_code": "159781.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 577,
+    "etf_code": "159883.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 578,
+    "etf_code": "159129.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 579,
+    "etf_code": "159532.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 580,
+    "etf_code": "159546.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 581,
+    "etf_code": "159981.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 582,
+    "etf_code": "159640.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 583,
+    "etf_code": "159742.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 584,
+    "etf_code": "159359.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 585,
+    "etf_code": "159736.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 586,
+    "etf_code": "159653.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 587,
+    "etf_code": "159248.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 588,
+    "etf_code": "159627.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 589,
+    "etf_code": "159751.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 590,
+    "etf_code": "159725.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 591,
+    "etf_code": "159890.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 592,
+    "etf_code": "159521.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 593,
+    "etf_code": "159555.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 594,
+    "etf_code": "159038.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 595,
+    "etf_code": "159992.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 596,
+    "etf_code": "159777.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 597,
+    "etf_code": "159318.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 598,
+    "etf_code": "159703.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 599,
+    "etf_code": "159286.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 600,
+    "etf_code": "159675.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 601,
+    "etf_code": "159601.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 602,
+    "etf_code": "159928.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 603,
+    "etf_code": "159507.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 604,
+    "etf_code": "159573.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 605,
+    "etf_code": "159168.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 606,
+    "etf_code": "159180.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 607,
+    "etf_code": "159079.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 608,
+    "etf_code": "159839.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 609,
+    "etf_code": "159193.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 610,
+    "etf_code": "159588.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 611,
+    "etf_code": "159560.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 612,
+    "etf_code": "159397.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 613,
+    "etf_code": "159666.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 614,
+    "etf_code": "159209.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 615,
+    "etf_code": "159612.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 616,
+    "etf_code": "159295.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 617,
+    "etf_code": "159757.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 618,
+    "etf_code": "159723.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 619,
+    "etf_code": "159338.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 620,
+    "etf_code": "159655.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 621,
+    "etf_code": "159621.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 622,
+    "etf_code": "159994.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 623,
+    "etf_code": "159908.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 624,
+    "etf_code": "159896.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 625,
+    "etf_code": "159527.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 626,
+    "etf_code": "159148.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 627,
+    "etf_code": "159553.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 628,
+    "etf_code": "159059.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 629,
+    "etf_code": "159885.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 630,
+    "etf_code": "159540.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 631,
+    "etf_code": "159819.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 632,
+    "etf_code": "159730.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 633,
+    "etf_code": "159632.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 634,
+    "etf_code": "159229.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 635,
+    "etf_code": "159512.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 636,
+    "etf_code": "159109.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 637,
+    "etf_code": "159566.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 638,
+    "etf_code": "159195.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 639,
+    "etf_code": "159949.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 640,
+    "etf_code": "159688.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 641,
+    "etf_code": "159293.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 642,
+    "etf_code": "159660.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 643,
+    "etf_code": "159379.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 644,
+    "etf_code": "159716.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 645,
+    "etf_code": "159391.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 646,
+    "etf_code": "159268.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 647,
+    "etf_code": "159673.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 648,
+    "etf_code": "159607.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 649,
+    "etf_code": "159280.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 650,
+    "etf_code": "159382.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 651,
+    "etf_code": "159858.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 652,
+    "etf_code": "159186.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 653,
+    "etf_code": "159501.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 654,
+    "etf_code": "159575.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 655,
+    "etf_code": "159018.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 656,
+    "etf_code": "159237.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 657,
+    "etf_code": "159658.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 658,
+    "etf_code": "159243.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 659,
+    "etf_code": "159335.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 660,
+    "etf_code": "159145.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 661,
+    "etf_code": "159131.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 662,
+    "etf_code": "159807.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 663,
+    "etf_code": "159873.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 664,
+    "etf_code": "159905.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 665,
+    "etf_code": "159971.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 666,
+    "etf_code": "159033.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 667,
+    "etf_code": "159814.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 668,
+    "etf_code": "159156.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 669,
+    "etf_code": "159888.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 670,
+    "etf_code": "159122.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 671,
+    "etf_code": "159539.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 672,
+    "etf_code": "159020.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 673,
+    "etf_code": "159916.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 674,
+    "etf_code": "159326.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 675,
+    "etf_code": "159352.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 676,
+    "etf_code": "159930.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 677,
+    "etf_code": "159944.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 678,
+    "etf_code": "159198.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 679,
+    "etf_code": "159583.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 680,
+    "etf_code": "159170.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 681,
+    "etf_code": "159787.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 682,
+    "etf_code": "159300.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 683,
+    "etf_code": "159202.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 684,
+    "etf_code": "159619.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 685,
+    "etf_code": "159276.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 686,
+    "etf_code": "159685.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 687,
+    "etf_code": "159708.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 688,
+    "etf_code": "159367.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 689,
+    "etf_code": "159696.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 690,
+    "etf_code": "159211.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 691,
+    "etf_code": "159265.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 692,
+    "etf_code": "159923.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 693,
+    "etf_code": "159957.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 694,
+    "etf_code": "159061.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 695,
+    "etf_code": "159015.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 696,
+    "etf_code": "159578.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 697,
+    "etf_code": "159163.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 698,
+    "etf_code": "159117.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 699,
+    "etf_code": "159821.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 700,
+    "etf_code": "159590.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  },
+  {
+    "snapshot_date": "2026-07-07",
+    "snapshot_time": "2026-07-07 09:29:54",
+    "sector_name": "深市ETF",
+    "rank_in_return": 701,
+    "etf_code": "159855.SZ",
+    "market": "SZ",
+    "source_api": "xtdata.get_stock_list_in_sector"
+  }
+]

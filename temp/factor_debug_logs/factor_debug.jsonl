@@ -204,3 +204,41 @@
 {"ts": "2026-07-06T22:38:21.037", "event": "chip.path", "pid": 65884, "thread": "MainThread", "mono": 388766.93021, "path": "numba_matrix", "rows": 4003, "cols": 3151}
 {"ts": "2026-07-06T22:40:55.823", "event": "chip.finish", "pid": 65884, "thread": "MainThread", "mono": 388921.716745, "rows": 4003, "cols": 3151, "factors": 29, "prep_sec": 6.214, "cost_sec": 143.688, "post_sec": 11.008, "total_sec": 160.997}
 {"ts": "2026-07-06T22:44:12.193", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389118.086534, "bundle_idx": 0, "factors": 38, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:44:32.864", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389138.757426, "bundle_idx": 0, "factors": 38, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:44:32.866", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389138.75918, "bundle_idx": 1, "factors": 7, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:44:36.833", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389142.726686, "bundle_idx": 1, "factors": 7, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:44:36.836", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389142.729191, "bundle_idx": 2, "factors": 76, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:11.958", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389177.851701, "bundle_idx": 2, "factors": 76, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:11.960", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389177.853566, "bundle_idx": 3, "factors": 14, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:19.153", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389185.045786, "bundle_idx": 3, "factors": 14, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:19.154", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389185.046882, "bundle_idx": 4, "factors": 1, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:19.560", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389185.452584, "bundle_idx": 4, "factors": 1, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:19.561", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389185.454321, "bundle_idx": 5, "factors": 60, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:52.410", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389218.303261, "bundle_idx": 5, "factors": 60, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:45:52.412", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389218.305076, "bundle_idx": 6, "factors": 29, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:10.776", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389236.668552, "bundle_idx": 6, "factors": 29, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:10.778", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389236.670625, "bundle_idx": 7, "factors": 6, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:13.677", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389239.570346, "bundle_idx": 7, "factors": 6, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:13.679", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389239.571909, "bundle_idx": 8, "factors": 16, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:22.484", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389248.377288, "bundle_idx": 8, "factors": 16, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:22.485", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389248.378287, "bundle_idx": 9, "factors": 2, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:23.507", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389249.399907, "bundle_idx": 9, "factors": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:23.508", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389249.400996, "bundle_idx": 10, "factors": 2, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:24.560", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389250.45312, "bundle_idx": 10, "factors": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:24.561", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389250.45432, "bundle_idx": 11, "factors": 2, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:25.701", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389251.593976, "bundle_idx": 11, "factors": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:25.702", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389251.59522, "bundle_idx": 12, "factors": 7, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:29.447", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389255.339433, "bundle_idx": 12, "factors": 7, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:29.448", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389255.340831, "bundle_idx": 13, "factors": 11, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:34.628", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389260.521279, "bundle_idx": 13, "factors": 11, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:34.630", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389260.522524, "bundle_idx": 14, "factors": 10, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:40.078", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389265.971278, "bundle_idx": 14, "factors": 10, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:40.079", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389265.972362, "bundle_idx": 15, "factors": 4, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:42.896", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389268.788368, "bundle_idx": 15, "factors": 4, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:42.897", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389268.789407, "bundle_idx": 16, "factors": 5, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:45.244", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389271.137098, "bundle_idx": 16, "factors": 5, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:45.245", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389271.13806, "bundle_idx": 17, "factors": 4, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:48.609", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389274.502459, "bundle_idx": 17, "factors": 4, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:48.610", "event": "valid_bar.merge_bundle.start", "pid": 65884, "thread": "MainThread", "mono": 389274.503168, "bundle_idx": 18, "factors": 11, "parts": 2, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:54.112", "event": "valid_bar.merge_bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389280.004942, "bundle_idx": 18, "factors": 11, "rows": 4006, "cols": 5210}
+{"ts": "2026-07-06T22:46:56.729", "event": "bundle.finish", "pid": 65884, "thread": "MainThread", "mono": 389282.621968, "bundle": "__all__", "sec": 827.795, "factors": 278, "mapped_names": 283}

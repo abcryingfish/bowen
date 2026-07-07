@@ -27,12 +27,22 @@
                 <div class="block-title">因子</div>
                 <input id="factor-search" class="field" type="search" placeholder="搜索因子或分组">
                 <div id="factor-list" class="factor-list"></div>
-                <div id="factor-drop-zone" class="factor-drop-zone">拖拽或点击因子到这里</div>
+                <div id="factor-drop-zone" class="factor-drop-zone adjust-mode-control" role="radiogroup" aria-label="价格复权方式">
+                    <label class="adjust-mode-option active">
+                        <input type="radio" name="price-adjust-mode" value="none" checked>
+                        <span>不复权</span>
+                    </label>
+                    <label class="adjust-mode-option">
+                        <input type="radio" name="price-adjust-mode" value="backward_ratio">
+                        <span>后复权</span>
+                    </label>
+                </div>
                 <div id="selected-factor" class="selected-factor">未选择</div>
             </section>
             <section class="control-block">
                 <div class="block-title">参数</div>
-                <label class="field-label">股票池<select id="stock-pool" class="field"><option value="ALL_A">全市场 CSV</option></select></label>
+                <label class="field-label">股票池文件<select id="stock-pool" class="field"><option value="">加载中...</option></select></label>
+                <div id="stock-summary" class="status-line stock-summary">从华泰数据获取目录读取股票池</div>
                 <label class="field-label">开始日期<input id="start-date" class="field" type="date"></label>
                 <label class="field-label">结束日期<input id="end-date" class="field" type="date"></label>
                 <label class="field-label">滚动窗口<input id="rolling-window" class="field" type="number" min="2" step="1" value="60"></label>
