@@ -26,6 +26,8 @@ FINAL_BASE_DIR_DEFAULT = r"D:\database\stock_adj_daily"
 RAW_MERGED_FILE_NAME = "merged.parquet"
 ADJ_SEGMENTS_PARQUET_NAME = "adj_factor_segments.parquet"
 WIDE_XDY_DIR_NAME = "wide_xdy"
+ADJ_FACTOR_DAILY_DIR_NAME = "adj_factor_daily"
+ADJ_FACTOR_DAILY_START_DATE = date(2010, 1, 1)
 RAW_MIN_PARQUET_BYTES = 12
 DEFAULT_SECTOR_NAME = "沪深A股"
 DEFAULT_START_DATE = "2010-01-01"
@@ -344,6 +346,132 @@ def write_monthly_xdy_wide_frames(
     return total_months
 
 
+def build_monthly_adj_factor_daily_frames(
+    seg: pl.DataFrame,
+    *,
+    only_htsc_codes: set[str] | None = None,
+    start_date: date = ADJ_FACTOR_DAILY_START_DATE,
+    end_date: date | None = None,
+) -> dict[tuple[int, int], pl.DataFrame]:
+    """Build daily long-table backward adjustment factors from xdy segments."""
+    if seg.is_empty():
+        return {}
+    start_lit = pl.lit(start_date).cast(pl.Date)
+    end_lit = pl.lit(end_date).cast(pl.Date) if end_date is not None else None
+    work = seg.select(
+        pl.col("htsc_code").cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("htsc_code"),
+        pl.col("begin_date").cast(pl.Date, strict=False),
+        pl.col("end_date").cast(pl.Date, strict=False),
+        pl.col("xdy").cast(pl.Float64, strict=False),
+    )
+    if only_htsc_codes:
+        work = work.filter(pl.col("htsc_code").is_in(sorted(normalize_code(c) for c in only_htsc_codes)))
+    work = work.drop_nulls(subset=["htsc_code", "begin_date", "end_date", "xdy"])
+    if work.is_empty():
+        return {}
+
+    work = (
+        _seg_parse_dates(work)
+        .sort(["htsc_code", "begin_date", "end_date"])
+        .with_columns(
+            (
+                pl.col("xdy").shift(1).over("htsc_code").is_null()
+                | (pl.col("xdy") != pl.col("xdy").shift(1).over("htsc_code"))
+            ).alias("_segment_start")
+        )
+        .with_columns(
+            pl.when(pl.col("_segment_start"))
+            .then(pl.col("xdy"))
+            .otherwise(1.0)
+            .cum_prod()
+            .over("htsc_code")
+            .alias("adj_factor")
+        )
+        .with_columns(
+            pl.max_horizontal(pl.col("begin_date"), start_lit).alias("_begin"),
+            (pl.min_horizontal(pl.col("end_date"), end_lit) if end_lit is not None else pl.col("end_date")).alias("_end"),
+        )
+        .filter(pl.col("_begin") <= pl.col("_end"))
+    )
+    if work.is_empty():
+        return {}
+
+    long_df = (
+        work.with_columns(
+            pl.date_ranges(
+                pl.col("_begin"),
+                pl.col("_end"),
+                interval="1d",
+            ).alias("time")
+        )
+        .explode("time")
+        .select(
+            pl.col("htsc_code"),
+            pl.col("time").cast(pl.Date).alias("time"),
+            pl.col("adj_factor").cast(pl.Float64).alias("adj_factor"),
+        )
+        .unique(subset=["htsc_code", "time"], keep="last")
+        .sort(["htsc_code", "time"])
+        .with_columns(
+            pl.col("time").dt.year().alias("_year"),
+            pl.col("time").dt.month().alias("_month"),
+        )
+    )
+
+    result: dict[tuple[int, int], pl.DataFrame] = {}
+    for (year_value, month_value), chunk in long_df.group_by(["_year", "_month"], maintain_order=True):
+        result[(int(year_value), int(month_value))] = (
+            chunk.drop(["_year", "_month"])
+            .sort(["htsc_code", "time"])
+        )
+    return result
+
+
+def write_monthly_adj_factor_daily_frames(
+    monthly_frames: dict[tuple[int, int], pl.DataFrame],
+    *,
+    base_dir: str,
+    replace_codes: set[str] | None = None,
+) -> int:
+    daily_root = Path(base_dir) / ADJ_FACTOR_DAILY_DIR_NAME
+    total_months = 0
+    normalized_codes = {normalize_code(c) for c in (replace_codes or set())}
+    for (year_value, month_value), frame in monthly_frames.items():
+        month_dir = daily_root / f"year={year_value:04d}" / f"month={month_value:02d}"
+        month_dir.mkdir(parents=True, exist_ok=True)
+        path = month_dir / "merged.parquet"
+        new_df = (
+            frame.select(
+                pl.col("htsc_code").cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("htsc_code"),
+                pl.col("time").cast(pl.Date, strict=False).alias("time"),
+                pl.col("adj_factor").cast(pl.Float64, strict=False).alias("adj_factor"),
+            )
+            .drop_nulls(subset=["htsc_code", "time", "adj_factor"])
+            .unique(subset=["htsc_code", "time"], keep="last")
+            .sort(["htsc_code", "time"])
+        )
+        merged = new_df
+        if path.is_file():
+            old = pl.read_parquet(str(path)).select(
+                pl.col("htsc_code").cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("htsc_code"),
+                pl.col("time").cast(pl.Date, strict=False).alias("time"),
+                pl.col("adj_factor").cast(pl.Float64, strict=False).alias("adj_factor"),
+            )
+            if normalized_codes:
+                old = old.filter(~pl.col("htsc_code").is_in(sorted(normalized_codes)))
+            merged = pl.concat([old, new_df], how="vertical_relaxed")
+        merged = (
+            merged.drop_nulls(subset=["htsc_code", "time", "adj_factor"])
+            .unique(subset=["htsc_code", "time"], keep="last")
+            .sort(["htsc_code", "time"])
+        )
+        tmp = path.with_name(path.stem + "._writing_.parquet")
+        merged.write_parquet(str(tmp), compression="zstd")
+        os.replace(str(tmp), str(path))
+        total_months += 1
+    return total_months
+
+
 def parse_qmt_event_date(value: Any) -> pd.Timestamp | pd.NaT:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return pd.NaT
@@ -608,6 +736,18 @@ def write_final_outputs_from_raw(raw_base_dir: str, final_base_dir: str, adj_end
     monthly_frames = build_monthly_xdy_wide_frames(affected_seg, only_htsc_codes=affected_codes)
     touched = write_monthly_xdy_wide_frames(monthly_frames, base_dir=final_base_dir, replace_codes=affected_codes)
     print(f"[OK] QMT 复权分段与 wide_xdy 已更新，wide_xdy 分区数: {touched}")
+    daily_frames = build_monthly_adj_factor_daily_frames(
+        affected_seg,
+        only_htsc_codes=affected_codes,
+        start_date=ADJ_FACTOR_DAILY_START_DATE,
+        end_date=adj_end,
+    )
+    daily_touched = write_monthly_adj_factor_daily_frames(
+        daily_frames,
+        base_dir=final_base_dir,
+        replace_codes=affected_codes,
+    )
+    print(f"[OK] QMT adj_factor_daily 已更新，分区数: {daily_touched}")
 
 
 def parse_args() -> argparse.Namespace:

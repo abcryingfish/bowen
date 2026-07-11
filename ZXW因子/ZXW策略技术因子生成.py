@@ -22,6 +22,7 @@ import os
 import re
 import json
 import importlib
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -638,14 +639,109 @@ def _in_clause_for_batch(batch: list[str]) -> str:
     return f"AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) IN ({inner})"
 
 
-def _select_window_sql(extra_filter: str) -> str:
+ADJ_MODE = "backward"
+ADJ_FACTOR_DAILY_BASE_PATH = os.environ.get(
+    "ZXW_ADJ_FACTOR_DAILY_PATH",
+    r"D:\database\stock_adj_daily\adj_factor_daily",
+)
+ZXW_USE_ADJ_FACTOR_DAILY = str(os.environ.get("ZXW_USE_ADJ_FACTOR_DAILY", "1")).strip() != "0"
+ZXW_FACTOR_DEBUG_TIMING = str(os.environ.get("ZXW_FACTOR_DEBUG_TIMING", "0")).strip() == "1"
+_ADJ_FACTOR_DAILY_APPLIED = False
+_LAST_WINDOW_BASE_SQL = ""
+
+
+def _zxw_debug_timing(label: str, start_sec: float) -> None:
+    if ZXW_FACTOR_DEBUG_TIMING:
+        print(f"[TIMING] {label}: {time.perf_counter() - start_sec:.3f}s")
+
+
+def _month_start_range_for_adj(start_text: str, end_text: str) -> list[pd.Timestamp]:
+    start_dt = pd.Timestamp(start_text).floor("D")
+    end_dt = pd.Timestamp(end_text).floor("D")
+    cursor = pd.Timestamp(year=start_dt.year, month=start_dt.month, day=1)
+    end_cursor = pd.Timestamp(year=end_dt.year, month=end_dt.month, day=1)
+    months: list[pd.Timestamp] = []
+    while cursor <= end_cursor:
+        months.append(cursor)
+        cursor = cursor + pd.offsets.MonthBegin(1)
+    return months
+
+
+def _adj_factor_daily_paths_for_window(start_text: str, end_text: str) -> list[str]:
+    base = Path(ADJ_FACTOR_DAILY_BASE_PATH)
+    if not base.exists():
+        return []
+    paths: list[str] = []
+    for month_start in _month_start_range_for_adj(start_text, end_text):
+        path = base / f"year={month_start.year:04d}" / f"month={month_start.month:02d}" / "merged.parquet"
+        if path.is_file():
+            paths.append(str(path).replace("\\", "/"))
+    return paths
+
+
+def _sql_string_list(values: list[str]) -> str:
+    return "[" + ", ".join("'" + str(value).replace("'", "''") + "'" for value in values) + "]"
+
+
+def _adj_factor_daily_join_sql(data_sql: str) -> str | None:
+    global _ADJ_FACTOR_DAILY_APPLIED
+    if not ZXW_USE_ADJ_FACTOR_DAILY or str(ADJ_MODE).strip().lower() != "backward":
+        return None
+    paths = _adj_factor_daily_paths_for_window(QUERY_START_DATE, END_DATE)
+    if not paths:
+        return None
+    path_list = _sql_string_list(paths)
+    _ADJ_FACTOR_DAILY_APPLIED = True
     return f"""
+WITH d AS (
+{data_sql}
+),
+a AS (
+    SELECT
+        UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+        CAST(time AS DATE) AS time,
+        TRY_CAST(adj_factor AS DOUBLE) AS adj_factor
+    FROM read_parquet({path_list}, union_by_name=true)
+    WHERE CAST(time AS DATE) >= DATE '{QUERY_START_DATE}'
+      AND CAST(time AS DATE) <= DATE '{END_DATE}'
+)
+SELECT d.* REPLACE (
+    d.open * COALESCE(a.adj_factor, 1.0) AS open,
+    d.high * COALESCE(a.adj_factor, 1.0) AS high,
+    d.low * COALESCE(a.adj_factor, 1.0) AS low,
+    d.close * COALESCE(a.adj_factor, 1.0) AS close
+)
+FROM d
+LEFT JOIN a
+  ON UPPER(TRIM(CAST(d.htsc_code AS VARCHAR))) = a.htsc_code
+ AND CAST(d.time AS DATE) = a.time
+"""
+
+
+def _select_window_sql(extra_filter: str) -> str:
+    global _LAST_WINDOW_BASE_SQL
+    base_sql = f"""
 SELECT *
 FROM {VIEW_NAME}
 WHERE CAST(time AS DATE) >= DATE '{QUERY_START_DATE}'
   AND CAST(time AS DATE) <= DATE '{END_DATE}'
   {extra_filter}
 """
+    _LAST_WINDOW_BASE_SQL = base_sql
+    joined_sql = _adj_factor_daily_join_sql(base_sql)
+    return joined_sql if joined_sql is not None else base_sql
+
+
+def _execute_window_sql_with_adj_fallback(sql_text: str) -> pd.DataFrame:
+    global _ADJ_FACTOR_DAILY_APPLIED
+    try:
+        return con.execute(sql_text).df()
+    except Exception as exc:
+        if not _ADJ_FACTOR_DAILY_APPLIED:
+            raise
+        print(f"[WARN] adj_factor_daily 快路径失败，回退 wide_xdy 复权: {exc}")
+        _ADJ_FACTOR_DAILY_APPLIED = False
+        return con.execute(_LAST_WINDOW_BASE_SQL).df()
 
 
 def _distinct_codes_in_window() -> list[str]:
@@ -673,9 +769,9 @@ _skip_market_load = AUTO_PLAN_FROM_FACTOR_LIBRARY and len(globals().get("PREQUER
 
 if _skip_market_load:
     print("预加载计划显示无需补写，跳过市场数据读取。")
-    df_multi = con.execute(_select_window_sql("AND FALSE")).df()
+    df_multi = _execute_window_sql_with_adj_fallback(_select_window_sql("AND FALSE"))
 elif not _ordered_codes:
-    df_multi = con.execute(_select_window_sql("AND FALSE")).df()
+    df_multi = _execute_window_sql_with_adj_fallback(_select_window_sql("AND FALSE"))
 else:
     if _raw_targets:
         # 指定标的：单次查询取齐，不再按 100 只分批。
@@ -684,7 +780,9 @@ else:
         # 全市场：单次查询取齐（排除 .YKRS）。
         _sql = _select_window_sql("AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'")
 
-    df_multi = con.execute(_sql).df()
+    _market_load_start = time.perf_counter()
+    df_multi = _execute_window_sql_with_adj_fallback(_sql)
+    _zxw_debug_timing("market_query_with_adj_factor_daily" if _ADJ_FACTOR_DAILY_APPLIED else "market_query", _market_load_start)
     print(f"单次查询完成，记录数={len(df_multi)}")
 
 df_multi["time"] = pd.to_datetime(df_multi["time"]).dt.floor("D")
@@ -711,8 +809,6 @@ df_multi
 # print(df_multi.head(10))
 
 # %% cell 5
-ADJ_MODE = "backward"
-
 import gc
 from pathlib import Path
 
@@ -929,7 +1025,9 @@ _mode = str(ADJ_MODE).strip().lower()
 if _mode not in ("none", "forward", "backward"):
     raise ValueError("ADJ_MODE ??? none / forward / backward")
 
-if _mode == "none" or _skip_market_load or len(df_multi) == 0:
+if _ADJ_FACTOR_DAILY_APPLIED:
+    print("ADJ_MODE:", ADJ_MODE, "| 已使用 adj_factor_daily 快路径完成比例后复权")
+elif _mode == "none" or _skip_market_load or len(df_multi) == 0:
     if _mode != "none" and len(df_multi) == 0:
         print("df_multi ???????")
 else:
