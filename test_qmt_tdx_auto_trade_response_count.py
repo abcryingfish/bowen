@@ -4,6 +4,7 @@ import types
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 def load_trade_module():
@@ -52,3 +53,75 @@ def test_add_process_result_to_signal_keeps_original_signal_and_adds_status():
     assert result["process_reason"] == "盘口追单结束"
     assert result["order_id"] == "12345"
     assert result["processed_at"]
+
+
+def test_load_tdx_signal_accepts_space_aligned_tdx_rows(tmp_path):
+    module = load_trade_module()
+    signal_file = tmp_path / "buy.txt"
+    signal_file.write_bytes(
+        b"600283   \xc7\xae\xbd\xad\xcb\xae\xc0\xfb 2026-07-09 11:12        8.82        0.68%        33 \xc8\xf5\xc2\xf4\r\n"
+    )
+
+    df = module.load_tdx_signal(str(signal_file))
+    df = module.add_signal_flags(df)
+
+    row = df.iloc[0]
+    assert row["stock_code"] == "600283"
+    assert row["datetime"] == "2026-07-09 11:12"
+    assert row["price"] == "8.82"
+    assert row["volume"] == "33"
+    assert row["is_sell"] == 1
+
+
+def test_convert_order_treats_buy_position_param_as_percent(monkeypatch):
+    module = load_trade_module()
+    module.g.accID = "test-account"
+    module.g.params["单次买入仓位比例"] = 2
+
+    class Position:
+        m_strInstrumentID = "301520"
+        m_strExchangeID = "SZ"
+        m_dInstrumentValue = 5000
+
+    monkeypatch.setattr(module, "get_total_asset", lambda: 1000000)
+    monkeypatch.setattr(module, "get_trade_detail_data", lambda *args: [Position()], raising=False)
+    monkeypatch.setattr(module, "write_trade_log", lambda *args, **kwargs: None)
+
+    order = module.convert_order(
+        {
+            "stock_code": "301520",
+            "price": "40.93",
+            "change_percent": "1.00%",
+            "formula": "五日内六级",
+            "is_sell": 0,
+            "is_buy": 1,
+        }
+    )
+
+    assert order["trade_amount"] == 15000
+
+
+def test_get_total_asset_normalizes_cent_like_qmt_balance(monkeypatch):
+    module = load_trade_module()
+    module.g.accID = "test-account"
+    logs = []
+
+    class Account:
+        m_dBalance = 10157365033.72
+
+    class Position:
+        def __init__(self, value):
+            self.m_dInstrumentValue = value
+
+    def fake_get_trade_detail_data(acc_id, account_type, data_type):
+        if data_type == "ACCOUNT":
+            return [Account()]
+        if data_type == "POSITION":
+            return [Position(577780), Position(6362537)]
+        return []
+
+    monkeypatch.setattr(module, "get_trade_detail_data", fake_get_trade_detail_data, raising=False)
+    monkeypatch.setattr(module, "write_trade_log", lambda *args, **kwargs: logs.append(args))
+
+    assert module.get_total_asset() == pytest.approx(101573650.3372)
+    assert any(args[0] == "账户总资产疑似按分返回，已除以100" for args in logs)

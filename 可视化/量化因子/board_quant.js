@@ -1016,6 +1016,46 @@ function getCatalogGroupFactorDisplayLabel(group, col) {
     return getDisplayLabelForFactorColumn(c);
 }
 
+function formatExportSelectedFactorSummaryText(option) {
+    const item = option && typeof option === "object" ? option : {};
+    const label = String(item.label || item.value || "未选择").trim() || "未选择";
+    return "Selected: " + label;
+}
+
+function getExportSummaryFactorNamesForGroup(group) {
+    const groupId = String(group && group.group_id || "").trim();
+    const catalogGroup = Array.isArray(factorGroups)
+        ? factorGroups.find((item) => String(item && item.group_id || "").trim() === groupId)
+        : null;
+    const sourceChildren = catalogGroup && Array.isArray(catalogGroup.children)
+        ? catalogGroup.children
+        : (Array.isArray(group && group.children) ? group.children : []);
+    const names = [];
+    const seen = new Set();
+    for (const item of sourceChildren) {
+        const name = String(item || "").trim();
+        if (!name || seen.has(name)) {
+            continue;
+        }
+        seen.add(name);
+        names.push(name);
+    }
+    return names;
+}
+
+function buildExportFactorOptionsForGroup(group) {
+    const groupName = String(group && group.group_name || group && group.group_id || "未分组").trim() || "未分组";
+    return getExportSummaryFactorNamesForGroup(group).map((factorName) => {
+        const displayLabel = getDisplayLabelForFactorColumn(factorName) || factorName;
+        return {
+            value: factorName,
+            label: groupName + " / " + displayLabel + (displayLabel === factorName ? "" : " (" + factorName + ")"),
+            factor_names: [factorName],
+            factor_labels: [displayLabel],
+        };
+    });
+}
+
 function buildExportSummaryFactorOptions(snapshotPayload) {
     const snapshot = snapshotPayload && typeof snapshotPayload === "object" ? snapshotPayload : null;
     if (!snapshot || !snapshot.factors || typeof snapshot.factors !== "object") {
@@ -1040,13 +1080,20 @@ function buildExportSummaryFactorOptions(snapshotPayload) {
             summaryLabel = getCatalogGroupFactorDisplayLabel(group, summaryCol) || summaryCol;
         }
         summaryCol = String(summaryCol || "").trim();
-        if (!summaryCol || options.some((item) => item.value === summaryCol)) {
+        if (!summaryCol) {
             continue;
         }
-        options.push({
-            value: summaryCol,
-            label: summaryLabel === summaryCol ? summaryLabel : (summaryLabel + " (" + summaryCol + ")"),
-        });
+        for (const option of buildExportFactorOptionsForGroup({
+            ...group,
+            group_name: groupId === "__ungrouped__" || groupId === "ungrouped"
+                ? (String(group.group_name || "未分组").trim() || "未分组")
+                : (String(group.group_name || summaryLabel || groupId).trim() || groupId),
+        })) {
+            if (!option.value || options.some((item) => item.value === option.value)) {
+                continue;
+            }
+            options.push(option);
+        }
     }
     return options;
 }
@@ -1063,8 +1110,8 @@ function updateExportFactorOptions() {
     if (options.length) {
         const nextValue = options.some((item) => item.value === previous) ? previous : options[0].value;
         exportFactorSelect.value = nextValue;
-        const selectedText = options.find((item) => item.value === nextValue)?.label || nextValue;
-        exportFactorSummary.textContent = "Selected: " + selectedText;
+        const selectedOption = options.find((item) => item.value === nextValue) || { value: nextValue };
+        exportFactorSummary.textContent = formatExportSelectedFactorSummaryText(selectedOption);
     } else {
         exportFactorSummary.textContent = "No available primary factor";
     }
@@ -2262,10 +2309,15 @@ if (factorSelect) {
 }
 if (exportFactorSelect && exportFactorSummary) {
     exportFactorSelect.addEventListener("change", () => {
-        const selectedText = exportFactorSelect.options[exportFactorSelect.selectedIndex]
-            ? exportFactorSelect.options[exportFactorSelect.selectedIndex].text
-            : "未选择";
-        exportFactorSummary.textContent = "Selected: " + selectedText;
+        const options = buildExportSummaryFactorOptions(currentFactorSnapshotPayload);
+        const selectedValue = String(exportFactorSelect.value || "").trim();
+        const selectedOption = options.find((item) => item.value === selectedValue) || {
+            value: selectedValue,
+            label: exportFactorSelect.options[exportFactorSelect.selectedIndex]
+                ? exportFactorSelect.options[exportFactorSelect.selectedIndex].text
+                : "未选择",
+        };
+        exportFactorSummary.textContent = formatExportSelectedFactorSummaryText(selectedOption);
     });
 }
 if (exportSymbolsBtn) {
@@ -2389,7 +2441,3 @@ function getSignalTypeToggleState() {
 window.getSignalTypeToggleState = getSignalTypeToggleState;
 window.getSignalSlotBindings = () => ({ ...signalSlotBindings });
 window.ChartBoardView = { id: "quant", label: "量化因子" };
-
-
-
-

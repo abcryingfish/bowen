@@ -186,7 +186,7 @@ def apply_ohlc_adj_to_price_df(price_df: pd.DataFrame, **kwargs: Any) -> pd.Data
     bt_dir = str(PROJECT_ROOT / "backtrader")
     if bt_dir not in sys.path:
         sys.path.append(bt_dir)
-    from models.zxw_rule_backtest.zxw_view_results_full import apply_ohlc_adj_to_price_df as _apply
+    from models.zxw_data_pipeline.zxw_view_results_full import apply_ohlc_adj_to_price_df as _apply
 
     return _apply(price_df, **kwargs)
 

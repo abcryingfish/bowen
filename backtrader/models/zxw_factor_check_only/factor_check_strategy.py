@@ -8,7 +8,7 @@ import backtrader as bt
 import numpy as np
 import pandas as pd
 
-from models.zxw_rule_backtest.zxw_view_results_full import COMMISSION
+from models.zxw_data_pipeline.zxw_view_results_full import COMMISSION
 from models.zxw_factor_check_only.strategy_params import (
     DEFAULT_CASH_RATIO_GATE,
     DEFAULT_MAX_WEIGHT,

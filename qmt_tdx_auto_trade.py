@@ -13,6 +13,15 @@ from xtquant import xtdata
 class a():
     pass
 
+DEFAULT_BUY_POSITION_PERCENT = 2
+BUY_POSITION_PERCENT_PARAM = '单次买入仓位比例'
+
+def format_percent_text(value):
+    try:
+        return ('%g' % float(value))
+    except Exception:
+        return str(value)
+
 g = a()
 g.retried_order_ids = set()
 g.cost_recorded_order_ids = set()
@@ -21,7 +30,7 @@ g.params = {
     '开始时间': '09:30:00',
     '结束时间': '14:57:00',
     '最大买入标的数': 2,
-    '单次买入仓位比例': 0.02,
+    BUY_POSITION_PERCENT_PARAM: DEFAULT_BUY_POSITION_PERCENT,
     '兜底买入金额': 10000,
     '盘口补单等待秒数': 5,
     '盘口最大轮数': 10,
@@ -325,6 +334,10 @@ def set_param(C):
         g.params['开始时间'] = start_time
         g.params['结束时间'] = end_time
         g.params['最大买入标的数'] = max_buy_count
+        try:
+            g.params[BUY_POSITION_PERCENT_PARAM] = buy_position_percent
+        except Exception:
+            pass
         g.params['价格类型'] = price_type_combo
         g.params['预警文件'] = request_file
         g.params['防重规则'] = avoid_repeat_type
@@ -353,12 +366,48 @@ def set_account(C):
     write_trade_log('设置账户', g.accID)
 
 
+
+def is_trade_account_ready():
+    acc_id = getattr(g, 'accID', '')
+    if not acc_id:
+        write_trade_log('\u4ea4\u6613\u8d26\u6237\u672a\u5c31\u7eea\uff1a\u8d44\u91d1\u8d26\u53f7\u4e3a\u7a7a')
+        return False
+
+    try:
+        assets = get_trade_detail_data(acc_id, 'STOCK', 'ACCOUNT')
+    except Exception as e:
+        write_trade_log('\u4ea4\u6613\u8d26\u6237\u672a\u5c31\u7eea\uff1aACCOUNT\u67e5\u8be2\u5f02\u5e38', {
+            'accID': acc_id,
+            'error': str(e),
+        })
+        return False
+
+    if assets:
+        return True
+
+    diagnostics = {
+        'accID': acc_id,
+        'ACCOUNT': 0,
+    }
+    for data_type in ['POSITION', 'ORDER', 'DEAL']:
+        try:
+            diagnostics[data_type] = len(get_trade_detail_data(acc_id, 'STOCK', data_type))
+        except Exception as e:
+            diagnostics[data_type] = 'error:%s' % e
+
+    write_trade_log('\u4ea4\u6613\u8d26\u6237\u672a\u5c31\u7eea\uff1aACCOUNT\u8fd4\u56de\u7a7a\uff0c\u672c\u8f6e\u4e0d\u6d88\u8d39\u9884\u8b66', diagnostics)
+    return False
+
+
 def on_timer(C):
     curr_dt = datetime.now().strftime('%Y%m%d%H%M%S')
 
     cleanup_cleared_position_costs()
 
     if curr_dt[-6:] < g.params['开始时间'].replace(':', '') or curr_dt[-6:] >= g.params['结束时间'].replace(':', ''):
+        return
+
+    if not is_trade_account_ready():
         return
 
     check_unfinished_orders(C)
@@ -372,7 +421,7 @@ def on_timer(C):
     df_request = df_request[(df_request['is_sell'] == 1) | (df_request['is_buy'] == 1)]
 
     response_file_path = get_response_file_path()
-    df_response = load_tdx_signal(response_file_path)
+    df_response = load_tdx_response(response_file_path)
     response_buy_stock_count = get_response_buy_stock_count(df_response)
 
     if response_buy_stock_count >= g.params['最大买入标的数']:
@@ -387,9 +436,15 @@ def on_timer(C):
     if not df_response.empty:
         df_response = add_signal_flags(df_response)
         index_cols = ['stock_code', 'is_sell'] if g.params['防重规则'] == '按股票代码' else ['stock_code', 'datetime', 'formula']
-        unique_indexes = df_response[index_cols].drop_duplicates()
-        mask = df_request[index_cols].apply(tuple, axis=1).isin(unique_indexes.apply(tuple, axis=1))
-        df_request = df_request[~mask]
+        df_response_for_dedup = get_response_records_for_dedup(df_response)
+
+        if not df_response_for_dedup.empty:
+
+            unique_indexes = df_response_for_dedup[index_cols].drop_duplicates()
+
+            mask = df_request[index_cols].apply(tuple, axis=1).isin(unique_indexes.apply(tuple, axis=1))
+
+            df_request = df_request[~mask]
 
     if df_request.empty:
         print('没有新增预警', flush=True)
@@ -418,7 +473,7 @@ def on_timer(C):
         df_response = pd.concat([df_response, df_response_item])
         response_buy_stock_count = get_response_buy_stock_count(df_response)
 
-    df_response.drop('is_sell', axis=1, inplace=True, errors='ignore')
+    df_response.drop(['is_sell', 'is_buy'], axis=1, inplace=True, errors='ignore')
     save_tdx_signal_response(df_response, response_file_path)
 
 
@@ -446,6 +501,20 @@ def get_response_buy_stock_count(df_response):
     stock_codes = df_buy['stock_code'].astype(str).str.strip()
     stock_codes = stock_codes[stock_codes != '']
     return len(stock_codes.drop_duplicates())
+
+
+def get_response_records_for_dedup(df_response):
+    if df_response is None or df_response.empty:
+        return pd.DataFrame()
+
+    df = add_signal_flags(df_response.copy())
+    if 'process_status' not in df.columns:
+        return df
+
+    process_status = df['process_status'].astype(str).str.strip().str.lower()
+    remaining_volume = pd.to_numeric(df.get('remaining_volume', 0), errors='coerce').fillna(0)
+    unfinished_buy = (df.get('is_buy', 0) == 1) & process_status.isin(['submitted', 'partial_filled']) & (remaining_volume > 0)
+    return df[~unfinished_buy]
 
 # 获取响应文件路径
 def get_response_file_path():
@@ -788,15 +857,38 @@ def get_position_market_value(stock_code):
     return 0
 
 
+
+def get_buy_position_percent():
+    raw_value = g.params.get(BUY_POSITION_PERCENT_PARAM, DEFAULT_BUY_POSITION_PERCENT)
+    try:
+        text = str(raw_value).strip().replace('%', '')
+        percent = float(text)
+    except Exception as e:
+        write_trade_log('单票仓位百分比解析异常，使用默认' + format_percent_text(DEFAULT_BUY_POSITION_PERCENT) + '%', {
+            'raw_value': raw_value,
+            'error': str(e),
+        })
+        percent = DEFAULT_BUY_POSITION_PERCENT
+
+    if percent <= 0:
+        write_trade_log('单票仓位百分比小于等于0，不买入', {'raw_value': raw_value, 'percent': percent})
+        return 0
+    return percent
+
+
+def get_buy_position_ratio():
+    return get_buy_position_percent() / 100
 def is_buy_position_target_reached(stock_code):
     total_asset = get_total_asset()
-    target_ratio = float(g.params.get('\u5355\u6b21\u4e70\u5165\u4ed3\u4f4d\u6bd4\u4f8b', 0.02) or 0.02)
+    target_percent = get_buy_position_percent()
+    target_ratio = target_percent / 100
     target_value = total_asset * target_ratio if total_asset > 0 else 0
     current_value = get_position_market_value(stock_code)
     reached = target_value > 0 and current_value >= target_value
     return reached, {
         'stock_code': stock_code,
         'total_asset': total_asset,
+        'target_percent': target_percent,
         'target_ratio': target_ratio,
         'target_value': target_value,
         'current_value': current_value,
@@ -952,11 +1044,18 @@ def submit_limit_order(C, order, price, volume, log_title):
         return ''
 
 
-def make_process_result(process_status, process_reason='', order_id=''):
+def make_process_result(process_status, process_reason='', order_id='', traded_volume=0, remaining_volume=0):
+    traded_volume = round_lot(traded_volume)
+    remaining_volume = round_lot(remaining_volume)
+    if process_status == 'submitted' and traded_volume > 0:
+        process_status = 'filled' if remaining_volume <= 0 else 'partial_filled'
+
     return {
         'process_status': process_status,
         'process_reason': process_reason,
         'order_id': str(order_id or ''),
+        'traded_volume': traded_volume,
+        'remaining_volume': remaining_volume,
     }
 
 
@@ -966,6 +1065,8 @@ def add_process_result_to_signal(signal_info, process_result):
     result['process_status'] = process_result.get('process_status', '')
     result['process_reason'] = process_result.get('process_reason', '')
     result['order_id'] = process_result.get('order_id', '')
+    result['traded_volume'] = process_result.get('traded_volume', 0)
+    result['remaining_volume'] = process_result.get('remaining_volume', 0)
     result['processed_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return result
 
@@ -989,6 +1090,7 @@ def do_order(C, order):
     if order['trade_direct'] == 23:
         if order.get('retry_unfinished_order'):
             remaining_volume = round_lot(order['trade_amount'])
+            total_traded_volume = 0
             last_order_id = ''
 
             for i in range(max_rounds):
@@ -1045,6 +1147,7 @@ def do_order(C, order):
                     break
 
                 update_position_cost_on_buy(order['stock_code'], best_price, traded_volume)
+                total_traded_volume += traded_volume
                 remaining_volume = remaining_volume - traded_volume
                 write_trade_log('买入未完成委托补单本轮结果', {
                     'round': i + 1,
@@ -1060,8 +1163,8 @@ def do_order(C, order):
                 wait_market_ticks(C, order['stock_code'], wait_reorder_ticks)
 
             if last_order_id:
-                return make_process_result('submitted', '未完成买入委托补单结束', last_order_id)
-            return make_process_result('failed', '未完成买入委托补单未提交委托')
+                return make_process_result('submitted', '未完成买入委托补单结束', last_order_id, total_traded_volume, remaining_volume)
+            return make_process_result('failed', '未完成买入委托补单未提交委托', '', total_traded_volume, remaining_volume)
 
         remaining_amount = float(order['trade_amount'])
         last_order_id = ''
@@ -1138,6 +1241,7 @@ def do_order(C, order):
 
     if order['trade_direct'] == 24:
         remaining_volume = round_lot(order['trade_amount'])
+        total_traded_volume = 0
         last_order_id = ''
 
         for i in range(max_rounds):
@@ -1194,6 +1298,7 @@ def do_order(C, order):
                 break
 
             remaining_volume = remaining_volume - traded_volume
+            total_traded_volume += traded_volume
             write_trade_log('卖出本轮追单结果', {
                 'round': i + 1,
                 'order_id': order_id,
@@ -1208,12 +1313,61 @@ def do_order(C, order):
             wait_market_ticks(C, order['stock_code'], wait_reorder_ticks)
 
         if last_order_id:
-            return make_process_result('submitted', '卖出盘口追单结束', last_order_id)
-        return make_process_result('failed', '卖出盘口追单未提交委托')
+            return make_process_result('submitted', '卖出盘口追单结束', last_order_id, total_traded_volume, remaining_volume)
+        return make_process_result('failed', '卖出盘口追单未提交委托', '', total_traded_volume, remaining_volume)
 
     return make_process_result('failed', '未知交易方向')
 
 
+
+def to_float_value(value, default=0):
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except:
+        return default
+
+
+def get_total_position_market_value_for_asset_check():
+    try:
+        positions = get_trade_detail_data(g.accID, 'STOCK', 'POSITION')
+    except Exception as e:
+        write_trade_log('账户总资产校验：查询持仓异常', str(e))
+        return 0
+
+    total_value = 0
+    for position in positions or []:
+        total_value += to_float_value(getattr(position, 'm_dInstrumentValue', 0), 0)
+    return total_value
+
+
+def normalize_total_asset_value(raw_total_asset, asset):
+    raw_total_asset = to_float_value(raw_total_asset, 0)
+    if raw_total_asset <= 0:
+        return 0
+
+    position_market_value = get_total_position_market_value_for_asset_check()
+    should_scale_cent = raw_total_asset >= 1000000000
+    if position_market_value > 0:
+        should_scale_cent = should_scale_cent and raw_total_asset >= position_market_value * 50
+
+    if should_scale_cent:
+        normalized_total_asset = raw_total_asset / 100
+        write_trade_log('账户总资产疑似按分返回，已除以100', {
+            'raw_total_asset': raw_total_asset,
+            'normalized_total_asset': normalized_total_asset,
+            'position_market_value': position_market_value,
+            'asset': obj_to_dict(asset),
+        })
+        return normalized_total_asset
+
+    write_trade_log('账户总资产使用原始字段', {
+        'total_asset': raw_total_asset,
+        'position_market_value': position_market_value,
+        'asset': obj_to_dict(asset),
+    })
+    return raw_total_asset
 def get_total_asset():
     try:
         print("我要获得资产情况", flush=True)
@@ -1224,10 +1378,10 @@ def get_total_asset():
             return 0
 
         asset = assets[0]
-        total_asset = getattr(asset, 'm_dBalance', 0)
+        total_asset = normalize_total_asset_value(getattr(asset, 'm_dBalance', 0), asset)
 
         if total_asset <= 0:
-            print('账户总资产字段为空，asset字段：', asset.__dict__, flush=True)
+            print('账户总资产字段为空，asset字段：', obj_to_dict(asset), flush=True)
             write_trade_log('账户总资产字段为空', obj_to_dict(asset))
             return 0
 
@@ -1303,7 +1457,8 @@ def convert_order(order_info):
             return order
 
         total_asset = get_total_asset()
-        target_ratio = g.params.get('单次买入仓位比例', 0.02)
+        target_percent = get_buy_position_percent()
+        target_ratio = target_percent / 100
 
         if total_asset <= 0:
             order['trade_amount'] = 0
@@ -1325,10 +1480,12 @@ def convert_order(order_info):
         if buy_amount <= 0:
             order['trade_type'] = 1102
             order['trade_amount'] = 0
-            print('当前股票仓位已达到2%，不买入', order['stock_code'], current_value, target_value, flush=True)
-            write_trade_log('当前股票仓位已达到2%，不买入', {
+            print('当前股票仓位已达到目标，不买入', order['stock_code'], current_value, target_value, flush=True)
+            write_trade_log('当前股票仓位已达到目标，不买入', {
                 'stock_code': order['stock_code'],
                 'current_value': current_value,
+                'target_percent': target_percent,
+                'target_ratio': target_ratio,
                 'target_value': target_value,
                 'total_asset': total_asset,
             })
@@ -1336,10 +1493,11 @@ def convert_order(order_info):
 
         order['trade_type'] = 1102
         order['trade_amount'] = buy_amount
-        print('五日内六级买入，补足到总资产2%', order['stock_code'], current_value, target_value, buy_amount, flush=True)
-        write_trade_log('五日内六级买入，补足到总资产2%', {
+        print('五日内六级买入，补足到目标仓位', order['stock_code'], current_value, target_value, buy_amount, flush=True)
+        write_trade_log('五日内六级买入，补足到目标仓位', {
             'stock_code': order['stock_code'],
             'total_asset': total_asset,
+            'target_percent': target_percent,
             'target_ratio': target_ratio,
             'target_value': target_value,
             'current_value': current_value,
@@ -1455,7 +1613,84 @@ def get_price_type():
     return types[g.params['价格类型']]
 
 
+def parse_tdx_signal_line(line):
+    line = line.strip()
+    if not line:
+        return None
+
+    tab_parts = [part.strip() for part in line.split('\t')]
+    if len(tab_parts) >= 7 and tab_parts[6] != '':
+        return tab_parts[:7]
+
+    parts = line.split()
+    if len(parts) >= 8:
+        return [
+            parts[0],
+            parts[1],
+            parts[2] + ' ' + parts[3],
+            parts[4],
+            parts[5],
+            parts[6],
+            ' '.join(parts[7:]),
+        ]
+    if len(parts) >= 7:
+        return [
+            parts[0],
+            parts[1],
+            parts[2],
+            parts[3],
+            parts[4],
+            parts[5],
+            ' '.join(parts[6:]),
+        ]
+    return None
+
+
 def load_tdx_signal(file_path):
+    df = pd.DataFrame()
+    try:
+        if not os.path.exists(file_path):
+            print('file not found', file_path, flush=True)
+        else:
+            rows = []
+            with open(file_path, 'r', encoding='gbk', errors='replace') as f:
+                for line in f:
+                    row = parse_tdx_signal_line(line)
+                    if row is not None:
+                        rows.append(row)
+            df = pd.DataFrame(
+                rows,
+                columns=['stock_code', 'name', 'datetime', 'price', 'change_percent', 'volume', 'formula']
+            )
+            if not df.empty:
+                df['stock_code'] = df['stock_code'].astype(str)
+            print('read signal file', file_path, len(df), flush=True)
+    except Exception as e:
+        print('read signal file error', e, file_path, flush=True)
+        write_trade_log('read signal file error', {'file_path': file_path, 'error': str(e)})
+        df = pd.DataFrame()
+
+    return df
+
+
+def get_response_columns():
+    signal_columns = ['stock_code', 'name', 'datetime', 'price', 'change_percent', 'volume', 'formula']
+    process_columns = ['process_status', 'process_reason', 'order_id', 'traded_volume', 'remaining_volume', 'processed_at']
+    return signal_columns + process_columns
+
+
+def normalize_response_columns(df):
+    df = df.copy()
+    df.drop(['is_sell', 'is_buy'], axis=1, inplace=True, errors='ignore')
+    columns = get_response_columns()
+    for column in columns:
+        if column not in df.columns:
+            df[column] = ''
+    return df[columns]
+
+
+def load_tdx_response(file_path):
+    columns = get_response_columns()
     df = pd.DataFrame()
     try:
         if not os.path.exists(file_path):
@@ -1465,22 +1700,21 @@ def load_tdx_signal(file_path):
                 file_path,
                 sep='\t',
                 header=None,
-                names=['stock_code', 'name', 'datetime', 'price', 'change_percent', 'volume', 'formula'],
+                names=columns,
                 index_col=False,
-                dtype={'stock_code': str},
+                dtype={'stock_code': str, 'order_id': str},
                 engine='python'
             )
-            print('读取文件', file_path, len(df), flush=True)
+            print('读取response文件', file_path, len(df), flush=True)
     except Exception as e:
-        print('读取文件异常', e, file_path, flush=True)
-        write_trade_log('读取文件异常', {'file_path': file_path, 'error': str(e)})
+        print('读取response文件异常', e, file_path, flush=True)
+        write_trade_log('读取response文件异常', {'file_path': file_path, 'error': str(e)})
         df = pd.DataFrame()
 
     return df
-
-
 def save_tdx_signal_response(df, file_path):
     try:
+        df = normalize_response_columns(df)
         df.to_csv(
             file_path,
             sep='\t',

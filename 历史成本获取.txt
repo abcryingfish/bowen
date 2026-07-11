@@ -1,0 +1,255 @@
+# -*- coding: gbk -*-
+import csv
+import json
+import os
+from datetime import datetime
+
+
+class a():
+    pass
+
+
+g = a()
+g.params = {
+    '策略名称': '历史成交流水导出',
+    '历史成交开始日期': datetime.now().strftime('%Y%m%d'),
+    '历史成交结束日期': datetime.now().strftime('%Y%m%d'),
+}
+OUTPUT_CSV_FILE = u'C:\\Users\\Administrator\\Desktop\\历史成交流水_原始明细.csv'
+LOG_FILE = u'C:\\Users\\Administrator\\Desktop\\历史成交流水_导出日志.txt'
+
+
+def write_log(message, data=None):
+    try:
+        with open(LOG_FILE, 'a', encoding='utf-8-sig') as f:
+            f.write('\n' + '=' * 80 + '\n')
+            f.write('[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '] ' + str(message) + '\n')
+            if data is not None:
+                f.write(json.dumps(data, ensure_ascii=False, default=str) + '\n')
+    except Exception:
+        pass
+
+
+def set_param(C):
+    try:
+        title = C.get_title()
+        values = C.get_parameters(title)
+        if not values:
+            return
+        if len(values) >= 1 and str(values[0]).strip():
+            g.params['历史成交开始日期'] = str(values[0]).strip()
+        if len(values) >= 2 and str(values[1]).strip():
+            g.params['历史成交结束日期'] = str(values[1]).strip()
+    except Exception as e:
+        write_log('读取参数失败，使用默认日期', str(e))
+
+
+def set_account(C):
+    g.accID = ''
+    try:
+        account = C.get_account()
+        if account:
+            g.accID = str(account)
+    except Exception as e:
+        write_log('读取账号失败', str(e))
+
+
+def obj_to_dict(obj):
+    try:
+        data = obj.__dict__
+        if data:
+            return data
+    except Exception:
+        pass
+    result = {}
+    for name in dir(obj):
+        if name.startswith('_'):
+            continue
+        try:
+            value = getattr(obj, name)
+            if not callable(value):
+                result[name] = value
+        except Exception:
+            pass
+    return result
+
+
+def get_field(obj, names, default=''):
+    data = obj_to_dict(obj)
+    for name in names:
+        if name in data and data[name] not in [None, '']:
+            return data[name]
+        try:
+            value = getattr(obj, name)
+            if value not in [None, '']:
+                return value
+        except Exception:
+            pass
+    return default
+
+
+def to_float(value, default=0.0):
+    try:
+        if value is None or value == '':
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def to_int(value, default=0):
+    try:
+        if value is None or value == '':
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def get_stock_code(obj):
+    code = str(get_field(obj, ['stock_code', 'm_strInstrumentID', 'm_strStockCode'], '') or '').strip()
+    market = str(get_field(obj, ['m_strExchangeID', 'm_strMarket', 'exchange_id', 'market'], '') or '').strip()
+    if '.' in code:
+        return code.upper()
+    if code and market:
+        return (code + '.' + market).upper()
+    return code.upper()
+
+
+def get_stock_name(obj):
+    return str(get_field(obj, ['stock_name', 'name', 'instrument_name', 'm_strInstrumentName', 'm_strStockName'], '') or '')
+
+
+def get_trade_direct(obj):
+    value = get_field(obj, [
+        'offset_flag', 'm_nOffsetFlag', 'm_nEntrustDirection', 'm_nTradeDirect',
+        'm_nOrderType', 'm_nDirection', 'm_nSide', 'entrust_direction', 'trade_direct',
+        'direction', 'side', 'm_strEntrustDirection', 'm_strTradeDirect', 'm_strDirection', 'm_strSide'
+    ], '')
+    text = str(value or '')
+    if value in [23, 48, '23', '48'] or '买' in text:
+        return 23
+    if value in [24, 49, '24', '49'] or '卖' in text:
+        return 24
+    return value
+
+
+def get_deal_price(obj):
+    return to_float(get_field(obj, [
+        'price', 'trade_price', 'deal_price', 'm_dPrice', 'm_dTradePrice', 'm_dDealPrice', 'm_dBusinessPrice'
+    ], 0))
+
+
+def get_deal_volume(obj):
+    return to_int(get_field(obj, [
+        'volume', 'trade_volume', 'deal_volume', 'm_nVolume', 'm_nTradeVolume', 'm_nDealVolume', 'm_nBusinessAmount'
+    ], 0))
+
+
+def get_deal_amount(obj):
+    amount = to_float(get_field(obj, [
+        'amount', 'trade_amount', 'deal_amount', 'm_dTradeAmount', 'm_dDealAmount', 'm_dBusinessBalance', 'm_dTurnover'
+    ], 0))
+    if amount <= 0:
+        price = get_deal_price(obj)
+        volume = get_deal_volume(obj)
+        amount = price * volume if price > 0 and volume > 0 else 0
+    return amount
+
+
+def flatten_history_trade_detail(history_data):
+    rows = []
+    for item in history_data or []:
+        try:
+            timetag, data_list = item
+        except Exception:
+            timetag, data_list = '', item
+        for obj in data_list or []:
+            rows.append((timetag, obj))
+    return rows
+
+
+def export_history_trade_rows(rows, account_id, account_type, data_type, start_date, end_date):
+    output_dir = os.path.dirname(OUTPUT_CSV_FILE)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    with open(OUTPUT_CSV_FILE, 'w', newline='', encoding='utf-8-sig') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            'account_id', 'account_type', 'data_type', 'start_date', 'end_date', 'timetag',
+            'stock_code', 'stock_name', 'trade_direct', 'price', 'volume', 'amount',
+            'export_time', 'raw_json'
+        ])
+        export_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        count = 0
+        for timetag, deal in rows or []:
+            writer.writerow([
+                account_id,
+                account_type,
+                data_type,
+                start_date,
+                end_date,
+                timetag,
+                get_stock_code(deal),
+                get_stock_name(deal),
+                get_trade_direct(deal),
+                '%.6f' % get_deal_price(deal),
+                get_deal_volume(deal),
+                '%.2f' % get_deal_amount(deal),
+                export_time,
+                json.dumps(obj_to_dict(deal), ensure_ascii=False, default=str),
+            ])
+            count += 1
+    return count
+
+
+def query_and_export_history_trades():
+    start_date = str(g.params.get('历史成交开始日期') or datetime.now().strftime('%Y%m%d'))
+    end_date = str(g.params.get('历史成交结束日期') or datetime.now().strftime('%Y%m%d'))
+    history_func = globals().get('get_history_trade_detail_data')
+    if not callable(history_func):
+        write_log('历史成交接口不可用', {'function': 'get_history_trade_detail_data'})
+        return 0
+
+    last_error = ''
+    for account_type in ['stock', 'STOCK']:
+        for data_type in ['deal', 'DEAL']:
+            try:
+                history_data = history_func(g.accID, account_type, data_type, start_date, end_date)
+                rows = flatten_history_trade_detail(history_data)
+                write_log('查询历史成交结果', {
+                    'account_id': g.accID,
+                    'account_type': account_type,
+                    'data_type': data_type,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'row_count': len(rows),
+                })
+                if rows:
+                    count = export_history_trade_rows(rows, g.accID, account_type, data_type, start_date, end_date)
+                    write_log('导出历史成交CSV成功', {'file_path': OUTPUT_CSV_FILE, 'row_count': count})
+                    return count
+            except Exception as e:
+                last_error = str(e)
+                write_log('查询历史成交异常', {
+                    'account_type': account_type,
+                    'data_type': data_type,
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'error': last_error,
+                })
+
+    write_log('历史成交为空或全部查询失败', {'last_error': last_error})
+    return 0
+
+
+def init(C):
+    set_param(C)
+    set_account(C)
+    write_log('历史成交流水导出脚本启动', {
+        'account_id': getattr(g, 'accID', ''),
+        'start_date': g.params.get('历史成交开始日期'),
+        'end_date': g.params.get('历史成交结束日期'),
+        'output_csv': OUTPUT_CSV_FILE,
+    })
+    query_and_export_history_trades()

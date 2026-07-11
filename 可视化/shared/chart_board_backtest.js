@@ -33,15 +33,6 @@
                     html,
                 };
             }
-            const hz = nextDoc.hong_ziming_avg_position;
-            if (hz) {
-                nextDoc.__default__ = {
-                    title: "默认（洪梓铭平均仓位）",
-                    html:
-                        "<p><em>与「洪梓铭平均仓位模型」相同：<code>adopt_model</code> 为空时服务侧采用该模型。</em></p>" +
-                        hz.html,
-                };
-            }
             BACKTEST_MODEL_DOC = nextDoc;
         }
 
@@ -69,9 +60,6 @@
             const model = String(backtestRules.adoptModel || "");
             const selCls = (v) => (model === v ? " is-selected" : "");
             const parts = [];
-            parts.push(
-                `<div class="center-backtest-model-option${selCls("")}" role="option" data-model-id="" tabindex="0">默认（洪梓铭平均仓位）</div>`
-            );
             for (const m of BACKTEST_MODEL_CATALOG) {
                 const id = String(m.id || "");
                 if (!id) {
@@ -126,8 +114,7 @@
             if (!overlay || !titleEl || !bodyEl) {
                 return;
             }
-            const docKey = modelId === "" ? "__default__" : modelId;
-            const doc = BACKTEST_MODEL_DOC[docKey];
+            const doc = BACKTEST_MODEL_DOC[modelId];
             if (!doc) {
                 titleEl.textContent = modelId || "模型说明";
                 bodyEl.innerHTML = "<p>暂无该模型的说明（占位）。</p>";
@@ -307,11 +294,9 @@
             const mid = String(backtestRules.adoptModel || "").trim();
             const show =
                 paramTraverseSwitchOn &&
-                (mid === "configurable_signal_rules" || mid === "zxw_strong_adjusted_only");
+                mid === "configurable_signal_rules";
             if (paramTraverseSwitchOn && (
                 mid === "zxw_factor_check_only"
-                || mid === "zxw_factor_check_no_lookahead"
-                || mid === "zxw_factor_check_dual_assumption"
                 || mid === "zxw_factor_check_profit_threshold_dual_assumption"
                 || mid === "zxw_factor_check_base_threshold"
             )) {
@@ -321,28 +306,11 @@
             row.style.display = show ? "flex" : "none";
             const trialsLabel = row.querySelector(".optuna-trials-label");
             const noteEl = row.querySelector(".optuna-mode-note");
-            const isStrong = mid === "zxw_strong_adjusted_only";
             if (trialsLabel) {
-                trialsLabel.style.display = isStrong ? "none" : "inline-flex";
+                trialsLabel.style.display = "inline-flex";
             }
             if (noteEl) {
-                if (isStrong) {
-                    const nBuy = backtestRules.buy.length;
-                    const nSell = backtestRules.sell.length;
-                    const buySub = countStrongSubsetCombos(nBuy);
-                    const sellSub = countStrongSubsetCombos(nSell);
-                    const total = countStrongExhaustiveCombos(nBuy, nSell);
-                    let note =
-                        `强点：穷举 ${total} 组（买 ${nBuy}→${buySub} × 卖 ${nSell}→${sellSub}）；`
-                        + "_卖… 仅影响止盈，止损用宽表总卖出信号";
-                    if (nSell <= 1) {
-                        note += "；卖出仅 1 个因子时卖出侧只有 1 种子集";
-                    }
-                    noteEl.textContent = note;
-                } else {
-                    noteEl.textContent =
-                        "可配置：Optuna 遍历因子阈值区间；强点请选「只采用强点交易策略」";
-                }
+                noteEl.textContent = "可配置：Optuna 遍历因子阈值区间";
             }
         }
 
@@ -532,12 +500,11 @@
                 throw new Error("请先输入至少一个回测标的");
             }
             const adopt_model = backtestRules.adoptModel ? String(backtestRules.adoptModel).trim() : "";
-            const isStrongAdjusted = adopt_model === "zxw_strong_adjusted_only";
             const isFactorCheck =
                 adopt_model === "zxw_factor_check_only"
-                || adopt_model === "zxw_factor_check_no_lookahead"
-                || adopt_model === "zxw_factor_check_dual_assumption"
                 || adopt_model === "zxw_factor_check_profit_threshold_dual_assumption"
+                || adopt_model === "zxw_factor_check_sell_signal_step_position"
+                || adopt_model === "zxw_factor_check_sell_signal_profit20_step_position"
                 || adopt_model === "zxw_factor_check_base_threshold";
             if (isFactorCheck) {
                 if (paramTraverseSwitchOn) {
@@ -548,16 +515,6 @@
                 }
                 if (!backtestRules.sell.length) {
                     throw new Error("因子检验模型请至少拖入一个卖出因子");
-                }
-            } else if (isStrongAdjusted) {
-                if (!backtestRules.buy.length) {
-                    throw new Error("强点模型请至少拖入一个买入因子");
-                }
-                if (
-                    paramTraverseSwitchOn &&
-                    !backtestRules.sell.length
-                ) {
-                    throw new Error("强点参数遍历请至少拖入一个卖出因子");
                 }
             } else {
                 if (!backtestRules.buy.length) {
@@ -591,7 +548,7 @@
             }
             if (
                 paramTraverseSwitchOn &&
-                (adopt_model === "configurable_signal_rules" || adopt_model === "zxw_strong_adjusted_only")
+                adopt_model === "configurable_signal_rules"
             ) {
                 const ntEl = document.getElementById("center-backtest-n-trials");
                 const okEl = document.getElementById("center-backtest-objective-key");
@@ -616,10 +573,6 @@
                     payload.n_trials = Math.max(2, Math.min(5000, Number(backtestRules.nTrials) || 20));
                     payload.buy_rules = buildOptunaTemplateRules(backtestRules.buy, "买入");
                     payload.sell_rules = buildOptunaTemplateRules(backtestRules.sell, "卖出");
-                } else if (adopt_model === "zxw_strong_adjusted_only") {
-                    payload.exhaustive_buy_sell_subsets = true;
-                    payload.buy_rules = normalizeRules(backtestRules.buy, "买入");
-                    payload.sell_rules = normalizeRules(backtestRules.sell, "卖出");
                 }
             }
             return payload;

@@ -2340,6 +2340,13 @@ def _get_cached_codes(base_path: str) -> list[str]:
         return list(_code_index_cache_by_path.get(base_path, []))
 
 
+def _get_factor_export_rank_codes() -> list[str]:
+    universe_codes = _stock_universe_codes()
+    if universe_codes:
+        return universe_codes
+    return _get_cached_codes(DAILY_BASE_PATH)
+
+
 def _scan_factor_names_from_path(base_path: str) -> list[str]:
     return _list_factor_names_from_dirs(base_path)
 
@@ -3505,7 +3512,7 @@ def export_market_factor_rank_csv(
         raise MarketDataNotFoundError("目标时间范围内未找到对应因子分区")
 
     all_codes = [
-        code for code in _get_cached_codes(resolved_base_path)
+        code for code in _get_factor_export_rank_codes()
         if code and not str(code).upper().endswith(".YKRS")
     ]
     if not all_codes:

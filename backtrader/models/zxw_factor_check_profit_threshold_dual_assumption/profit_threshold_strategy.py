@@ -6,15 +6,15 @@ from typing import Any
 
 import numpy as np
 
-from models.zxw_factor_check_dual_assumption.dual_assumption_strategy import (
-    FactorCheckDualAssumptionZxwStrategy,
+from models.zxw_factor_check_profit_threshold_dual_assumption.daily_move_guard import (
+    FactorCheckDailyMoveGuardStrategy,
 )
 
 DEFAULT_HALF_PROFIT_MULTIPLIER = 1.5
 DEFAULT_FULL_PROFIT_MULTIPLIER = 2.0
 
 
-class FactorCheckProfitThresholdDualAssumptionZxwStrategy(FactorCheckDualAssumptionZxwStrategy):
+class FactorCheckProfitThresholdDualAssumptionZxwStrategy(FactorCheckDailyMoveGuardStrategy):
     """
     在双假设因子检验基础上增加卖出阈值：
     - 收盘价 > 持仓均价 * 2.0：清仓，并允许下一轮买入。

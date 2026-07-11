@@ -279,7 +279,7 @@ def add_title(doc):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_after = Pt(4)
-    r = p.add_run("del.py 交易逻辑流程图")
+    r = p.add_run("普通账户.py 交易逻辑流程图")
     r.bold = True
     r.font.size = Pt(22)
     r.font.name = "Microsoft YaHei"
@@ -288,7 +288,7 @@ def add_title(doc):
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sub.paragraph_format.space_after = Pt(12)
-    sub.add_run("根据 del.py（源码编码：GBK）提取；本文档使用 UTF-8 生成。只描述现有逻辑，不改动业务代码。")
+    sub.add_run("根据 普通账户.py（源码编码：GBK）提取；本文档使用 UTF-8 生成。只描述现有逻辑，不改动业务代码。")
 
 
 def add_metadata(doc):

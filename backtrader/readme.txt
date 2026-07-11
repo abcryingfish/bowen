@@ -25,17 +25,15 @@ model_registry.py
 models/
 -------
 **一模型一子目录**：`runner.py`（及可选 `strategy.py`）、`README.md`。
-当前注册并支持网页任务：`hong_ziming_avg_position`、`zxw_rule_backtest`、`zxw_rule_backtest_profit30`、
-`zxw_strong_adjusted_only`、`zxw_init_10pct_snapshot`、`configurable_signal_rules`。
+当前注册并支持网页任务：`zxw_factor_check_only`、`zxw_factor_check_profit_threshold_dual_assumption`、
+`zxw_factor_check_base_threshold`、`zxw_init_10pct_snapshot`、`configurable_signal_rules`。
+`models/zxw_data_pipeline/` 为多模型共用的主力宽表管线模块，不单独作为 adopt_model 暴露。
+`models/zxw_factor_check_common/` 为因子检验模型共用的初始化权重、命名与信号合并工具，不单独作为 adopt_model 暴露。
 `models/zxw_legacy_mac_kdj_bottom/` 为 **10% MAC/KDJ 引擎实现**，供 `zxw_init_10pct_snapshot` 内部调用，**不再单独作为 adopt_model 暴露**。
-
-洪梓铭策略类
------------
-源码在 **`models/hong_ziming_avg_position/strategy.py`**（`HongZimingAvgPositionStrategy`）。
 
 ZXW回测_看结果（主力管线模块）
 ----------------------------
-源码文件：**`models/zxw_rule_backtest/zxw_view_results_full.py`**（原根目录 `ZXW回测_看结果.py`，已迁入以避免与 `models` 重复）。
+源码文件：**`models/zxw_data_pipeline/zxw_view_results_full.py`**（原根目录 `ZXW回测_看结果.py`，已迁入以避免与 `models` 重复）。
 
 ZXW回测_看结果--原版（legacy 管线模块，仅供 10% 快照入口内部使用）
 --------------------------------------------------

@@ -10,16 +10,16 @@ import pandas as pd
 
 from settings import run_zxw_backtest
 
-from models.zxw_strong_adjusted_only.init_alloc import compute_backscan_initial_weights
+from models.zxw_factor_check_common.init_alloc import compute_backscan_initial_weights
 from models.configurable_signal_rules.data import normalize_rules
-from models.zxw_strong_adjusted_only.run_naming import build_full_run_name, strip_run_name_date_prefix
-from models.zxw_strong_adjusted_only.signal_data import (
+from models.zxw_factor_check_common.run_naming import build_full_run_name, strip_run_name_date_prefix
+from models.zxw_factor_check_common.signal_data import (
     merge_strong_buy_signal,
     merge_strong_sell_signal,
     template_from_frontend,
 )
 from models.zxw_factor_check_only.strategy_params import default_strategy_params
-from models.zxw_factor_check_dual_assumption.dual_assumption_strategy import DEFAULT_DAILY_MOVE_LIMIT
+from models.zxw_factor_check_profit_threshold_dual_assumption.daily_move_guard import DEFAULT_DAILY_MOVE_LIMIT
 from models.zxw_factor_check_profit_threshold_dual_assumption.profit_threshold_strategy import (
     DEFAULT_FULL_PROFIT_MULTIPLIER,
     DEFAULT_HALF_PROFIT_MULTIPLIER,
@@ -47,7 +47,7 @@ def _load_zxw() -> Any:
     bt_dir = str(Path(__file__).resolve().parents[2])
     if bt_dir not in sys.path:
         sys.path.append(bt_dir)
-    _zxw_mod = importlib.import_module("models.zxw_rule_backtest.zxw_view_results_full")
+    _zxw_mod = importlib.import_module("models.zxw_data_pipeline.zxw_view_results_full")
     return _zxw_mod
 
 
@@ -155,7 +155,7 @@ def run(
         "end_date": end_date,
         "run_name": effective_run_name,
         "run_name_user_base": user_base,
-        "backtest_engine": "models/zxw_factor_check_profit_threshold_dual_assumption + zxw_view_results_full 宽表",
+        "backtest_engine": "models/zxw_factor_check_profit_threshold_dual_assumption + zxw_data_pipeline 宽表",
         "strategy_class": "FactorCheckProfitThresholdDualAssumptionZxwStrategy",
         "enable_future_halving_mask": False,
         "daily_move_limit": DEFAULT_DAILY_MOVE_LIMIT,

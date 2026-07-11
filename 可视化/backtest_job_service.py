@@ -181,26 +181,15 @@ def _run_optuna_job(job: BacktestJob, payload: dict[str, Any], cancel_event: thr
     _set_job_state(job, status="running", stage="Optuna", progress=1, message="参数寻优已启动")
     try:
         with contextlib.redirect_stdout(writer), contextlib.redirect_stderr(writer):
-            if adopt == "zxw_strong_adjusted_only":
-                from optuna_strong_adjusted_study import run_optuna_strong_adjusted_study
+            from optuna_signal_study import run_optuna_signal_study
 
-                result = run_optuna_strong_adjusted_study(
-                    payload,
-                    job_id=job.job_id,
-                    cancel_event=cancel_event,
-                    progress_callback=progress_callback,
-                    log_append=log_append,
-                )
-            else:
-                from optuna_signal_study import run_optuna_signal_study
-
-                result = run_optuna_signal_study(
-                    payload,
-                    job_id=job.job_id,
-                    cancel_event=cancel_event,
-                    progress_callback=progress_callback,
-                    log_append=log_append,
-                )
+            result = run_optuna_signal_study(
+                payload,
+                job_id=job.job_id,
+                cancel_event=cancel_event,
+                progress_callback=progress_callback,
+                log_append=log_append,
+            )
         writer.flush()
         run_tag = str(result.get("run_tag") or "")
         study_meta = result.get("study") if isinstance(result.get("study"), dict) else {}
@@ -240,7 +229,7 @@ def _prepare_optuna_payload(payload: dict[str, Any], adopt_model: str) -> dict[s
     out = dict(payload)
     raw = str(out.get("run_name_base") or out.get("run_name") or "").strip()
     if not raw:
-        raw = "ZXW强点" if adopt_model == "zxw_strong_adjusted_only" else "可配置"
+        raw = "可配置"
     out["run_name_user_base"] = raw
     out.pop("run_name_base", None)
     out.pop("apply_run_name_date_prefix", None)
@@ -253,14 +242,10 @@ def create_backtest_job(payload: dict[str, Any]) -> dict[str, Any]:
     run_mode = str(payload.get("run_mode") or "normal").strip().lower()
     adopt = str(payload.get("adopt_model") or "").strip()
     if run_mode == "optuna":
-        if adopt not in ("configurable_signal_rules", "zxw_strong_adjusted_only"):
-            raise ValueError(
-                "run_mode=optuna 仅支持 adopt_model=configurable_signal_rules 或 zxw_strong_adjusted_only"
-            )
+        if adopt != "configurable_signal_rules":
+            raise ValueError("run_mode=optuna 仅支持 adopt_model=configurable_signal_rules")
         if adopt in (
             "zxw_factor_check_only",
-            "zxw_factor_check_no_lookahead",
-            "zxw_factor_check_dual_assumption",
             "zxw_factor_check_profit_threshold_dual_assumption",
             "zxw_factor_check_base_threshold",
         ):

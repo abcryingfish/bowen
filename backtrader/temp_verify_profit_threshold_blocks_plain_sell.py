@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 from models.zxw_factor_check_profit_threshold_dual_assumption.profit_threshold_strategy import (  # noqa: E402
     FactorCheckProfitThresholdDualAssumptionZxwStrategy,
 )
-from models.zxw_rule_backtest.zxw_view_results_full import COMMISSION, FactorPandasData  # noqa: E402
+from models.zxw_data_pipeline.zxw_view_results_full import COMMISSION, FactorPandasData  # noqa: E402
 
 
 def _make_feed() -> bt.feeds.PandasData:

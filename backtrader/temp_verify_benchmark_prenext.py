@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
-from models.zxw_rule_backtest.zxw_view_results_full import (  # noqa: E402
+from models.zxw_data_pipeline.zxw_view_results_full import (  # noqa: E402
     BuyAndHoldBenchmarkStrategy,
     COMMISSION,
     FactorPandasData,

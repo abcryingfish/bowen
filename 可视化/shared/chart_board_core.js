@@ -1097,7 +1097,7 @@ function openTvDayModal(code, dayTs, prevClose = NaN) {
     const mask = ensureTvDayModal();
     const titleEl = document.getElementById("tv-day-modal-title");
     if (titleEl) {
-        titleEl.textContent = `${String(code || "").trim()} ${formatTvDayTitleDate(dayTs)} 1鍒嗛挓`;
+        titleEl.textContent = `${String(code || "").trim()} ${formatTvDayTitleDate(dayTs)} 1分钟`;
     }
     mask.classList.add("visible");
     mask.setAttribute("aria-hidden", "false");
@@ -1253,6 +1253,9 @@ let watchlistCodes = ["301469.SZ"];
 let watchlistPriceMap = new Map();
 let watchlistSyncTimer = null;
 let watchlistPriceRefreshInFlight = null;
+let keyboardMarketCodesCache = [];
+let keyboardMarketCodesCacheUntil = 0;
+let keyboardStockNavigationInFlight = false;
 let factorNames = [];
 let factorGroups = [];
 let factorCoreNames = [];
@@ -1620,8 +1623,26 @@ const chart = LightweightCharts.createChart(container, {
 const A_SHARE_UP_COLOR = "#ef5350";
 const A_SHARE_DOWN_COLOR = "#26a69a";
 
-function getAShareBarColor(bar) {
-    return Number(bar && bar.close) >= Number(bar && bar.open) ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
+function getAShareBarColor(bar, previousBar = null) {
+    const close = Number(bar && bar.close);
+    const previousClose = Number(previousBar && previousBar.close);
+    if (Number.isFinite(close) && Number.isFinite(previousClose) && previousClose !== 0) {
+        return close >= previousClose ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
+    }
+    return close >= Number(bar && bar.open) ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
+}
+
+function getDailyPreviousBar(index) {
+    return currentInterval === "1day" && index > 0 ? barsCache[index - 1] : null;
+}
+
+function withBarColor(bar, index) {
+    const color = getAShareBarColor(bar, getDailyPreviousBar(index));
+    return {
+        color,
+        wickColor: color,
+        borderColor: color
+    };
 }
 
 const candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
@@ -1985,7 +2006,7 @@ function isIndexRouteMissingResponse(status, body) {
         return false;
     }
     const message = body && body.error && body.error.message ? String(body.error.message) : "";
-    return message.includes("璇锋眰鐨勬帴鍙ｄ笉瀛樺湪");
+    return message.includes("请求的接口不存在");
 }
 
 async function fetchIndexOverlayBars(fromTs, toTs) {
@@ -2891,6 +2912,26 @@ function isChartNavigationKeyBlocked() {
     return false;
 }
 
+function shouldBlockKeyboardStockNavigationForActiveElement(tagName, elementId, isContentEditable) {
+    const tag = String(tagName || "").toUpperCase();
+    const id = String(elementId || "");
+    if (id === "code-input") {
+        return false;
+    }
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        return true;
+    }
+    return Boolean(isContentEditable);
+}
+
+function isKeyboardStockNavigationBlocked() {
+    const el = document.activeElement;
+    if (!el || !(el instanceof HTMLElement)) {
+        return false;
+    }
+    return shouldBlockKeyboardStockNavigationForActiveElement(el.tagName, el.id, el.isContentEditable);
+}
+
 function findBarIndexByChartTime(chartTime) {
     if (!barsCache.length) {
         return -1;
@@ -3079,6 +3120,18 @@ function consumePendingCodeInputClear() {
 
 function onGlobalChartNavigationKeydown(event) {
     const key = event.key;
+    if (
+        (key === "+" || key === "-" || event.code === "NumpadAdd" || event.code === "NumpadSubtract")
+        && !event.ctrlKey
+        && !event.metaKey
+        && !event.altKey
+        && !event.isComposing
+        && !isKeyboardStockNavigationBlocked()
+    ) {
+        event.preventDefault();
+        void navigateKeyboardStockByDirection(key === "-" || event.code === "NumpadSubtract" ? -1 : 1);
+        return;
+    }
     if (
         isMainBoardPage()
         && isGlobalCodeInputTypingKey(key)
@@ -4584,6 +4637,86 @@ function getSuggestionCode(item) {
         : String(item && item.code ? item.code : "").trim().toUpperCase();
 }
 
+function normalizeKeyboardStockCodeList(items) {
+    const normalizedCodes = [];
+    const dedup = new Set();
+    for (const item of Array.isArray(items) ? items : []) {
+        const code = typeof item === "string"
+            ? normalizeCodeValue(item)
+            : normalizeCodeValue(item && item.code);
+        if (!code || dedup.has(code) || code.endsWith(".YKRS")) {
+            continue;
+        }
+        dedup.add(code);
+        normalizedCodes.push(code);
+    }
+    return normalizedCodes;
+}
+
+function resolveKeyboardStockNavigationPool(currentCodeValue, currentWatchlistCodes, marketCodes) {
+    const code = normalizeCodeValue(currentCodeValue);
+    const watchPool = normalizeKeyboardStockCodeList(currentWatchlistCodes);
+    if (code && watchPool.includes(code)) {
+        return watchPool;
+    }
+    return normalizeKeyboardStockCodeList(marketCodes);
+}
+
+function resolveKeyboardStockNavigationTarget(currentCodeValue, poolCodes, direction) {
+    const pool = normalizeKeyboardStockCodeList(poolCodes);
+    if (!pool.length) {
+        return "";
+    }
+    const current = normalizeCodeValue(currentCodeValue);
+    const currentIndex = pool.indexOf(current);
+    const baseIndex = currentIndex >= 0 ? currentIndex : (direction > 0 ? -1 : 0);
+    const nextIndex = (baseIndex + direction + pool.length) % pool.length;
+    return pool[nextIndex] || "";
+}
+
+async function fetchKeyboardMarketCodes() {
+    const now = Date.now();
+    if (keyboardMarketCodesCache.length && keyboardMarketCodesCacheUntil > now) {
+        return keyboardMarketCodesCache;
+    }
+    const resp = await fetch(`${API_BASE_URL}/api/factor-validation/universe`, { method: "GET", cache: "no-store" });
+    const body = await resp.json();
+    if (!resp.ok) {
+        const message = body && body.error && body.error.message ? body.error.message : "market code list failed";
+        throw new Error(message);
+    }
+    const codes = normalizeKeyboardStockCodeList(Array.isArray(body && body.items) ? body.items : []);
+    if (codes.length) {
+        keyboardMarketCodesCache = codes;
+        keyboardMarketCodesCacheUntil = now + 5 * 60 * 1000;
+    }
+    return keyboardMarketCodesCache;
+}
+
+async function navigateKeyboardStockByDirection(direction) {
+    if (keyboardStockNavigationInFlight) {
+        return;
+    }
+    keyboardStockNavigationInFlight = true;
+    try {
+        const marketCodes = await fetchKeyboardMarketCodes();
+        const pool = resolveKeyboardStockNavigationPool(currentCode, watchlistCodes, marketCodes);
+        const nextCode = resolveKeyboardStockNavigationTarget(currentCode, pool, direction);
+        if (!nextCode || nextCode === normalizeCodeValue(currentCode)) {
+            return;
+        }
+        hideCodeSuggestions();
+        codeInput.value = nextCode;
+        await switchCodeAndReload(nextCode);
+        countdownValue = AUTO_REFRESH_SECONDS;
+    } catch (err) {
+        console.warn("[chart-board] keyboard stock navigation failed:", err);
+        logUiHint("键盘切换股票失败，请确认全市场股票池可用");
+    } finally {
+        keyboardStockNavigationInFlight = false;
+    }
+}
+
 function isLikelyCompleteCode(value) {
     return /^\d{6}\.[A-Z]{2}$/.test(String(value || "").trim().toUpperCase());
 }
@@ -4906,12 +5039,13 @@ function getDisplayedVolumeValue(bar) {
 
 function renderChartData() {
     applyMainChartSeriesMode();
-    const ohlc = withLatestDayMinuteWhitespace(barsCache.map((item) => ({
+    const ohlc = withLatestDayMinuteWhitespace(barsCache.map((item, index) => ({
         time: toChartTime(item.time),
         open: Number(item.open),
         high: Number(item.high),
         low: Number(item.low),
-        close: Number(item.close)
+        close: Number(item.close),
+        ...withBarColor(item, index)
     })));
     const lineData = withLatestDayMinuteWhitespace(barsCache.map((item) => ({
         time: toChartTime(item.time),
@@ -4921,10 +5055,10 @@ function renderChartData() {
         time: toChartTime(item.time),
         value: Number(item.close)
     }));
-    const volume = withLatestDayMinuteWhitespace(barsCache.map((item) => ({
+    const volume = withLatestDayMinuteWhitespace(barsCache.map((item, index) => ({
         time: toChartTime(item.time),
         value: getDisplayedVolumeValue(item),
-        color: getAShareBarColor(item)
+        color: getAShareBarColor(item, getDailyPreviousBar(index))
     })));
     if (isMainChartLineMode()) {
         candlestickSeries.setData([]);
@@ -5297,7 +5431,7 @@ async function refreshBars(isInitialLoad = false) {
             }
         }
     } catch (err) {
-        const message = err instanceof Error ? err.message : "鏈煡寮傚父";
+        const message = err instanceof Error ? err.message : "未知异常";
         setBrokenStatus(message);
     } finally {
         isRequesting = false;
@@ -5362,7 +5496,7 @@ async function initPortfolioExtraSelectOnce() {
     const indexApiReady = await apiSupportsIndexOverlay();
     if (!indexApiReady) {
         setPortfolioIndexOverlayStatus(
-            "API 鏈姞杞芥寚鏁版帴鍙ｏ細璇峰仠姝㈠苟閲嶆柊杩愯 鍙鍖?api_server.py锛屽啀鍒锋柊鏈〉",
+            "API 未加载指数接口：请停止并重新运行 可视化/api_server.py，再刷新本页",
             true
         );
     }
@@ -5483,7 +5617,7 @@ async function switchCodeAndReload(nextCodeArg = null) {
     }
     if (isSwitchingCode || isRequesting) {
         pendingSwitchCode = nextCode;
-        logUiHint(`姝ｅ湪鍒锋柊锛屽凡鎺掗槦鍒囨崲鍒?${nextCode}`);
+        logUiHint(`正在刷新，已排队切换到 ${nextCode}`);
         return;
     }
     isSwitchingCode = true;
@@ -5750,7 +5884,7 @@ codeInput.addEventListener("keydown", async (event) => {
         event.preventDefault();
         const resolved = await resolveCodeInputOnEnter();
         if (!resolved) {
-            logUiHint("code 涓嶈兘涓虹┖");
+            logUiHint("code 不能为空");
             hideCodeSuggestions();
             return;
         }
