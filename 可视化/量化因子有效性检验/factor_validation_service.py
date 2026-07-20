@@ -18,6 +18,8 @@ import pandas as pd
 VIS_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = VIS_ROOT.parent
 SIGNAL_DAILY_BASE_PATH = Path(r"D:\database\signal_daily")
+MORPH_CANDLESTICK_BASE_PATH = Path("D:\\database\\signal_daily_\u5f62\u6001") / "candlestick_no_vol"
+MORPH_MANIFEST_FILE_NAME = "morph_candlestick_manifest.json"
 DAILY_BASE_PATH = Path(r"D:\database\stock_basic_data_daily")
 STOCK_POOL_DIR = PROJECT_ROOT / "\u534e\u6cf0\u6570\u636e\u83b7\u53d6"
 UNIVERSE_CSV_PATH = STOCK_POOL_DIR / "ALL_A_\u5168\u5e02\u573a\u80a1\u7968_20260626.csv"
@@ -234,6 +236,111 @@ def _build_factor_partition_paths(factor_name: str, start: pd.Timestamp, end: pd
     return _build_month_partition_paths(factor_base, start, end)
 
 
+def _parse_morph_factor_name(factor_name: str) -> tuple[str, str] | None:
+    parts = str(factor_name or "").strip().split("/", 2)
+    if len(parts) != 3 or parts[0] != "morph" or not parts[1] or not parts[2]:
+        return None
+    return parts[1], parts[2]
+
+
+def _load_morph_manifest() -> dict[str, Any]:
+    path = MORPH_CANDLESTICK_BASE_PATH / MORPH_MANIFEST_FILE_NAME
+    if not path.is_file():
+        return {"patterns": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FactorValidationError(f"形态 manifest 读取失败: {exc}") from exc
+    return payload if isinstance(payload, dict) else {"patterns": {}}
+
+
+def _load_available_morph_factors() -> list[str]:
+    event_dir = MORPH_CANDLESTICK_BASE_PATH / "events"
+    event_paths = sorted(
+        {
+            *[path.as_posix() for path in event_dir.rglob("merged.parquet")],
+            *[path.as_posix() for path in event_dir.rglob("part_*.parquet")],
+        }
+    ) if event_dir.is_dir() else []
+    if event_paths:
+        placeholders = ", ".join("?" for _ in event_paths)
+        con = duckdb.connect(database=":memory:")
+        try:
+            rows = con.execute(
+                f"""
+                SELECT DISTINCT
+                    TRIM(CAST(signal_name AS VARCHAR)) AS signal_name,
+                    TRIM(CAST(level AS VARCHAR)) AS level
+                FROM read_parquet([{placeholders}], union_by_name=true)
+                WHERE signal_name IS NOT NULL
+                  AND level IS NOT NULL
+                  AND TRIM(CAST(signal_name AS VARCHAR)) <> ''
+                  AND TRIM(CAST(level AS VARCHAR)) <> ''
+                """,
+                event_paths,
+            ).fetchall()
+        finally:
+            con.close()
+        return sorted({f"morph/{level}/{name}" for name, level in rows})
+
+    patterns = _load_morph_manifest().get("patterns") or {}
+    factors = [
+        f"morph/{meta.get('level')}/{name}"
+        for name, meta in patterns.items()
+        if isinstance(meta, dict) and str(meta.get("level") or "").strip() and str(name).strip()
+    ]
+    return sorted(set(factors))
+
+
+def _build_morph_event_partition_paths(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
+    return _build_month_partition_paths(MORPH_CANDLESTICK_BASE_PATH / "events", start, end)
+
+
+def _read_morph_factor_frame(
+    level: str,
+    pattern: str,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    codes: list[str],
+) -> pd.DataFrame:
+    paths = _build_morph_event_partition_paths(start, end)
+    if not paths:
+        raise FactorValidationNotFoundError(f"未找到形态因子分区: {level}/{pattern}")
+    placeholders = ", ".join("?" for _ in paths)
+    con = duckdb.connect(database=":memory:")
+    try:
+        df = con.execute(
+            f"""
+            SELECT
+                UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                CAST(COALESCE(
+                    TRY_CAST(start_time AS TIMESTAMP),
+                    TO_TIMESTAMP(TRY_CAST(start_time AS BIGINT))
+                ) AS DATE) AS time,
+                TRY_CAST(value AS DOUBLE) AS value
+            FROM read_parquet([{placeholders}], union_by_name=true)
+            WHERE htsc_code IS NOT NULL
+              AND CAST(level AS VARCHAR) = ?
+              AND CAST(signal_name AS VARCHAR) = ?
+            """,
+            [*paths, level, pattern],
+        ).fetchdf()
+    finally:
+        con.close()
+    if df.empty:
+        raise FactorValidationNotFoundError(f"形态因子没有可用数据: {level}/{pattern}")
+    code_set = set(codes)
+    df["htsc_code"] = df["htsc_code"].astype(str).str.strip().str.upper()
+    df["time"] = pd.to_datetime(df["time"], errors="coerce").dt.normalize()
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    df = df[df["htsc_code"].isin(code_set) & df["time"].between(start, end)]
+    return (
+        df.dropna(subset=["htsc_code", "time"])
+        .groupby(["time", "htsc_code"], as_index=False, sort=False)["value"]
+        .max()
+    )
+
+
 def _load_available_factors() -> list[str]:
     if not SIGNAL_DAILY_BASE_PATH.exists():
         return []
@@ -279,10 +386,15 @@ def _load_factor_catalog(available_factors: list[str]) -> list[dict[str, Any]]:
 
 
 def list_factor_validation_factors() -> dict[str, Any]:
-    factors = _load_available_factors()
+    ordinary_factors = _load_available_factors()
+    morph_factors = _load_available_morph_factors()
+    factors = sorted(set([*ordinary_factors, *morph_factors]))
+    groups = _load_factor_catalog(ordinary_factors)
+    if morph_factors:
+        groups.append({"group_id": "morph", "group_name": "形态面", "children": morph_factors})
     return {
         "factors": factors,
-        "groups": _load_factor_catalog(factors),
+        "groups": groups,
         "meta": {
             "count": len(factors),
             "base_path": str(SIGNAL_DAILY_BASE_PATH),
@@ -842,7 +954,12 @@ def run_factor_validation(payload: dict[str, Any]) -> dict[str, Any]:
     if group_count not in ALLOWED_GROUP_COUNTS:
         raise FactorValidationInputError("group_count 仅支持 5、8、10、20")
     codes = resolve_universe_codes(payload)
-    factor_df = _read_factor_frame(factor_name, start, end, codes)
+    morph_parts = _parse_morph_factor_name(factor_name)
+    factor_df = (
+        _read_morph_factor_frame(*morph_parts, start, end, codes)
+        if morph_parts
+        else _read_factor_frame(factor_name, start, end, codes)
+    )
     price_df = _read_price_frame(start, end, codes, max(periods), price_adjust_mode)
     if factor_df.empty:
         raise FactorValidationNotFoundError("所选股票池和时间段内没有因子数据")

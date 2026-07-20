@@ -31,7 +31,7 @@ from temp_today_market_cache import today_cache_path  # noqa: E402
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="实时三因子计算：只读行情 SQLite，输出 signal SQLite")
     parser.add_argument("--market-db", default="", help="行情 SQLite，默认 D:\\database\\temp_today_data\\market_cache_YYYY-MM-DD.sqlite")
-    parser.add_argument("--state-db", default="", help="盘前状态 SQLite，默认 D:\\database\\realtime_factor_state\\factor_state_YYYY-MM-DD.sqlite")
+    parser.add_argument("--state-db", default="", help="盘前滚动状态 SQLite，默认 D:\\database\\realtime_factor_state\\factor_state.sqlite")
     parser.add_argument("--signal-db", default="", help="信号 SQLite，默认 D:\\database\\temp_today_data\\realtime_signal_YYYY-MM-DD.sqlite")
     parser.add_argument("--trading-day", default=datetime.now().strftime("%Y-%m-%d"), help="交易日")
     parser.add_argument("--once", action="store_true", help="只跑一轮")

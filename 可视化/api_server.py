@@ -82,6 +82,7 @@ from qmt_company_data_service import (
     query_qmt_company_table,
     query_qmt_company_tables,
 )
+from sector_research_service import dashboard as sector_dashboard, list_entities as sector_entities
 from 量化因子有效性检验.factor_validation_service import (
     FactorValidationError,
     FactorValidationInputError,
@@ -209,6 +210,19 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                     "features": ["index_codes", "index_bars", "fundamental", "qmt_company", "run_tag_scoped_queries", "watchlist"],
                 },
             )
+            return
+
+        if parsed.path == "/api/sector/entities":
+            self._send_json(HTTPStatus.OK, sector_entities())
+            return
+
+        if parsed.path == "/api/sector/dashboard":
+            code = self._first_query_value(query, "sector_code") or self._first_query_value(query, "entity_id")
+            if not code:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": "缺少sector_code"}})
+            else:
+                payload = sector_dashboard(code)
+                self._send_json(HTTPStatus.OK if payload.get("data") else HTTPStatus.NOT_FOUND, payload)
             return
 
         if parsed.path == "/api/market/bars":

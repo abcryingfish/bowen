@@ -7,12 +7,16 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+
 
 REALTIME_DIR = Path(__file__).resolve().parent / "实时因子"
 sys.path.insert(0, str(REALTIME_DIR))
 
 from realtime_factor_core import (  # noqa: E402
+    CodeRuntimeState,
     RealtimeFactorEngine,
+    _frame_for_codes,
     append_signal_events,
     elapsed_trading_ratio,
     ensure_signal_schema,
@@ -20,6 +24,51 @@ from realtime_factor_core import (  # noqa: E402
 
 
 class RealtimeFactorCoreTest(unittest.TestCase):
+    def test_frame_aligns_codes_with_different_history_lengths_by_date(self) -> None:
+        long_state = CodeRuntimeState(
+            htsc_code="000001.SZ", state_date="2026-07-16",
+            history_dates=["2026-07-15", "2026-07-16"],
+            open_history=np.array([10.0, 11.0]), high_history=np.array([10.0, 11.0]),
+            low_history=np.array([10.0, 11.0]), close_history=np.array([10.0, 11.0]),
+            volume_history=np.array([100.0, 110.0]), float_shares=1_000_000.0,
+        )
+        short_state = CodeRuntimeState(
+            htsc_code="300614.SZ", state_date="2026-07-16",
+            history_dates=["2026-07-16"],
+            open_history=np.array([20.0]), high_history=np.array([20.0]),
+            low_history=np.array([20.0]), close_history=np.array([20.0]),
+            volume_history=np.array([200.0]), float_shares=1_000_000.0,
+        )
+
+        frame = _frame_for_codes(
+            {"000001.SZ": long_state, "300614.SZ": short_state},
+            {
+                "000001.SZ": {"last_price": 12.0},
+                "300614.SZ": {"last_price": 21.0},
+            },
+            ["000001.SZ", "300614.SZ"],
+            "close",
+        )
+
+        self.assertEqual(frame.index.tolist(), ["2026-07-15", "2026-07-16", "TODAY"])
+        self.assertTrue(np.isnan(frame.loc["2026-07-15", "300614.SZ"]))
+        self.assertEqual(frame.loc["TODAY", "300614.SZ"], 21.0)
+
+    def test_current_realtime_price_uses_last_backward_adjustment_factor(self) -> None:
+        state = CodeRuntimeState(
+            htsc_code="000001.SZ", state_date="2026-07-16", history_dates=["2026-07-16"],
+            open_history=np.array([20.0]), high_history=np.array([22.0]), low_history=np.array([19.0]),
+            close_history=np.array([21.0]), volume_history=np.array([100.0]), float_shares=1_000_000.0,
+            last_adj_factor=2.0, last_adj_factor_date="2026-07-16",
+        )
+        frame = _frame_for_codes(
+            {"000001.SZ": state},
+            {"000001.SZ": {"last_price": 11.0}},
+            ["000001.SZ"],
+            "close",
+        )
+        self.assertEqual(frame.iloc[-1, 0], 22.0)
+
     def test_elapsed_trading_ratio_skips_lunch_break(self) -> None:
         self.assertAlmostEqual(elapsed_trading_ratio(datetime(2026, 6, 15, 9, 30)), 1 / 240)
         self.assertAlmostEqual(elapsed_trading_ratio(datetime(2026, 6, 15, 10, 30)), 60 / 240)

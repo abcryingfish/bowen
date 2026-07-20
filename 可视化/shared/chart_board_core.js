@@ -30,7 +30,10 @@ function resolveApiBaseUrl() {
         /* ignore */
     }
     try {
-        if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+        if (window.location.protocol === "https:") {
+            return window.location.origin;
+        }
+        if (window.location.protocol === "http:") {
             return `http://${window.location.hostname}:8000`;
         }
     } catch {
@@ -904,6 +907,9 @@ function updateTvDayMinuteChartData(bars, prevClose = NaN, fitContent = false) {
         return;
     }
     const prevClosePrice = Number(prevClose);
+    const openingPreviousBar = Number.isFinite(prevClosePrice)
+        ? { close: prevClosePrice }
+        : null;
     const basePrice = Number.isFinite(prevClosePrice) && prevClosePrice !== 0
         ? prevClosePrice
         : Number(priceData[0] && priceData[0].value);
@@ -934,10 +940,13 @@ function updateTvDayMinuteChartData(bars, prevClose = NaN, fitContent = false) {
     });
     tvDayMinuteCandleSeries.setData(priceData);
     tvDayMinutePercentSeries.setData(percentData);
-    tvDayMinuteVolumeSeries.setData(bars.map((item) => ({
+    tvDayMinuteVolumeSeries.setData(bars.map((item, index) => ({
         time: Number(item.time),
         value: Number(item.volume || 0),
-        color: getAShareBarColor(item)
+        color: getAShareVolumeColor(
+            item,
+            index > 0 ? bars[index - 1] : openingPreviousBar
+        )
     })));
     if (fitContent) {
         tvDayMinuteChart.timeScale().fitContent();
@@ -1622,6 +1631,7 @@ const chart = LightweightCharts.createChart(container, {
 
 const A_SHARE_UP_COLOR = "#ef5350";
 const A_SHARE_DOWN_COLOR = "#26a69a";
+const A_SHARE_FLAT_VOLUME_COLOR = "#ffffff";
 
 function getAShareBarColor(bar, previousBar = null) {
     const close = Number(bar && bar.close);
@@ -1630,6 +1640,20 @@ function getAShareBarColor(bar, previousBar = null) {
         return close >= previousClose ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
     }
     return close >= Number(bar && bar.open) ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
+}
+
+function getAShareVolumeColor(bar, previousBar = null) {
+    const close = Number(bar && bar.close);
+    const comparisonPrice = Number(
+        previousBar ? previousBar.close : bar && bar.open
+    );
+    if (!Number.isFinite(close) || !Number.isFinite(comparisonPrice)) {
+        return A_SHARE_FLAT_VOLUME_COLOR;
+    }
+    if (close === comparisonPrice) {
+        return A_SHARE_FLAT_VOLUME_COLOR;
+    }
+    return close > comparisonPrice ? A_SHARE_UP_COLOR : A_SHARE_DOWN_COLOR;
 }
 
 function getDailyPreviousBar(index) {
@@ -5058,7 +5082,7 @@ function renderChartData() {
     const volume = withLatestDayMinuteWhitespace(barsCache.map((item, index) => ({
         time: toChartTime(item.time),
         value: getDisplayedVolumeValue(item),
-        color: getAShareBarColor(item, getDailyPreviousBar(index))
+        color: getAShareVolumeColor(item, getDailyPreviousBar(index))
     })));
     if (isMainChartLineMode()) {
         candlestickSeries.setData([]);

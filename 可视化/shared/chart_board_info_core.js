@@ -30,7 +30,10 @@ function resolveApiBaseUrl() {
         /* ignore */
     }
     try {
-        if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+        if (window.location.protocol === "https:") {
+            return window.location.origin;
+        }
+        if (window.location.protocol === "http:") {
             return `http://${window.location.hostname}:8000`;
         }
     } catch {

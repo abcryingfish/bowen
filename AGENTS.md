@@ -98,7 +98,7 @@ flowchart LR
 | `stock_basic_data_daily` | `工具/获得股票日频数据.py` | 日 K OHLCV |
 | `qmt_turnover_data` | `工具/获得股票日频换手率.py` | QMT 日 K + Capital 流通股本计算换手率；换手率主链路 |
 | `qmt_company_data/table=factor_fundamental_valuation` | `工具/获得市值数据.py` | PE/PB/PS/市值等估值 |
-| `stock_adj_daily` | `工具/获得股票日频复权因子.py` | 复权因子分段 |
+| `stock_adj_daily` / `stock_adj_daily_raw` | `工具/qmt获得股票日频复权因子.py` | QMT 复权三层数据：raw 原始事件 → `adj_factor_segments.parquet` 分段 → `wide_xdy` 每日展开；详见 `工具/AGENTS.md` |
 | `stock_basic_data_mins` | `工具/获得股票分钟级数据.py` | 1 分钟 K |
 | `index_data_daily` | `工具/获得指数日频数据.py` | 指数日 K |
 | `signal_daily` | 因子 notebook + `工具/增量信号保存.py` | 因子信号 `factor=*/year=*/month=*/merged.parquet` |

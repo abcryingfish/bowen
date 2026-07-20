@@ -83,8 +83,7 @@ def signal_db_path(trading_day: str | None = None) -> Path:
 
 
 def factor_state_db_path(trading_day: str | None = None) -> Path:
-    day = trading_day or datetime.now().strftime("%Y-%m-%d")
-    return Path(r"D:\database\realtime_factor_state") / f"factor_state_{day}.sqlite"
+    return Path(r"D:\database\realtime_factor_state\factor_state.sqlite")
 
 
 def _connect_sqlite(path: str | Path, *, read_only: bool = False) -> sqlite3.Connection:
@@ -198,6 +197,8 @@ class CodeRuntimeState:
     prior_super_strong_no_concentration: np.ndarray = field(
         default_factory=lambda: np.zeros(4, dtype=np.float64)
     )
+    last_adj_factor: float = 1.0
+    last_adj_factor_date: str = ""
 
 
 def ensure_state_schema(db_path: str | Path) -> None:
@@ -226,6 +227,8 @@ def ensure_state_schema(db_path: str | Path) -> None:
                 cum_high REAL,
                 cum_low REAL,
                 prior_super_strong_no_concentration_blob BLOB
+                ,last_adj_factor REAL NOT NULL DEFAULT 1.0
+                ,last_adj_factor_date TEXT NOT NULL DEFAULT ''
             );
             """
         )
@@ -264,17 +267,25 @@ def save_runtime_states(
                 "prior_super_strong_no_concentration_blob": _array_to_blob(
                     state.prior_super_strong_no_concentration
                 ),
+                "last_adj_factor": float(state.last_adj_factor),
+                "last_adj_factor_date": str(state.last_adj_factor_date or ""),
             }
         )
     conn = _connect_sqlite(db_path)
     try:
-        conn.execute(
-            "INSERT OR REPLACE INTO state_meta(key, value) VALUES('algorithm_version', ?)",
-            (algorithm_version,),
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO state_meta(key, value) VALUES('trading_day', ?)",
-            (trading_day,),
+        state_dates = [str(row["state_date"]) for row in rows if str(row["state_date"]).strip()]
+        meta_values = {
+            "schema_version": "2",
+            "algorithm_version": algorithm_version,
+            "trading_day": trading_day,
+            "state_date": max(state_dates) if state_dates else "",
+            "adjust_mode": "backward",
+            "code_count": str(len(rows)),
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        conn.executemany(
+            "INSERT OR REPLACE INTO state_meta(key, value) VALUES(?, ?)",
+            list(meta_values.items()),
         )
         conn.executemany(
             """
@@ -283,12 +294,14 @@ def save_runtime_states(
                 low_blob, close_blob, volume_blob, float_shares, chip_blob,
                 chip_base_low, chip_n_bins, recent_abs_concentration_blob,
                 cum_high, cum_low, prior_super_strong_no_concentration_blob
+                ,last_adj_factor, last_adj_factor_date
             )
             VALUES (
                 :htsc_code, :state_date, :history_dates_json, :open_blob, :high_blob,
                 :low_blob, :close_blob, :volume_blob, :float_shares, :chip_blob,
                 :chip_base_low, :chip_n_bins, :recent_abs_concentration_blob,
                 :cum_high, :cum_low, :prior_super_strong_no_concentration_blob
+                ,:last_adj_factor, :last_adj_factor_date
             )
             """,
             rows,
@@ -327,6 +340,8 @@ def load_runtime_states(db_path: str | Path) -> dict[str, CodeRuntimeState]:
             prior_super_strong_no_concentration=_blob_to_array(
                 row["prior_super_strong_no_concentration_blob"]
             ),
+            last_adj_factor=float(row["last_adj_factor"] or 1.0),
+            last_adj_factor_date=str(row["last_adj_factor_date"] or ""),
         )
     return states
 
@@ -353,12 +368,14 @@ def _frame_for_codes(
     codes: list[str],
     field: str,
 ) -> pd.DataFrame:
-    series_by_code = {}
-    all_dates: list[str] = []
+    series_by_code: dict[str, pd.Series] = {}
+    all_dates: set[str] = set()
     for code in codes:
         state = states[code]
-        history = getattr(state, f"{field}_history")
-        values = list(history.astype(float))
+        history = np.asarray(getattr(state, f"{field}_history"), dtype=float)
+        history_length = min(len(history), len(state.history_dates))
+        dates = list(state.history_dates[-history_length:]) if history_length else []
+        values = list(history[-history_length:]) if history_length else []
         quote = quotes_by_code.get(code, {})
         if field == "close":
             current = quote.get("last_price")
@@ -366,11 +383,14 @@ def _frame_for_codes(
             current = quote.get("pvolume", quote.get("volume"))
         else:
             current = quote.get(field)
+        if field in {"open", "high", "low", "close"} and current is not None:
+            current = float(current) * float(state.last_adj_factor or 1.0)
         values.append(float(current) if current is not None else math.nan)
-        dates = [*state.history_dates, "TODAY"]
-        all_dates = dates if not all_dates else all_dates
-        series_by_code[code] = values
-    return pd.DataFrame(series_by_code, index=pd.Index(all_dates))
+        dates.append("TODAY")
+        all_dates.update(dates[:-1])
+        series_by_code[code] = pd.Series(values, index=dates, dtype=float)
+    index = pd.Index([*sorted(all_dates), "TODAY"])
+    return pd.DataFrame(series_by_code).reindex(index)
 
 
 def _positive(frame: pd.DataFrame) -> pd.DataFrame:
@@ -423,9 +443,10 @@ def _compute_selected_chip_outputs(
     quote: dict[str, Any],
     now: datetime,
 ) -> dict[str, float]:
-    high = float(quote.get("high") or quote.get("last_price") or math.nan)
-    low = float(quote.get("low") or quote.get("last_price") or math.nan)
-    close = float(quote.get("last_price") or math.nan)
+    adj_factor = float(state.last_adj_factor or 1.0)
+    high = float(quote.get("high") or quote.get("last_price") or math.nan) * adj_factor
+    low = float(quote.get("low") or quote.get("last_price") or math.nan) * adj_factor
+    close = float(quote.get("last_price") or math.nan) * adj_factor
     volume = float(quote.get("pvolume", quote.get("volume")) or 0.0)
     turnover = estimate_full_day_turnover(volume, state.float_shares, now)
     chip, base_low, n_bins = _update_chip_one_day_py(
@@ -588,6 +609,7 @@ class RealtimeFactorEngine:
         chip = self.chip_provider(chip_candidates, quotes, now) if chip_candidates else {}
         sell_volume = self.sell_volume_provider(sell_candidates, quotes) if sell_candidates else {}
         events: list[dict[str, Any]] = []
+        snapshot_values: dict[tuple[str, str], float] = {}
         for code in sorted(fast):
             quote = quotes_by_code.get(code, {})
             source_ts = quote.get("ts")
@@ -606,6 +628,19 @@ class RealtimeFactorEngine:
             prior = self.states.get(code).prior_super_strong_no_concentration if code in self.states else []
             tdx_five = bool(tdx_today or np.nanmax(np.append(prior, 0.0)) >= 1.0)
             sell_signal = bool(flags.get("sell_base") and sell_volume.get(code, False))
+            for name, value in {
+                "total_buy_base": float(bool(flags.get("total_buy_base"))),
+                "tdx_base": float(bool(flags.get("tdx_base"))),
+                "sell_base": float(bool(flags.get("sell_base"))),
+                "concentration_total_score": float(chip_values.get("concentration_total_score", 0.0)),
+                "chip_peak_score": float(chip_values.get("chip_peak_score", 0.0)),
+                "turnover_estimate": float(turnover_estimate or 0.0),
+                "sell_volume_confirm": float(bool(sell_volume.get(code, False))),
+                "tdx_five_day_level6_no_concentration": float(tdx_five),
+                "total_buy_signal": float(total_buy),
+                "sell_factor_1_5_120": float(sell_signal),
+            }.items():
+                snapshot_values[(code, name)] = value
             for signal_name, signal_value in (
                 ("tdx_five_day_level6_no_concentration", tdx_five),
                 ("total_buy_signal", total_buy),
@@ -641,5 +676,6 @@ class RealtimeFactorEngine:
             "sell_candidate_count": len(sell_candidates),
             "chip_candidate_count": len(chip_candidates),
             "signal_count": len(events),
+            "snapshot_values": snapshot_values,
             "calc_elapsed_ms": elapsed_ms,
         }

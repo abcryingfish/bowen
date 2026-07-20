@@ -26,6 +26,8 @@ import polars as pl
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MORPH_DIR = PROJECT_ROOT / "形态趋势通道因子"
 DEFAULT_MARKET_EQUITY_PATH = r"D:\database\stock_basic_data_daily"
+DEFAULT_MARKET_ETF_PATH = r"D:\database\ETF_basic_data_daily"
+DEFAULT_MARKET_SOURCE_PATHS = [DEFAULT_MARKET_EQUITY_PATH, DEFAULT_MARKET_ETF_PATH]
 DEFAULT_ADJ_WIDE_BASE_PATH = r"D:\database\stock_adj_daily\wide_xdy"
 DEFAULT_OUTPUT_BASE = r"D:\database\signal_daily_形态\candlestick_no_vol"
 DEFAULT_CODES = ""
@@ -62,6 +64,48 @@ def _load_meta_module():
 def _glob_parquet_pattern(base_path: str) -> str:
     normalized = base_path.replace("\\", "/")
     return f"{normalized}/year=*/month=*/merged.parquet"
+
+
+def _normalize_market_source_paths(source_paths: str | list[str] | tuple[str, ...]) -> list[str]:
+    if isinstance(source_paths, str):
+        raw_parts = source_paths.replace("\n", ";").split(";")
+    else:
+        raw_parts = [str(path) for path in source_paths]
+    return [str(path).strip() for path in raw_parts if str(path).strip()]
+
+
+def _existing_market_daily_globs(source_paths: str | list[str] | tuple[str, ...]) -> list[str]:
+    globs: list[str] = []
+    for source_path in _normalize_market_source_paths(source_paths):
+        root = Path(source_path)
+        if not root.exists():
+            print(f"[WARN] 日 K 数据目录不存在，已跳过: {root}")
+            continue
+        if not list(root.glob("year=*/month=*/merged.parquet")):
+            print(f"[WARN] 日 K 数据目录无 merged.parquet，已跳过: {root}")
+            continue
+        globs.append(_glob_parquet_pattern(str(root)))
+    return globs
+
+
+def _read_parquet_source_sql(source_globs: list[str]) -> str:
+    if not source_globs:
+        raise FileNotFoundError("没有可用日 K 数据源")
+    escaped = [str(path).replace("\\", "/").replace("'", "''") for path in source_globs]
+    path_list = "[" + ", ".join(f"'{path}'" for path in escaped) + "]"
+    return f"read_parquet({path_list}, hive_partitioning = true, union_by_name = true)"
+
+
+def resolve_market_source_paths(args: argparse.Namespace) -> list[str]:
+    market_paths = str(getattr(args, "market_paths", "") or "").strip()
+    if market_paths:
+        return _normalize_market_source_paths(market_paths)
+
+    paths = [args.market_equity_path]
+    etf_path = str(getattr(args, "market_etf_path", "") or "").strip()
+    if etf_path:
+        paths.append(etf_path)
+    return _normalize_market_source_paths(paths)
 
 
 def _normalize_date_str(value: str) -> str:
@@ -144,8 +188,11 @@ def scan_latest_ts_by_code(parquet_glob: str) -> dict[str, pd.Timestamp]:
     return out
 
 
-def scan_market_date_range_by_code(market_equity_path: str) -> tuple[dict[str, pd.Timestamp], dict[str, pd.Timestamp]]:
-    parquet_glob = _glob_parquet_pattern(market_equity_path)
+def scan_market_date_range_by_code(
+    market_source_paths: str | list[str] | tuple[str, ...],
+) -> tuple[dict[str, pd.Timestamp], dict[str, pd.Timestamp]]:
+    source_globs = _existing_market_daily_globs(market_source_paths)
+    source_sql = _read_parquet_source_sql(source_globs)
     conn = duckdb.connect(database=":memory:")
     try:
         rows = conn.execute(
@@ -154,11 +201,10 @@ def scan_market_date_range_by_code(market_equity_path: str) -> tuple[dict[str, p
                 UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
                 MIN({_BAR_TIME_SQL}) AS min_time,
                 MAX({_BAR_TIME_SQL}) AS max_time
-            FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
+            FROM {source_sql}
             WHERE htsc_code IS NOT NULL
             GROUP BY 1
-            """,
-            [parquet_glob],
+            """
         ).fetchdf()
     finally:
         conn.close()
@@ -190,10 +236,12 @@ def build_stock_fill_plan(
     start_date: str,
     end_date: str,
     lookback_days: int,
+    full_history_missing_codes: set[str] | None = None,
 ) -> pd.DataFrame:
-    """按股票生成补写计划，语义对齐 notebook 的 build_factor_fill_plan。"""
+    """按标的生成补写计划，语义对齐 notebook 的 build_factor_fill_plan。"""
     start_dt = pd.Timestamp(start_date).floor("D")
     end_dt = pd.Timestamp(end_date).floor("D")
+    full_history_missing_codes = {str(code).strip().upper() for code in (full_history_missing_codes or set())}
     latest_values = [
         pd.Timestamp(value).floor("D")
         for value in signal_latest.values()
@@ -212,9 +260,13 @@ def build_stock_fill_plan(
         last_dt = signal_latest.get(code)
 
         if last_dt is None:
-            plan_start = effective_start_dt
+            if code in full_history_missing_codes:
+                plan_start = start_dt
+                reason = f"新增非股票标的尚无形态 events，从 start-date={start_dt.date()} 回补历史"
+            else:
+                plan_start = effective_start_dt
+                reason = f"该标的尚无形态 events，按全市场 mark={incremental_mark.date()} 增量补写"
             status = "missing"
-            reason = f"该股票尚无形态 events，按全市场 mark={incremental_mark.date()} 增量补写"
         elif last_dt < target_end:
             plan_start = max(effective_start_dt, (last_dt - pd.Timedelta(days=rewind_days)).floor("D"))
             status = "stale"
@@ -280,7 +332,7 @@ def print_plan_summary(plan_df: pd.DataFrame, *, lookback_days: int, query_start
     need = plan_df[plan_df["status"].isin(["missing", "stale"])]
     print(f"[PLAN] 回看窗口(天): {lookback_days} + buffer {LOOKBACK_BUFFER_DAYS}")
     print(f"[PLAN] 查询区间(含回看): {query_start} ~ {query_end}")
-    print(f"[PLAN] 待补写股票: {len(need)} / {len(plan_df)}")
+    print(f"[PLAN] 待补写标的: {len(need)} / {len(plan_df)}")
     if not need.empty:
         print(
             "[PLAN] 补写起点范围: "
@@ -430,36 +482,33 @@ def _write_part_parquet(df: pl.DataFrame, file_path: Path) -> None:
     raise OSError(f"写入 parquet 失败: {file_path}") from last_error
 
 
-def fetch_universe_codes_from_market_equity(market_equity_path: str) -> list[str]:
-    if not os.path.isdir(market_equity_path):
-        raise FileNotFoundError(f"日 K 数据目录不存在: {market_equity_path}")
-
-    parquet_glob = _glob_parquet_pattern(market_equity_path)
+def fetch_universe_codes_from_market_equity(market_source_paths: str | list[str] | tuple[str, ...]) -> list[str]:
+    source_globs = _existing_market_daily_globs(market_source_paths)
+    source_sql = _read_parquet_source_sql(source_globs)
     conn = duckdb.connect(database=":memory:")
     try:
         rows = conn.execute(
-            """
+            f"""
             SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
-            FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
+            FROM {source_sql}
             WHERE htsc_code IS NOT NULL
               AND TRIM(CAST(htsc_code AS VARCHAR)) <> ''
               AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
             ORDER BY htsc_code
-            """,
-            [parquet_glob],
+            """
         ).fetchdf()
     finally:
         conn.close()
 
     if rows.empty:
-        raise RuntimeError(f"未在 {market_equity_path} 找到任何股票代码")
+        raise RuntimeError(f"未在 {source_globs} 找到任何标的代码")
     return rows["htsc_code"].astype(str).tolist()
 
 
-def resolve_codes(codes_arg: str, market_equity_path: str) -> list[str]:
+def resolve_codes(codes_arg: str, market_source_paths: str | list[str] | tuple[str, ...]) -> list[str]:
     raw = str(codes_arg).strip()
     if not raw or raw.upper() in {"ALL", "*", "FULL", "MARKET"}:
-        codes = fetch_universe_codes_from_market_equity(market_equity_path)
+        codes = fetch_universe_codes_from_market_equity(market_source_paths)
         print(f"[UNIVERSE] 全市场 {len(codes)} 只（已排除 .YKRS）")
         return codes
     return [item.strip().upper() for item in raw.split(",") if item.strip()]
@@ -606,17 +655,15 @@ def apply_ratio_backward_adjustment(rows: pd.DataFrame, xdy_by_code: dict[str, p
 
 
 def load_ohlcv_from_duckdb(
-    market_equity_path: str,
+    market_source_paths: str | list[str] | tuple[str, ...],
     *,
     query_start_date: str,
     query_end_date: str,
     target_codes: list[str] | None = None,
     adj_wide_base_path: str = DEFAULT_ADJ_WIDE_BASE_PATH,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    if not os.path.isdir(market_equity_path):
-        raise FileNotFoundError(f"日 K 数据目录不存在: {market_equity_path}")
-
-    parquet_glob = _glob_parquet_pattern(market_equity_path)
+    source_globs = _existing_market_daily_globs(market_source_paths)
+    source_sql = _read_parquet_source_sql(source_globs)
     filters = [
         "open IS NOT NULL",
         "high IS NOT NULL",
@@ -626,7 +673,7 @@ def load_ohlcv_from_duckdb(
         f"CAST(strftime({_BAR_TIME_SQL}, '%Y-%m-%d') AS DATE) <= CAST(? AS DATE)",
         "UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'",
     ]
-    params: list = [parquet_glob, query_start_date, query_end_date]
+    params: list = [query_start_date, query_end_date]
 
     if target_codes:
         placeholders = ", ".join(["?"] * len(target_codes))
@@ -645,7 +692,7 @@ def load_ohlcv_from_duckdb(
         TRY_CAST(low AS DOUBLE) AS low,
         TRY_CAST(close AS DOUBLE) AS close,
         TRY_CAST(volume AS DOUBLE) AS volume
-    FROM read_parquet(?, hive_partitioning = true, union_by_name = true)
+    FROM {source_sql}
     WHERE {' AND '.join(filters)}
     ORDER BY htsc_code, bar_time
     """
@@ -657,7 +704,7 @@ def load_ohlcv_from_duckdb(
         conn.close()
 
     if rows.empty:
-        raise RuntimeError(f"未在 {market_equity_path} 找到 OHLCV 数据")
+        raise RuntimeError(f"未在 {source_globs} 找到 OHLCV 数据")
 
     rows["date_key"] = pd.to_datetime(rows["bar_time"], errors="coerce").dt.strftime("%Y%m%d").astype("int64")
     rows = rows.dropna(subset=["date_key"])
@@ -1141,7 +1188,7 @@ def run_incremental_save(output_base: Path, python_exe: str, *, prefer_new: bool
 def _run_pipeline_once(
     pattern,
     meta_module,
-    market_equity_path: str,
+    market_source_paths: list[str],
     output_base: Path,
     *,
     query_start_date: str,
@@ -1157,7 +1204,7 @@ def _run_pipeline_once(
         load_codes = None
 
     open_prices, high_prices, low_prices, close_prices, volume = load_ohlcv_from_duckdb(
-        market_equity_path,
+        market_source_paths,
         query_start_date=query_start_date,
         query_end_date=query_end_date,
         target_codes=load_codes,
@@ -1222,6 +1269,12 @@ def main() -> None:
         help=">0 时分批（legacy）；0=单次全市场查询（默认，对齐 notebook）",
     )
     parser.add_argument("--market-equity-path", default=DEFAULT_MARKET_EQUITY_PATH)
+    parser.add_argument("--market-etf-path", default=DEFAULT_MARKET_ETF_PATH)
+    parser.add_argument(
+        "--market-paths",
+        default="",
+        help="分号分隔的日 K 数据根目录；非空时覆盖 --market-equity-path/--market-etf-path",
+    )
     parser.add_argument(
         "--adj-wide-base-path",
         default=DEFAULT_ADJ_WIDE_BASE_PATH,
@@ -1275,7 +1328,14 @@ def main() -> None:
     )
 
     signal_latest = scan_signal_latest_from_output(output_base)
-    market_min, market_max = scan_market_date_range_by_code(args.market_equity_path)
+    market_source_paths = resolve_market_source_paths(args)
+    print(f"[SOURCE] 日 K 数据源: {market_source_paths}")
+    market_min, market_max = scan_market_date_range_by_code(market_source_paths)
+    try:
+        stock_code_set = set(fetch_universe_codes_from_market_equity([args.market_equity_path]))
+    except Exception as exc:
+        print(f"[WARN] 股票代码池读取失败，无法精确识别非股票新增标的: {exc}")
+        stock_code_set = set()
 
     raw_codes = str(args.codes).strip()
     is_full_market = not raw_codes or raw_codes.upper() in {"ALL", "*", "FULL", "MARKET"}
@@ -1284,7 +1344,7 @@ def main() -> None:
         codes = [c for c in codes if not c.endswith(".YKRS")]
         print(f"[UNIVERSE] 全市场 {len(codes)} 只")
     else:
-        codes = resolve_codes(args.codes, args.market_equity_path)
+        codes = resolve_codes(args.codes, market_source_paths)
 
     mode = str(args.mode).lower()
     if mode == "auto" and not signal_latest:
@@ -1318,6 +1378,7 @@ def main() -> None:
             start_date=start_date,
             end_date=end_date,
             lookback_days=lookback_days,
+            full_history_missing_codes={code for code in codes if code not in stock_code_set},
         )
         check_missing = True
 
@@ -1350,7 +1411,7 @@ def main() -> None:
             total_events += _run_pipeline_once(
                 pattern,
                 meta_module,
-                args.market_equity_path,
+                market_source_paths,
                 output_base,
                 query_start_date=query_start,
                 query_end_date=query_end,
@@ -1363,7 +1424,7 @@ def main() -> None:
         total_events = _run_pipeline_once(
             pattern,
             meta_module,
-            args.market_equity_path,
+            market_source_paths,
             output_base,
             query_start_date=query_start,
             query_end_date=query_end,

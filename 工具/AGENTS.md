@@ -16,9 +16,11 @@
 | `D:\database\stock_basic_data_daily` | `获得股票日频数据.py` | 日 K OHLCV；`time` + `htsc_code` |
 | `D:\database\qmt_turnover_data` | `获得股票日频换手率.py` | QMT 日 K `volume` + `qmt_company_data/table=Capital` 的 `circulating_capital` 计算换手率 |
 | `D:\database\qmt_company_data\table=factor_fundamental_valuation` | `获得市值数据.py` | `get_stock_valuation` 估值字段；与 market_equity 同属财报父目录 |
-| `D:\database\stock_adj_daily` | `获得股票日频复权因子.py` | `adj_factor_segments.parquet`（+ 可选 wide） |
+| `D:\database\stock_adj_daily_raw` | `qmt获得股票日频复权因子.py` | QMT 原始除权除息事件，按 `event_date` 年月分区 |
+| `D:\database\stock_adj_daily` | `qmt获得股票日频复权因子.py` | 处理后的复权分段 `adj_factor_segments.parquet` + 每日展开宽表 `wide_xdy` |
 | `D:\database\stock_basic_data_mins` | `获得股票分钟级数据.py` | 1min K 线 |
 | `D:\database\index_data_daily` | `获得指数日频数据.py` | 默认 000001.SH / 399001.SZ |
+| `D:\database\index_data_daily` | `获得同花顺1级指数日频数据.py` | 同花顺软件一级512指数，代码后缀 `.THS`，15:30后允许写当天 |
 | `D:\database\signal_daily` | 因子 notebook + `增量信号保存.py` | `factor=*/year=*/month=*/` |
 
 ## Shared partition layout (most daily scripts)
@@ -28,6 +30,21 @@
 - Date column on disk: **`time`** (API `trading_day` mapped to day-truncated datetime).
 - DuckDB read pattern: `read_parquet('{base}/year=*/month=*/merged.parquet', hive_partitioning=1, union_by_name=true)`
 
+## QMT 复权数据三层结构
+
+`qmt获得股票日频复权因子.py` 维护三层数据，默认起点为 `2010-01-01`：
+
+| 层级 | 路径 | 作用 |
+|------|------|------|
+| raw 原始事件 | `D:\database\stock_adj_daily_raw\year=YYYY\month=MM\merged.parquet` | 保存 QMT `get_divid_factors` 原始除权除息事件，如 `event_date`、`interest`、`stockBonus`、`stockGift`、`allotNum`、`allotPrice`、`dr` |
+| segments 分段 | `D:\database\stock_adj_daily\adj_factor_segments.parquet` | 将 raw 事件转换为 `htsc_code + begin_date + end_date + xdy` 连续区间 |
+| wide_xdy 每日展开 | `D:\database\stock_adj_daily\wide_xdy\year=YYYY\month=MM\merged.parquet` | 将 segments 展开为按月宽表，列为日期，供 `ZXW因子/ZXW策略技术因子生成.py` 快速读取并做比例后复权 |
+
+加工链路：`raw` → `adj_factor_segments.parquet` → `wide_xdy`。  
+删除或改复权起点时要三层同步：只删 `wide_xdy/year<YYYY` 不够，`adj_factor_segments.parquet` 里早期分段仍可能在重建时重新展开到后续日期；如果要彻底改变起点，应先过滤 raw/segments，再重建 `wide_xdy`。
+
+当前本地口径已按 `2010-01-01` 起点处理：raw 与 `wide_xdy` 最小年份为 2010，segments 中 `begin_date < 2010-01-01` 的行应为 0。正常增量运行不会补回 2010 年前数据；只有手动传入类似 `--no-incremental --default-start 2004-01-01` 才会重新请求早期事件。
+
 ## Scripts (edit in place; preserve incremental + partition layout unless task says otherwise)
 
 | Path | API / source | Purpose |
@@ -35,9 +52,10 @@
 | `获得股票日频数据.py` | `get_all_stocks_info` + batch daily K | All-market daily OHLCV → `stock_basic_data_daily`; exports universe CSV with pinyin. |
 | `获得股票日频换手率.py` | local QMT daily K + Capital | 本地计算 `turnover_rate = volume / circulating_capital * 100` → `qmt_turnover_data`. |
 | `qmt公司数据获取.py` | QMT company data + daily close | Per-stock incremental valuation only → `qmt_company_data/table=factor_fundamental_valuation`. Saves: `htsc_code`, `exchange`, `time`, `pe`, `pettm`, `pb`, `pc`, `pcttm`, `ps`, `psttm`, `floating_market_val`, `total_market_val`. **Does not** save `avg_vol_per_deal`, `avg_value_per_deal`, price/name fields. |
-| `获得股票日频复权因子.py` | `get_adj_factor` (xdy segments) | Segments → `adj_factor_segments.parquet`; optional `--emit-wide`. Respect `end_date` open segment vs `--adj-end`. |
+| `qmt获得股票日频复权因子.py` | QMT `get_divid_factors` | Raw events → `stock_adj_daily_raw`; segments → `stock_adj_daily\adj_factor_segments.parquet`; daily wide table → `stock_adj_daily\wide_xdy`. |
 | `获得股票分钟级数据.py` | `signal_daily` pool + `stock_basic_data_daily` years + `get_kline` | Serial 1 stock × 1 year; default `--max-year 2025`; → `stock_basic_data_mins`. |
 | `获得指数日频数据.py` | `get_kline` (one index per call) | Default indices 000001.SH / 399001.SZ → `index_data_daily`. |
+| `获得同花顺1级指数日频数据.py` | 同花顺年度日线接口 + 客户端名称表 | 软件一级512指数 → `index_data_daily`；前缀881/882/885/886；按每只本地末日重叠增量。 |
 | `增量信号保存.py` | local `part_*.parquet` | Merge under `factor=*/year=*/month=*` → `merged.parquet`; dedupe `time + htsc_code`; **old value wins**. |
 | `export_index_lists_from_doc.py` | INSIGHT index doc markdown | Export Shanghai/SZ/Shenwan L3 index lists to CSV (no live pull). |
 | `各类数据检查.ipynb` | DuckDB | Sanity checks over daily / liquidity / index / signal / adj paths. |
@@ -72,6 +90,7 @@ $py = c:\Users\Administrator\Desktop\python_venv\.venv\Scripts\python.exe
 & $py 工具/获得股票日频复权因子.py --base-dir D:\database\stock_adj_daily
 & $py 工具/获得股票分钟级数据.py --max-year 2025
 & $py 工具/获得指数日频数据.py --base-dir D:\database\index_data_daily
+& $py 工具/获得同花顺1级指数日频数据.py --base-dir D:\database\index_data_daily
 & $py 工具/增量信号保存.py --base-dir D:\database\signal_daily --factor <FACTOR> --year <Y> --month <M>
 ```
 

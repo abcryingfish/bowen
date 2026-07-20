@@ -45,6 +45,7 @@ import json
 import math
 import os
 import re
+import sqlite3
 import shutil
 import time
 import uuid
@@ -71,10 +72,12 @@ from temp_today_market_cache import (
 MINUTE_BASE_PATH = r"D:\database\stock_basic_data_mins"
 DAILY_BASE_PATH = r"D:\database\stock_basic_data_daily"
 INDEX_DAILY_BASE_PATH = r"D:\database\index_data_daily"
+INDEX_UNIVERSE_PATH = Path(INDEX_DAILY_BASE_PATH) / "_meta" / "ths_level1_universe.parquet"
 ETF_DAILY_BASE_PATH = r"D:\database\ETF_basic_data_daily"
 PORTFOLIO_MINUTE_BASE_PATH = r"D:\database\stock_portfolio_data_mins"
 PORTFOLIO_DAILY_BASE_PATH = r"D:\database\stock_portfolio_data_daily"
 SIGNAL_DAILY_BASE_PATH = r"D:\database\signal_daily"
+INTRADAY_SIGNAL_SNAPSHOT_BASE_PATH = r"D:\database\intraday_signal_snapshot"
 SIGNAL_DAILY_MORPH_BASE_PATH = r"D:\database\signal_daily_形态"
 MORPH_CANDLESTICK_SOURCE_DIR = "candlestick_no_vol"
 MORPH_CANDLESTICK_MANIFEST_FILE = "morph_candlestick_manifest.json"
@@ -425,6 +428,9 @@ _stock_universe_mtime: float = 0.0
 _etf_universe_lock = Lock()
 _etf_universe_cache: list[dict[str, str]] = []
 _etf_universe_mtime: float = 0.0
+_index_universe_lock = Lock()
+_index_universe_cache: list[dict[str, str]] = []
+_index_universe_mtime: float = 0.0
 
 
 def _build_name_pinyin_aliases(name: str) -> tuple[str, ...]:
@@ -566,7 +572,16 @@ def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
     """返回可选指数列表，供组合结果页 portfolio-extra-select 使用。"""
     if force_refresh:
         _refresh_index_market_code_cache()
+        _load_index_universe_records(force_refresh=True)
     code_set = get_index_market_code_set()
+    labels = dict(INDEX_CODE_LABELS)
+    labels.update(
+        {
+            item["code"]: item["name"]
+            for item in _load_index_universe_records()
+            if item.get("code") and item.get("name")
+        }
+    )
     ordered: list[str] = []
     for code in DEFAULT_INDEX_CODES:
         upper = code.upper()
@@ -578,7 +593,7 @@ def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
     items = [
         {
             "code": code,
-            "name": INDEX_CODE_LABELS.get(code, code),
+            "name": labels.get(code, code),
         }
         for code in ordered
     ]
@@ -1790,6 +1805,104 @@ def _build_signal_sql_chronological_limited(path_count: int, max_rows: int) -> s
     """
 
 
+def _intraday_snapshot_path_for_timestamp(time_ts: int) -> Path | None:
+    try:
+        dt = datetime.fromtimestamp(int(time_ts))
+    except (TypeError, ValueError, OSError):
+        return None
+    if dt.date() > datetime.now().date():
+        return None
+    root = Path(INTRADAY_SIGNAL_SNAPSHOT_BASE_PATH)
+    requested = root / f"intraday_signal_snapshot_{dt:%Y-%m-%d}.sqlite"
+    if requested.is_file():
+        return requested
+    # 周末/节假日允许回退到最近一个已生成的交易日，但历史日期仍不跨日回退。
+    if dt.date() != datetime.now().date():
+        return None
+    candidates = sorted(root.glob("intraday_signal_snapshot_????-??-??.sqlite"), reverse=True)
+    for candidate in candidates:
+        try:
+            candidate_day = datetime.strptime(candidate.stem[-10:], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if candidate_day <= dt.date():
+            return candidate
+    return None
+
+
+def _query_intraday_signal_fallback(code: str, factor: str, time_ts: int) -> dict[str, Any] | None:
+    path = _intraday_snapshot_path_for_timestamp(time_ts)
+    if path is None:
+        return None
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    try:
+        meta = conn.execute("SELECT * FROM snapshot_meta WHERE id=1").fetchone()
+        if meta is None:
+            return None
+        factor_rows = conn.execute(
+            "SELECT factor_name, value FROM snapshot_values WHERE htsc_code=?",
+            (str(code).strip().upper(),),
+        ).fetchall()
+        available = {str(item["factor_name"]) for item in factor_rows}
+        resolved = _resolve_factor_column_name(str(factor).strip(), available)
+        row = next((item for item in factor_rows if str(item["factor_name"]) == resolved), None)
+        if row is None:
+            return None
+        quote_time = int(datetime.strptime(str(meta["quote_cutoff_time"]), "%Y-%m-%d %H:%M:%S").timestamp())
+        signal_time = (quote_time // 86400) * 86400
+        return {
+            "signals": [{"time": signal_time, "value": float(row["value"] or 0.0)}],
+            "meta": {
+                "code": code, "interval": "1day", "factor": factor,
+                "resolved_factor": resolved, "server_time": int(time.time()),
+                "last_signal_time": signal_time, "has_new_data": True,
+                "row_count": 1, "from": None, "to": time_ts,
+                "base_path": str(path), "source": "intraday_snapshot",
+                "provisional": True, "quote_cutoff_time": str(meta["quote_cutoff_time"]),
+                "round_id": int(meta["round_id"]),
+            },
+        }
+    finally:
+        conn.close()
+
+
+def _query_intraday_factor_snapshot_fallback(code: str, time_ts: int) -> dict[str, Any] | None:
+    path = _intraday_snapshot_path_for_timestamp(time_ts)
+    if path is None:
+        return None
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    try:
+        meta = conn.execute("SELECT * FROM snapshot_meta WHERE id=1").fetchone()
+        if meta is None:
+            return None
+        rows = conn.execute(
+            "SELECT factor_name, value FROM snapshot_values WHERE htsc_code=? ORDER BY factor_name",
+            (str(code).strip().upper(),),
+        ).fetchall()
+        if not rows:
+            return None
+        quote_time = int(datetime.strptime(str(meta["quote_cutoff_time"]), "%Y-%m-%d %H:%M:%S").timestamp())
+        internal_names = [str(row["factor_name"]) for row in rows]
+        labels = _build_factor_display_label_map(internal_names)
+        factors = {labels.get(str(row["factor_name"]), str(row["factor_name"])): float(row["value"] or 0.0) for row in rows}
+        return {
+            "time": quote_time,
+            "factors": factors,
+            "meta": {
+                "code": code, "interval": "1day", "mode": "all", "group_id": "",
+                "count": len(factors), "total_factor_count": len(factors),
+                "base_path": str(path), "server_time": int(time.time()),
+                "source": "intraday_snapshot", "provisional": True,
+                "quote_cutoff_time": str(meta["quote_cutoff_time"]),
+                "round_id": int(meta["round_id"]),
+            },
+        }
+    finally:
+        conn.close()
+
+
 def _effective_couple_component(raw: Any) -> float:
     """NULL/缺失在 SQL 侧已 COALESCE 为 0；非有限数按 0 处理。"""
     if raw is None:
@@ -2115,6 +2228,55 @@ def _load_etf_universe_records(force_refresh: bool = False) -> list[dict[str, st
             )
         _etf_universe_cache = records
         _etf_universe_mtime = mtime
+        return list(records)
+
+
+def _load_index_universe_records(force_refresh: bool = False) -> list[dict[str, str]]:
+    """加载同花顺指数代码与中文名称元数据。"""
+    global _index_universe_cache, _index_universe_mtime
+    path = Path(INDEX_UNIVERSE_PATH)
+    if not path.is_file():
+        return []
+
+    mtime = path.stat().st_mtime
+    with _index_universe_lock:
+        if not force_refresh and _index_universe_cache and mtime == _index_universe_mtime:
+            return list(_index_universe_cache)
+
+        conn = duckdb.connect(database=":memory:")
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS code,
+                    COALESCE(CAST(name AS VARCHAR), '') AS name,
+                    COALESCE(CAST(pinyin_initials AS VARCHAR), '') AS pinyin_initials,
+                    COALESCE(CAST(security_type AS VARCHAR), 'index') AS security_type
+                FROM read_parquet(?)
+                WHERE htsc_code IS NOT NULL
+                  AND TRIM(CAST(htsc_code AS VARCHAR)) <> ''
+                ORDER BY code
+                """,
+                [str(path)],
+            ).fetchall()
+        finally:
+            conn.close()
+
+        records: list[dict[str, str]] = []
+        for row in rows:
+            if not row or not row[0]:
+                continue
+            records.append(
+                {
+                    "code": str(row[0]).strip().upper(),
+                    "name": str(row[1] or "").strip(),
+                    "pinyin_initials": str(row[2] or "").strip().upper(),
+                    "security_type": str(row[3] or "index").strip().lower() or "index",
+                    "name_pinyin_aliases": _build_name_pinyin_aliases(row[1] or ""),
+                }
+            )
+        _index_universe_cache = records
+        _index_universe_mtime = mtime
         return list(records)
 
 
@@ -2555,6 +2717,21 @@ def search_market_codes(
     etf_records = _load_etf_universe_records()
     if etf_records:
         universe_records = list(universe_records) + list(etf_records)
+    if parsed_interval == "1day":
+        index_records = _load_index_universe_records()
+        indexed_codes = {str(item.get("code") or "").upper() for item in index_records}
+        index_records = list(index_records) + [
+            {
+                "code": code,
+                "name": INDEX_CODE_LABELS.get(code, ""),
+                "pinyin_initials": "",
+                "name_pinyin_aliases": (),
+                "security_type": "index",
+            }
+            for code in sorted(get_index_market_code_set())
+            if code not in indexed_codes
+        ]
+        universe_records = list(universe_records) + index_records
     matched_items: list[dict[str, str]] = []
     seen_codes: set[str] = set()
 
@@ -3033,6 +3210,9 @@ def query_market_signal(
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
     if not os.path.exists(resolved_base_path):
+        fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
+        if fallback is not None:
+            return fallback
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
     available_factors = _get_cached_factor_names(resolved_base_path)
@@ -3042,6 +3222,9 @@ def query_market_signal(
         available_factors = _get_cached_factor_names(resolved_base_path, force_refresh=True)
         resolved_factor_name = _resolve_factor_column_name(factor_name, set(available_factors))
         if resolved_factor_name is None:
+            fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
+            if fallback is not None:
+                return fallback
             raise MarketDataValidationError(f"factor 不存在: {factor_name}")
 
     partition_paths = _build_factor_partition_paths(
@@ -3051,6 +3234,9 @@ def query_market_signal(
         params.to_ts,
     )
     if not partition_paths:
+        fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
+        if fallback is not None:
+            return fallback
         raise MarketDataNotFoundError("目标时间范围内未找到对应因子分区")
 
     sql = _build_signal_sql(len(partition_paths))
@@ -3080,7 +3266,39 @@ def query_market_signal(
 
     signals = [dedup_by_time[t] for t in sorted(dedup_by_time)]
     if not signals:
+        fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
+        if fallback is not None:
+            return fallback
         raise MarketDataNotFoundError("目标时间范围内未找到对应股票因子数据")
+
+    intraday_meta: dict[str, Any] = {}
+    if datetime.fromtimestamp(params.to_ts).date() == datetime.now().date():
+        fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
+        if fallback is not None and fallback.get("signals"):
+            intraday_point = dict(fallback["signals"][-1])
+            intraday_time = int(intraday_point["time"])
+            intraday_day = datetime.fromtimestamp(intraday_time).date()
+            formal_has_day = any(
+                datetime.fromtimestamp(int(point["time"])).date() == intraday_day
+                for point in signals
+            )
+            query_from_day = datetime.fromtimestamp(params.from_ts).date()
+            query_to_day = datetime.fromtimestamp(params.to_ts).date()
+            if (
+                not formal_has_day
+                and query_from_day <= intraday_day <= query_to_day
+            ):
+                signals.append(intraday_point)
+                signals.sort(key=lambda point: int(point["time"]))
+                signals = signals[-params.limit:]
+                fallback_meta = dict(fallback.get("meta", {}))
+                intraday_meta = {
+                    "source": "formal_with_intraday",
+                    "provisional": True,
+                    "quote_cutoff_time": fallback_meta.get("quote_cutoff_time"),
+                    "round_id": fallback_meta.get("round_id"),
+                    "intraday_base_path": fallback_meta.get("base_path"),
+                }
 
     latest_time = signals[-1]["time"] if signals else None
     has_new_data = False
@@ -3090,7 +3308,7 @@ def query_market_signal(
         else:
             has_new_data = latest_time > params.last_seen_bar_time
 
-    return {
+    result = {
         "signals": signals,
         "meta": {
             "code": params.code,
@@ -3106,6 +3324,8 @@ def query_market_signal(
             "base_path": resolved_base_path,
         },
     }
+    result["meta"].update(intraday_meta)
+    return result
 
 
 def _resolve_morph_candlestick_source_base(base_path: str) -> str:
@@ -3353,6 +3573,9 @@ def query_market_factor_snapshot(
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
     if not os.path.exists(resolved_base_path):
+        fallback = _query_intraday_factor_snapshot_fallback(parsed_code, parsed_time)
+        if fallback is not None:
+            return fallback
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
     available_factors = _get_cached_factor_names(resolved_base_path)
@@ -3409,6 +3632,28 @@ def query_market_factor_snapshot(
         selected_factors = [f for f in group_matched.get("children", []) if f in available_factors]
         if not selected_factors:
             raise MarketDataNotFoundError("该分组下没有可用因子")
+
+    intraday_fallback = _query_intraday_factor_snapshot_fallback(parsed_code, parsed_time)
+    if intraday_fallback is not None and datetime.fromtimestamp(parsed_time).date() == datetime.now().date():
+        formal_has_day = False
+        conn = duckdb.connect(database=":memory:")
+        try:
+            for factor_name in selected_factors:
+                paths = _build_factor_partition_paths(resolved_base_path, factor_name, parsed_time, parsed_time)
+                if not paths:
+                    continue
+                placeholders = ", ".join(["?"] * len(paths))
+                row = conn.execute(
+                    f"SELECT 1 FROM read_parquet([{placeholders}], union_by_name=true) WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR)))=UPPER(?) AND CAST(time AS DATE)=CAST(? AS DATE) LIMIT 1",
+                    [*paths, parsed_code, datetime.fromtimestamp(parsed_time).strftime("%Y-%m-%d")],
+                ).fetchone()
+                if row:
+                    formal_has_day = True
+                    break
+        finally:
+            conn.close()
+        if not formal_has_day:
+            return intraday_fallback
 
     factors: dict[str, float] = {}
     conn = duckdb.connect(database=":memory:")

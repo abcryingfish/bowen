@@ -23,8 +23,14 @@ import re
 import json
 import importlib
 import time
+import sys
 from pathlib import Path
 from datetime import datetime, timedelta
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from MACD因子 import get_factor_lookback_config as get_macd_lookback_config
 from KDJ因子 import get_factor_lookback_config as get_kdj_lookback_config
@@ -65,7 +71,10 @@ from 均线因子 import build_moving_average_factor_bundle
 from 放量下跌因子 import build_volume_drop_factor_bundle
 from 通达信强底信号 import build_tdx_bottom_alert_bundle
 from valid_bar_utils import compute_bundles_with_valid_bar
-BASE_PATH = r"D:\database\stock_basic_data_daily"   # 配置：合并后的数据根目录（只保留 year/month 分区）
+BASE_PATH = r"D:\database\stock_basic_data_daily"   # 配置：股票日频数据根目录（只保留 year/month 分区）
+INDEX_BASE_PATH = r"D:\database\index_data_daily"   # 指数日频数据根目录
+ETF_BASE_PATH = r"D:\database\ETF_basic_data_daily"   # ETF 日频数据根目录
+MARKET_DAILY_SOURCE_PATHS = [BASE_PATH, INDEX_BASE_PATH, ETF_BASE_PATH]
 VIEW_NAME = "stock_day_merged"
 
 # =========================
@@ -334,7 +343,7 @@ def _build_bundle_catalog_with_synthetic_data(selected_bundles: list[str]) -> di
                 catalog[bundle_key] = merged_name_map
                 computed_catalog[bundle_key] = merged_name_map
         except Exception as exc:
-            print(f"⚠️ 预估 bundle 因子目录失败，已跳过: {bundle_key}，原因: {exc}")
+            print(f"[WARN] 预估 bundle 因子目录失败，已跳过: {bundle_key}，原因: {exc}")
 
     if computed_catalog:
         _save_catalog_cache(
@@ -353,13 +362,56 @@ def _normalize_date_str(date_text: str) -> str:
     return dt.strftime("%Y-%m-%d")
 
 
+def _existing_market_daily_globs(source_paths: Iterable[str | Path]) -> list[str]:
+    globs: list[str] = []
+    for source_path in source_paths:
+        root = Path(source_path)
+        if not root.exists():
+            print(f"[WARN] 日线数据源不存在，已跳过: {root}")
+            continue
+        pattern = root / "year=*" / "month=*" / "merged.parquet"
+        if not list(root.glob("year=*/month=*/merged.parquet")):
+            print(f"[WARN] 日线数据源无 merged.parquet，已跳过: {root}")
+            continue
+        globs.append(str(pattern).replace("\\", "/"))
+    return globs
+
+
+def _market_daily_view_sql(view_name: str, source_globs: list[str]) -> str:
+    if not source_globs:
+        raise ValueError("没有可用日线数据源，无法创建技术因子视图")
+    path_list = "[" + ", ".join("'" + str(path).replace("'", "''") + "'" for path in source_globs) + "]"
+    return f"""
+CREATE OR REPLACE VIEW {view_name} AS
+SELECT *
+FROM read_parquet({path_list}, hive_partitioning=1, union_by_name=true)
+"""
+
+
+def _load_codes_from_market_globs(source_globs: list[str]) -> set[str]:
+    if not source_globs:
+        return set()
+    path_list = "[" + ", ".join("'" + str(path).replace("'", "''") + "'" for path in source_globs) + "]"
+    sql = f"""
+    SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
+    FROM read_parquet({path_list}, hive_partitioning=1, union_by_name=true)
+    WHERE htsc_code IS NOT NULL
+      AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
+    """
+    try:
+        df_codes = con.execute(sql).df()
+    except Exception:
+        return set()
+    return {str(code).strip().upper() for code in df_codes["htsc_code"].astype(str) if str(code).strip()}
+
+
 def _sanitize_factor_dir_name(factor_name: str) -> str:
     return re.sub(r'[\\/:*?"<>|]', "_", str(factor_name).strip()).rstrip(" .") or "未命名因子"
 
 
 def _load_factor_last_date_map(base_dir: str) -> dict[str, pd.Timestamp]:
     """一次扫描读取所有 factor 的最新日期，避免逐因子 N 次 SQL。"""
-    glob_path = os.path.join(base_dir, "factor=*", "year=*", "month=*", "merged.parquet").replace("\\", "/")
+    glob_path = os.path.join(base_dir, "factor=*", "year=*", "month=*", "*.parquet").replace("\\", "/")
     sql = f"""
     SELECT
         CAST(factor AS VARCHAR) AS factor_partition,
@@ -385,6 +437,61 @@ def _load_factor_last_date_map(base_dir: str) -> dict[str, pd.Timestamp]:
     return out
 
 
+def _load_factor_code_count_map(base_dir: str) -> dict[str, int]:
+    """一次扫描读取每个 factor 已覆盖的代码数，用于发现新增指数/ETF缺历史信号。"""
+    glob_path = os.path.join(base_dir, "factor=*", "year=*", "month=*", "*.parquet").replace("\\", "/")
+    sql = f"""
+    SELECT
+        CAST(factor AS VARCHAR) AS factor_partition,
+        COUNT(DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR)))) AS code_count
+    FROM read_parquet('{glob_path}', hive_partitioning=1, union_by_name=true)
+    GROUP BY 1
+    """
+    try:
+        df_map = con.execute(sql).df()
+    except Exception:
+        return {}
+
+    if df_map.empty:
+        return {}
+
+    out: dict[str, int] = {}
+    for _, row in df_map.iterrows():
+        factor_partition = str(row.get("factor_partition", "")).strip()
+        if not factor_partition:
+            continue
+        out[factor_partition] = int(row.get("code_count") or 0)
+    return out
+
+
+def _load_factor_code_set_map(base_dir: str) -> dict[str, set[str]]:
+    """一次扫描读取每个 factor 已覆盖代码集合，用于将新增标的回补限定到缺失代码。"""
+    glob_path = os.path.join(base_dir, "factor=*", "year=*", "month=*", "*.parquet").replace("\\", "/")
+    sql = f"""
+    SELECT
+        CAST(factor AS VARCHAR) AS factor_partition,
+        UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
+    FROM read_parquet('{glob_path}', hive_partitioning=1, union_by_name=true)
+    WHERE htsc_code IS NOT NULL
+    GROUP BY 1, 2
+    """
+    try:
+        df_map = con.execute(sql).df()
+    except Exception:
+        return {}
+
+    out: dict[str, set[str]] = {}
+    if df_map.empty:
+        return out
+
+    for factor_partition, group in df_map.groupby("factor_partition", sort=False):
+        key = str(factor_partition).strip()
+        if not key:
+            continue
+        out[key] = {str(code).strip().upper() for code in group["htsc_code"].astype(str) if str(code).strip()}
+    return out
+
+
 def _get_factor_last_date(
     base_dir: str,
     factor_cn_name: str,
@@ -406,6 +513,28 @@ def _get_factor_last_date(
         return None
     return pd.Timestamp(df_max.iloc[0, 0]).floor("D")
 
+
+def _resolve_non_stock_fallback_target_codes(
+    *,
+    auto_plan: bool,
+    target_codes: Optional[list[str]],
+    prequery_target_codes: list[str],
+    selected_bundles: list[str],
+    non_stock_source_codes: set[str],
+    needs_all_codes_for_date_tail: bool,
+) -> list[str]:
+    if (
+        auto_plan
+        and not target_codes
+        and not prequery_target_codes
+        and selected_bundles
+        and non_stock_source_codes
+        and not needs_all_codes_for_date_tail
+    ):
+        return sorted(non_stock_source_codes)
+    return list(prequery_target_codes)
+
+
 def build_factor_fill_plan(
     factor_dfs_dict: dict[str, pd.DataFrame],
     factor_name_map_dict: dict[str, str],
@@ -417,6 +546,8 @@ def build_factor_fill_plan(
     manual_targets: Optional[list[str]] = None,
     available_factor_keys: Optional[set[str]] = None,
     factor_last_dt_map: Optional[dict[str, pd.Timestamp]] = None,
+    factor_code_count_map: Optional[dict[str, int]] = None,
+    target_code_count: int = 0,
 ) -> pd.DataFrame:
     start_dt = pd.Timestamp(start_date).floor("D")
     end_dt = pd.Timestamp(end_date).floor("D")
@@ -451,6 +582,13 @@ def build_factor_fill_plan(
             plan_start = start_dt
             status = "missing"
             reason = "因子目录不存在或无历史数据"
+        elif int(target_code_count or 0) > 0 and int((factor_code_count_map or {}).get(str(ch_name), 0) or 0) < int(target_code_count):
+            plan_start = start_dt
+            status = "stale"
+            reason = (
+                f"因子代码覆盖不足={int((factor_code_count_map or {}).get(str(ch_name), 0) or 0)}/"
+                f"{int(target_code_count)}，需回补新增标的历史信号"
+            )
         elif last_dt < end_dt:
             rewind_days = lookback_days + int(buffer_days)
             plan_start = max(start_dt, (last_dt - pd.Timedelta(days=rewind_days)).floor("D"))
@@ -524,11 +662,8 @@ selected_bundle_set = {str(x).strip().lower() for x in SELECTED_BUNDLES}
 START_DATE = _normalize_date_str(START_DATE)
 
 con = duckdb.connect()   # 初始化 DuckDB 连接
-con.execute(f"""
-CREATE OR REPLACE VIEW {VIEW_NAME} AS
-SELECT *
-FROM read_parquet('{BASE_PATH}/year=*/month=*/merged.parquet', hive_partitioning=1)
-""")    # 创建视图：自动识别 year/month 分区，读取所有 merged.parquet
+MARKET_DAILY_SOURCE_GLOBS = _existing_market_daily_globs(MARKET_DAILY_SOURCE_PATHS)
+con.execute(_market_daily_view_sql(VIEW_NAME, MARKET_DAILY_SOURCE_GLOBS))    # 创建视图：自动识别 year/month 分区，读取所有 merged.parquet
 
 _source_max_dt = con.execute(f"""
 SELECT MAX(CAST(time AS DATE)) AS max_dt
@@ -537,6 +672,20 @@ WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
 """).fetchone()[0]
 if _source_max_dt is None:
     raise ValueError("stock_basic_data_daily 无可用日线数据，无法确定 END_DATE")
+_source_code_count = int(con.execute(f"""
+SELECT COUNT(DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR)))) AS code_count
+FROM {VIEW_NAME}
+WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
+""").fetchone()[0] or 0)
+_source_code_set = set(
+    con.execute(f"""
+    SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
+    FROM {VIEW_NAME}
+    WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
+    """).df()["htsc_code"].astype(str).tolist()
+)
+_stock_source_code_set = _load_codes_from_market_globs(_existing_market_daily_globs([BASE_PATH]))
+_non_stock_source_code_set = _source_code_set - _stock_source_code_set
 _today_dt = pd.Timestamp(datetime.now().date()).floor("D")
 _source_end_dt = pd.Timestamp(_source_max_dt).floor("D")
 END_DATE = min(_today_dt, _source_end_dt).strftime("%Y-%m-%d")
@@ -548,6 +697,8 @@ PREQUERY_TARGET_FACTOR_KEYS: set[str] = set()
 PREQUERY_SELECTED_BUNDLES = [str(x).strip().lower() for x in SELECTED_BUNDLES]
 PREQUERY_EFFECTIVE_START_DATE = START_DATE
 PREQUERY_BUNDLE_FACTOR_CATALOG: dict[str, dict[str, str]] = {}
+PREQUERY_TARGET_CODES: list[str] = []
+_needs_all_codes_for_date_tail = False
 
 if AUTO_PLAN_FROM_FACTOR_LIBRARY:
     PREQUERY_BUNDLE_FACTOR_CATALOG = _build_bundle_catalog_with_synthetic_data(SELECTED_BUNDLES)
@@ -558,6 +709,8 @@ if AUTO_PLAN_FROM_FACTOR_LIBRARY:
 
     if _catalog_name_map:
         _factor_last_dt_map = _load_factor_last_date_map(FACTOR_LIBRARY_BASE_DIR)
+        _factor_code_count_map = _load_factor_code_count_map(FACTOR_LIBRARY_BASE_DIR)
+        _factor_code_set_map = _load_factor_code_set_map(FACTOR_LIBRARY_BASE_DIR)
         PREQUERY_PLAN_DF = build_factor_fill_plan(
             factor_dfs_dict={},
             factor_name_map_dict=_catalog_name_map,
@@ -569,6 +722,8 @@ if AUTO_PLAN_FROM_FACTOR_LIBRARY:
             manual_targets=TARGET_FACTORS,
             available_factor_keys=_catalog_factor_keys,
             factor_last_dt_map=_factor_last_dt_map,
+            factor_code_count_map=_factor_code_count_map,
+            target_code_count=_source_code_count,
         )
         _need_compute = PREQUERY_PLAN_DF[PREQUERY_PLAN_DF["status"].isin(["missing", "stale"])].copy()
 
@@ -579,8 +734,46 @@ if AUTO_PLAN_FROM_FACTOR_LIBRARY:
                 if any(str(eng).strip() in PREQUERY_TARGET_FACTOR_KEYS for eng in mapping.values())
             ]
             PREQUERY_EFFECTIVE_START_DATE = min(pd.Timestamp(x).floor("D") for x in _need_compute["plan_start"]).strftime("%Y-%m-%d")
+            _needs_all_codes_for_date_tail = False
+            _missing_code_union: set[str] = set()
+            _plan_end_dt = pd.Timestamp(END_DATE).floor("D")
+            for _, _plan_row in _need_compute.iterrows():
+                _factor_cn = str(_plan_row.get("factor_cn", "")).strip()
+                _last_dt = _plan_row.get("last_dt")
+                _existing_codes = _factor_code_set_map.get(_factor_cn, set())
+                if _last_dt is not None and not pd.isna(_last_dt) and pd.Timestamp(_last_dt).floor("D") < _plan_end_dt:
+                    _needs_all_codes_for_date_tail = True
+                    break
+                if _existing_codes and len(_existing_codes) < len(_source_code_set):
+                    _missing_code_union.update(_source_code_set - _existing_codes)
+                elif not _existing_codes:
+                    _needs_all_codes_for_date_tail = True
+                    break
+            if _missing_code_union and not _needs_all_codes_for_date_tail and not TARGET_CODES:
+                PREQUERY_TARGET_CODES = sorted(_missing_code_union)
+            elif (
+                not _factor_code_set_map
+                and _non_stock_source_code_set
+                and not TARGET_CODES
+                and Path(FACTOR_LIBRARY_BASE_DIR).exists()
+                and any(Path(FACTOR_LIBRARY_BASE_DIR).glob("factor=*"))
+            ):
+                PREQUERY_TARGET_CODES = sorted(_non_stock_source_code_set)
+                print(f"[WARN] 因子库代码覆盖信息不可用，本次仅回补非股票日线标的: {len(PREQUERY_TARGET_CODES)} 只")
         else:
             PREQUERY_SELECTED_BUNDLES = []
+
+_fallback_target_codes = _resolve_non_stock_fallback_target_codes(
+    auto_plan=AUTO_PLAN_FROM_FACTOR_LIBRARY,
+    target_codes=TARGET_CODES,
+    prequery_target_codes=PREQUERY_TARGET_CODES,
+    selected_bundles=PREQUERY_SELECTED_BUNDLES,
+    non_stock_source_codes=_non_stock_source_code_set,
+    needs_all_codes_for_date_tail=_needs_all_codes_for_date_tail,
+)
+if _fallback_target_codes and not PREQUERY_TARGET_CODES:
+    PREQUERY_TARGET_CODES = _fallback_target_codes
+    print(f"[WARN] 本次自动回补限定为非股票日线标的: {len(PREQUERY_TARGET_CODES)} 只")
 
 _bundles_for_query = PREQUERY_SELECTED_BUNDLES if PREQUERY_SELECTED_BUNDLES else [str(x).strip().lower() for x in SELECTED_BUNDLES]
 _factors_for_query = sorted(PREQUERY_TARGET_FACTOR_KEYS) if PREQUERY_TARGET_FACTOR_KEYS else TARGET_FACTORS
@@ -590,7 +783,8 @@ REQUIRED_LOOKBACK_DAYS = _compute_required_lookback_days(_bundles_for_query, _fa
 QUERY_START_DATE = (_effective_start_dt - pd.Timedelta(days=REQUIRED_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
 
 print("视图创建完成：", VIEW_NAME)
-print("数据路径：", BASE_PATH)
+print("数据路径：", MARKET_DAILY_SOURCE_PATHS)
+print("有效日线数据源：", MARKET_DAILY_SOURCE_GLOBS)
 print(f"运行模式: {RUN_MODE}（自动缺失检测补写）")
 print(f"目标区间: {START_DATE} ~ {END_DATE}（终点=运行当日）")
 print(f"预估执行bundle: {_bundles_for_query}")
@@ -756,8 +950,9 @@ def _distinct_codes_in_window() -> list[str]:
     return con.execute(sql_codes).df()["htsc_code"].astype(str).tolist()
 
 
-# 未指定有效标的时按全市场（排除 .YKRS），与原先 IN 全表 / NOT LIKE 语义一致
-_raw_targets = list(TARGET_CODES) if TARGET_CODES else []
+# 未指定有效标的时按全市场（排除 .YKRS）；若预检发现仅新增代码缺历史，则自动收缩到缺失代码。
+_active_target_codes = list(TARGET_CODES) if TARGET_CODES else list(PREQUERY_TARGET_CODES)
+_raw_targets = list(_active_target_codes) if _active_target_codes else []
 if _raw_targets:
     _ordered_codes = sorted({str(c).strip().upper() for c in _raw_targets if str(c).strip()})
     if not _ordered_codes:
@@ -1735,11 +1930,11 @@ def _write_parquet_atomic_with_retry(
 
 def _move_corrupt_parquet(file_path: str, reason: str) -> None:
     corrupt_path = f"{file_path}.corrupt.{int(time.time())}"
-    print(f"⚠️ 分区文件不可读，跳过旧文件并备份: {file_path} -> {corrupt_path}，原因: {reason}")
+    print(f"[WARN] 分区文件不可读，跳过旧文件并备份: {file_path} -> {corrupt_path}，原因: {reason}")
     try:
         os.replace(file_path, corrupt_path)
     except OSError as exc:
-        print(f"⚠️ 备份损坏文件失败，可能仍被占用: {exc}")
+        print(f"[WARN] 备份损坏文件失败，可能仍被占用: {exc}")
 
 
 def _read_existing_partition(file_path: str) -> pl.DataFrame | None:
@@ -1799,7 +1994,7 @@ def _compact_month_partition(
 
     new_frames = [pl.read_parquet(str(path)) for path in part_paths if path.stat().st_size >= 12]
     if not new_frames:
-        print(f"⚠️ {year}-{month:02d} 没有可合并的 staging 文件，跳过")
+        print(f"[WARN] {year}-{month:02d} 没有可合并的 staging 文件，跳过")
         return
 
     new_df = (
@@ -2015,7 +2210,87 @@ def _load_factor_last_dt_map_from_storage(base_dir: str, factor_names: list[str]
     return result
 
 
+def _load_factor_storage_summary(base_dir: str, factor_names: list[str]) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    con_local = duckdb.connect(database=":memory:")
+    try:
+        for factor_name in factor_names:
+            paths = _existing_factor_data_paths(base_dir, factor_name)
+            if not paths:
+                continue
+            placeholders = ", ".join(["?"] * len(paths))
+            last_sql = f"""
+                SELECT MAX(CAST(time AS DATE)) AS last_dt
+                FROM read_parquet([{placeholders}], union_by_name=true)
+            """
+            last_row = con_local.execute(last_sql, paths).fetchone()
+            code_sql = f"""
+                SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
+                FROM read_parquet([{placeholders}], union_by_name=true)
+                WHERE htsc_code IS NOT NULL
+            """
+            code_df = con_local.execute(code_sql, paths).df()
+            result[str(factor_name)] = {
+                "last_dt": pd.Timestamp(last_row[0]).floor("D") if last_row and last_row[0] is not None else None,
+                "codes": set(code_df["htsc_code"].astype(str).tolist()) if not code_df.empty else set(),
+            }
+    finally:
+        con_local.close()
+    return result
+
+
 MAX_SAVE_WORKERS = 10
+
+
+def _build_factor_save_tasks(
+    *,
+    ch_name: str,
+    eng_name: str,
+    factor_df: pd.DataFrame,
+    base_dir: str,
+    start_dt: pd.Timestamp,
+    end_dt: pd.Timestamp,
+    existing_last_dt: pd.Timestamp | None,
+    existing_codes: set[str] | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(factor_df, pd.DataFrame) or factor_df.empty:
+        return []
+
+    start_dt = pd.Timestamp(start_dt).floor("D")
+    end_dt = pd.Timestamp(end_dt).floor("D")
+    if start_dt > end_dt:
+        return []
+
+    ordered_columns = [str(col) for col in factor_df.columns]
+    existing_code_set = {str(code).strip().upper() for code in (existing_codes or set()) if str(code).strip()}
+    missing_columns = [col for col in ordered_columns if str(col).strip().upper() not in existing_code_set]
+
+    def _task(task_df: pd.DataFrame, task_start: pd.Timestamp, task_end: pd.Timestamp) -> dict[str, Any]:
+        return {
+            "factor_name": ch_name,
+            "factor_key": eng_name,
+            "factor_df": task_df,
+            "base_dir": base_dir,
+            "start_dt": pd.Timestamp(task_start).floor("D"),
+            "end_dt": pd.Timestamp(task_end).floor("D"),
+        }
+
+    if existing_last_dt is None:
+        return [_task(factor_df, start_dt, end_dt)]
+
+    last_dt = pd.Timestamp(existing_last_dt).floor("D")
+    tasks: list[dict[str, Any]] = []
+
+    if missing_columns:
+        missing_end_dt = min(end_dt, last_dt)
+        if start_dt <= missing_end_dt:
+            tasks.append(_task(factor_df.loc[:, missing_columns], start_dt, missing_end_dt))
+
+    tail_start_dt = max(start_dt, last_dt + pd.Timedelta(days=1))
+    if tail_start_dt <= end_dt:
+        tasks.append(_task(factor_df, tail_start_dt, end_dt))
+
+    return tasks
 
 
 def _save_single_factor_task(task: dict[str, Any]) -> tuple[str, int, int]:
@@ -2089,7 +2364,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
     print(f"可写入因子数量: {len(factor_items)}")
     print("说明: 本流程只追加 part_*.parquet，不在此处做 merged.parquet 月度合并。")
 
-    factor_last_dt_map = _load_factor_last_dt_map_from_storage(
+    factor_storage_summary = _load_factor_storage_summary(
         base_dir=base_dir,
         factor_names=[str(ch_name) for ch_name, _, _ in factor_items],
     )
@@ -2106,22 +2381,18 @@ def save_factor_dfs_to_factor_partitioned_parquet(
             task_start_dt = max(start_dt, pd.Timestamp(range_start).floor("D"))
             task_end_dt = min(end_dt, pd.Timestamp(range_end).floor("D"))
 
-        # 方案A：按每因子 last_dt + 1 截断，只写之后日期。
-        existing_last_dt = factor_last_dt_map.get(str(ch_name))
-        if existing_last_dt is not None:
-            task_start_dt = max(task_start_dt, pd.Timestamp(existing_last_dt).floor("D") + pd.Timedelta(days=1))
-
-        if task_start_dt > task_end_dt:
-            continue
-
-        tasks.append(
-            {
-                "factor_name": ch_name,
-                "factor_df": factor_df,
-                "base_dir": base_dir,
-                "start_dt": task_start_dt,
-                "end_dt": task_end_dt,
-            }
+        storage_item = factor_storage_summary.get(str(ch_name), {})
+        tasks.extend(
+            _build_factor_save_tasks(
+                ch_name=str(ch_name),
+                eng_name=str(eng_name),
+                factor_df=factor_df,
+                base_dir=base_dir,
+                start_dt=task_start_dt,
+                end_dt=task_end_dt,
+                existing_last_dt=storage_item.get("last_dt"),
+                existing_codes=storage_item.get("codes") if isinstance(storage_item.get("codes"), set) else set(),
+            )
         )
 
     if not tasks:
@@ -2162,10 +2433,10 @@ def save_factor_dfs_to_factor_partitioned_parquet(
                             f"（写入月份 {written_months}，写入行 {written_rows}）"
                         )
                     except Exception as exc:
-                        print(f"⚠️ 因子任务失败，将顺序重试: {factor_name}，原因: {exc}")
+                        print(f"[WARN] 因子任务失败，将顺序重试: {factor_name}，原因: {exc}")
                         failed_tasks.append((factor_name, task))
         except Exception as exc:
-            print(f"⚠️ 线程池执行失败，回退顺序执行。原因: {exc}")
+            print(f"[WARN] 线程池执行失败，回退顺序执行。原因: {exc}")
             failed_tasks = [(task["factor_name"], task) for task in tasks]
 
     if failed_tasks:

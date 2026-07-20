@@ -5,11 +5,12 @@
 默认顺序：
 1. 股票日频数据
 2. 指数日频数据
-3. ETF 日频数据
-4. QMT 公司数据
-5. QMT 日频复权因子
-6. 股票分钟级数据
-7. 股票日频换手率
+3. 同花顺一级指数日频数据
+4. ETF 日频数据
+5. QMT 公司数据
+6. QMT 日频复权因子
+7. 股票分钟级数据
+8. 股票日频换手率
 
 换手率放最后，因为它依赖股票日 K 和 QMT Capital 股本数据。
 """
@@ -43,6 +44,7 @@ class Stage:
 STAGES: tuple[Stage, ...] = (
     Stage("stock_daily", "股票日频数据", "获得股票日频数据.py"),
     Stage("index_daily", "指数日频数据", "获得指数日频数据.py"),
+    Stage("ths_level1_index_daily", "同花顺一级指数日频数据", "获得同花顺1级指数日频数据.py"),
     Stage("etf_daily", "ETF 日频数据", "获得ETF日频数据.py"),
     Stage("qmt_company", "QMT 公司数据", "qmt公司数据获取.py"),
     Stage("qmt_adj", "QMT 日频复权因子", "qmt获得股票日频复权因子.py"),
@@ -55,6 +57,8 @@ STAGE_KEY_ALIASES = {
     "stock": "stock_daily",
     "daily": "stock_daily",
     "index": "index_daily",
+    "ths": "ths_level1_index_daily",
+    "ths_index": "ths_level1_index_daily",
     "etf": "etf_daily",
     "company": "qmt_company",
     "qmt": "qmt_company",
@@ -94,6 +98,7 @@ def _build_stage_args(args: argparse.Namespace) -> dict[str, list[str]]:
     return {
         "stock_daily": _split_stage_args(args.stock_daily_args),
         "index_daily": _split_stage_args(args.index_daily_args),
+        "ths_level1_index_daily": _split_stage_args(args.ths_level1_index_daily_args),
         "etf_daily": _split_stage_args(args.etf_daily_args),
         "qmt_company": _split_stage_args(args.qmt_company_args),
         "qmt_adj": _split_stage_args(args.qmt_adj_args),
@@ -147,14 +152,14 @@ def run_stage(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="合并入口：顺序执行日频、指数、ETF、QMT 公司数据、复权因子、分钟线和换手率更新"
+        description="合并入口：顺序执行日频、指数、同花顺一级指数、ETF、QMT 公司数据、复权因子、分钟线和换手率更新"
     )
     parser.add_argument("--python-exe", default=sys.executable, help="执行子脚本的 Python，默认当前解释器")
     parser.add_argument(
         "--only",
         nargs="*",
         default=None,
-        help="只运行指定阶段，可选 stock_daily,index_daily,etf_daily,qmt_company,qmt_adj,stock_mins,turnover",
+        help="只运行指定阶段，可选 stock_daily,index_daily,ths_level1_index_daily,etf_daily,qmt_company,qmt_adj,stock_mins,turnover",
     )
     parser.add_argument(
         "--skip",
@@ -166,6 +171,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", help="只打印将要执行的命令，不真正运行")
     parser.add_argument("--stock-daily-args", default="", help="透传给 获得股票日频数据.py 的参数字符串")
     parser.add_argument("--index-daily-args", default="", help="透传给 获得指数日频数据.py 的参数字符串")
+    parser.add_argument(
+        "--ths-level1-index-daily-args",
+        default="",
+        help="透传给 获得同花顺1级指数日频数据.py 的参数字符串",
+    )
     parser.add_argument("--etf-daily-args", default="", help="透传给 获得ETF日频数据.py 的参数字符串")
     parser.add_argument("--qmt-company-args", default="", help="透传给 qmt公司数据获取.py 的参数字符串")
     parser.add_argument("--qmt-adj-args", default="", help="透传给 qmt获得股票日频复权因子.py 的参数字符串")

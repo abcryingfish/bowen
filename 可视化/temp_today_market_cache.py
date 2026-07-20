@@ -126,6 +126,14 @@ def _safe_float(value: Any) -> float | None:
     return numeric
 
 
+def _cumulative_volume_from_row(row: sqlite3.Row) -> float | None:
+    pvolume = _safe_float(row["pvolume"])
+    if pvolume is not None:
+        return float(pvolume)
+    volume = _safe_float(row["volume"])
+    return float(volume * 100.0) if volume is not None else None
+
+
 def _normalize_code(value: Any) -> str:
     return str(value or "").strip().upper()
 
@@ -438,10 +446,20 @@ def query_today_minute_bars(
             rows = [*rows, latest_row]
 
     grouped: dict[int, list[sqlite3.Row]] = {}
-    for row in rows:
+    previous_cumulative_volume: float | None = None
+    previous_cumulative_amount: float | None = None
+    for row in sorted(rows, key=lambda item: str(item["ts"])):
         ts_sec = _ts_to_epoch(str(row["ts"]))
         minute_sec = ts_sec - (ts_sec % 60)
-        if minute_sec < from_ts or minute_sec > to_ts:
+        if minute_sec < from_ts:
+            row_volume = _cumulative_volume_from_row(row)
+            row_amount = _safe_float(row["amount"])
+            if row_volume is not None:
+                previous_cumulative_volume = row_volume
+            if row_amount is not None:
+                previous_cumulative_amount = float(row_amount)
+            continue
+        if minute_sec > to_ts:
             continue
         grouped.setdefault(minute_sec, []).append(row)
 
@@ -463,12 +481,25 @@ def query_today_minute_bars(
         if not prices:
             continue
         amounts = [_safe_float(row["amount"]) for row in bucket]
-        volumes = [_safe_float(row["volume"]) for row in bucket]
-        pvolumes = [_safe_float(row["pvolume"]) for row in bucket]
         amount_values = [value for value in amounts if value is not None]
-        volume_values = [value for value in volumes if value is not None]
-        pvolume_values = [value for value in pvolumes if value is not None]
-        cumulative_volume_values = pvolume_values or volume_values
+        cumulative_volume = _cumulative_volume_from_row(bucket[-1])
+        if cumulative_volume is None:
+            cumulative_volume = previous_cumulative_volume or 0.0
+        cumulative_amount = (
+            float(amount_values[-1])
+            if amount_values
+            else previous_cumulative_amount or 0.0
+        )
+        minute_volume = (
+            max(0.0, cumulative_volume - previous_cumulative_volume)
+            if previous_cumulative_volume is not None
+            else 0.0
+        )
+        minute_amount = (
+            max(0.0, cumulative_amount - previous_cumulative_amount)
+            if previous_cumulative_amount is not None
+            else 0.0
+        )
         bars.append(
             {
                 "time": minute_sec,
@@ -476,11 +507,13 @@ def query_today_minute_bars(
                 "high": float(max(prices)),
                 "low": float(min(prices)),
                 "close": float(prices[-1]),
-                "volume": float(volume_values[-1] - volume_values[0]) if volume_values else 0.0,
-                "cumulative_volume": float(cumulative_volume_values[-1]) if cumulative_volume_values else 0.0,
-                "amount": float(amount_values[-1] - amount_values[0]) if amount_values else 0.0,
+                "volume": minute_volume,
+                "cumulative_volume": cumulative_volume,
+                "amount": minute_amount,
             }
         )
+        previous_cumulative_volume = cumulative_volume
+        previous_cumulative_amount = cumulative_amount
     return bars[-limit:] if limit and len(bars) > limit else bars
 
 
