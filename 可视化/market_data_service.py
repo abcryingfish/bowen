@@ -3355,6 +3355,21 @@ def _morph_patterns_for_level(manifest: dict[str, Any], level: str) -> list[str]
     )
 
 
+def _morph_pattern_display_names(
+    manifest: dict[str, Any],
+    pattern_names: list[str],
+) -> dict[str, str]:
+    patterns = manifest.get("patterns") or {}
+    return {
+        name: str((patterns.get(name) or {}).get("display_name") or name)
+        for name in pattern_names
+    }
+
+
+def _morph_event_display_name(manifest: dict[str, Any], signal_name: str) -> str:
+    return _morph_pattern_display_names(manifest, [signal_name])[signal_name]
+
+
 def _build_events_partition_paths(source_base: str, from_ts: int, to_ts: int) -> list[str]:
     events_base = os.path.join(source_base, "events")
     if not os.path.exists(events_base):
@@ -3431,6 +3446,7 @@ def query_morph_candlestick_signals(
 
     manifest = _load_morph_candlestick_manifest(source_base)
     pattern_names = _morph_patterns_for_level(manifest, level_key)
+    pattern_display_names = _morph_pattern_display_names(manifest, pattern_names)
     if include_patterns and not pattern_names:
         raise MarketDataNotFoundError(f"manifest 中未找到 level={level_key} 的形态定义")
 
@@ -3490,6 +3506,7 @@ def query_morph_candlestick_signals(
                         "time": int(row[0]),
                         "start_time": int(row[1]) if row[1] is not None else int(row[0]),
                         "signal_name": str(row[2]),
+                        "display_name": _morph_event_display_name(manifest, str(row[2])),
                         "value": float(row[3]) if row[3] is not None else 0.0,
                         "direction": str(row[4] or ""),
                         "bar_span": int(row[5]) if row[5] is not None else 1,
@@ -3516,6 +3533,7 @@ def query_morph_candlestick_signals(
                     "base_path": resolved_base_path,
                     "source": MORPH_CANDLESTICK_SOURCE_DIR,
                     "fields": fields_key,
+                    "pattern_display_names": pattern_display_names,
                 },
             }
         raise MarketDataNotFoundError("目标时间范围内未找到对应形态信号")
@@ -3535,6 +3553,7 @@ def query_morph_candlestick_signals(
             "base_path": resolved_base_path,
             "source": MORPH_CANDLESTICK_SOURCE_DIR,
             "fields": fields_key if fields_key else "all",
+            "pattern_display_names": pattern_display_names,
         },
     }
 
