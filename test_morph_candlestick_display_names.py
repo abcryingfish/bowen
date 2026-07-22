@@ -37,4 +37,3 @@ def test_manifest_contains_utf8_display_names(tmp_path: Path) -> None:
 
     assert manifest["patterns"]["piercing"]["display_name"] == "刺透形态"
     assert "刺透形态" in path.read_text(encoding="utf-8")
-

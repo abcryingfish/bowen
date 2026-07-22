@@ -35,4 +35,3 @@ assert.match(source, /const label = factorLabel\(name\)/, "因子列表必须使
 assert.match(source, /factorLabel\(record\.factor\)/, "历史记录必须使用中文标签");
 
 console.log("有效性检验中文显示名测试通过");
-
