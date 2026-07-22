@@ -20,6 +20,11 @@ PROJECT_ROOT = VIS_ROOT.parent
 SIGNAL_DAILY_BASE_PATH = Path(r"D:\database\signal_daily")
 MORPH_CANDLESTICK_BASE_PATH = Path("D:\\database\\signal_daily_\u5f62\u6001") / "candlestick_no_vol"
 MORPH_MANIFEST_FILE_NAME = "morph_candlestick_manifest.json"
+MORPH_LEVEL_LABELS = {
+    "level1": "一级形态",
+    "level2": "二级形态",
+    "level3": "三级形态",
+}
 DAILY_BASE_PATH = Path(r"D:\database\stock_basic_data_daily")
 STOCK_POOL_DIR = PROJECT_ROOT / "\u534e\u6cf0\u6570\u636e\u83b7\u53d6"
 UNIVERSE_CSV_PATH = STOCK_POOL_DIR / "ALL_A_\u5168\u5e02\u573a\u80a1\u7968_20260626.csv"
@@ -292,6 +297,22 @@ def _load_available_morph_factors() -> list[str]:
     return sorted(set(factors))
 
 
+def _build_morph_factor_labels(morph_factors: list[str]) -> dict[str, str]:
+    patterns = _load_morph_manifest().get("patterns") or {}
+    labels: dict[str, str] = {}
+    for factor_name in morph_factors:
+        parts = _parse_morph_factor_name(factor_name)
+        if not parts:
+            labels[factor_name] = factor_name
+            continue
+        level, signal_name = parts
+        meta = patterns.get(signal_name) or {}
+        display_name = str(meta.get("display_name") or signal_name)
+        level_label = MORPH_LEVEL_LABELS.get(level, level)
+        labels[factor_name] = f"{level_label} / {display_name}"
+    return labels
+
+
 def _build_morph_event_partition_paths(start: pd.Timestamp, end: pd.Timestamp) -> list[str]:
     return _build_month_partition_paths(MORPH_CANDLESTICK_BASE_PATH / "events", start, end)
 
@@ -392,9 +413,12 @@ def list_factor_validation_factors() -> dict[str, Any]:
     groups = _load_factor_catalog(ordinary_factors)
     if morph_factors:
         groups.append({"group_id": "morph", "group_name": "形态面", "children": morph_factors})
+    factor_labels = {name: name for name in ordinary_factors}
+    factor_labels.update(_build_morph_factor_labels(morph_factors))
     return {
         "factors": factors,
         "groups": groups,
+        "factor_labels": factor_labels,
         "meta": {
             "count": len(factors),
             "base_path": str(SIGNAL_DAILY_BASE_PATH),

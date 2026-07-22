@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 import sys
 import tempfile
@@ -186,6 +187,42 @@ class MorphFactorTests(unittest.TestCase):
 
         morph_group = next(group for group in payload["groups"] if group["group_id"] == "morph")
         self.assertEqual(morph_group["children"], ["morph/level1/吞没形态", "morph/level2/刺透形态"])
+
+    def test_list_factors_exposes_chinese_morph_labels_and_legacy_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            (base / "morph_candlestick_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "patterns": {
+                            "engulfing_bullish": {
+                                "level": "level1",
+                                "display_name": "看涨吞没",
+                            },
+                            "legacy_pattern": {"level": "level2"},
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            original_base = service.MORPH_CANDLESTICK_BASE_PATH
+            original_signal = service.SIGNAL_DAILY_BASE_PATH
+            service.MORPH_CANDLESTICK_BASE_PATH = base
+            service.SIGNAL_DAILY_BASE_PATH = base / "ordinary"
+            try:
+                payload = service.list_factor_validation_factors()
+            finally:
+                service.MORPH_CANDLESTICK_BASE_PATH = original_base
+                service.SIGNAL_DAILY_BASE_PATH = original_signal
+
+        self.assertEqual(
+            payload["factor_labels"],
+            {
+                "morph/level1/engulfing_bullish": "一级形态 / 看涨吞没",
+                "morph/level2/legacy_pattern": "二级形态 / legacy_pattern",
+            },
+        )
 
     def test_list_morph_factors_uses_event_names_and_levels_when_events_exist(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
