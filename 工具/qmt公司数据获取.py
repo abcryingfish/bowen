@@ -403,13 +403,13 @@ def build_fundamental_valuation_frame(
 
     income = _normalize_statement_input(
         income_df,
-        ["revenue", "net_profit_incl_min_int_inc_after"],
+        ["revenue", "net_profit_excl_min_int_inc"],
         "income",
     )
     income = _add_ttm_values(income, "revenue", "revenue_ttm", "income_report_date")
     income = _add_ttm_values(
         income,
-        "net_profit_incl_min_int_inc_after",
+        "net_profit_excl_min_int_inc",
         "net_profit_parent_ttm",
         "income_report_date",
     )
@@ -445,7 +445,7 @@ def build_fundamental_valuation_frame(
         return out
 
     out["revenue"] = out["revenue"].astype(float)
-    out["net_profit_parent"] = out["net_profit_incl_min_int_inc_after"].astype(float)
+    out["net_profit_parent"] = out["net_profit_excl_min_int_inc"].astype(float)
     out["equity_parent"] = out["tot_shrhldr_eqy_excl_min_int"].astype(float)
     out["roe"] = out["equity_roe"].astype(float)
     out["total_market_val"] = out["close"] * out["total_capital"]
@@ -920,7 +920,7 @@ def run_fundamental_valuation_derivation(args: argparse.Namespace, start_date: d
     income = _load_table_frame(
         args.base_dir,
         "Income",
-        ["htsc_code", "report_date", "announce_date", "revenue", "net_profit_incl_min_int_inc_after"],
+        ["htsc_code", "report_date", "announce_date", "revenue", "net_profit_excl_min_int_inc"],
     )
     balance = _load_table_frame(
         args.base_dir,
