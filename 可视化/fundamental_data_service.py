@@ -46,7 +46,8 @@ INCOME_FIELDS: list[tuple[str, str, str]] = [
     ("tot_profit", "利润总额", "money"),
     ("inc_tax", "所得税费用", "money"),
     ("net_profit_incl_min_int_inc", "净利润", "money"),
-    ("net_profit_incl_min_int_inc_after", "归母净利润", "money"),
+    ("net_profit_excl_min_int_inc", "归母净利润", "money"),
+    ("net_profit_incl_min_int_inc_after", "扣非后净利润", "money"),
     ("s_fa_eps_basic", "基本每股收益", "number"),
     ("s_fa_eps_diluted", "稀释每股收益", "number"),
 ]
@@ -113,7 +114,7 @@ CHART_METRICS: list[tuple[str, str, str]] = [
 
 OVERVIEW_KPIS: list[tuple[str, str, str, Optional[str]]] = [
     ("revenue", "营业收入", "money", "inc_revenue_rate"),
-    ("net_profit_incl_min_int_inc_after", "归母净利润", "money", "inc_net_profit_rate"),
+    ("net_profit_excl_min_int_inc", "归母净利润", "money", "inc_net_profit_rate"),
     ("equity_roe", "ROE", "percent", None),
     ("du_profit_rate", "净利率", "percent", None),
     ("sales_gross_profit", "毛利率", "percent", None),
@@ -557,8 +558,8 @@ def _build_overview(rows: list[dict[str, Any]], income_rows: list[dict[str, Any]
             income_latest = income_rows[-1]
             if key == "revenue":
                 value = income_latest.get("revenue") or income_latest.get("total_income")
-            elif key == "net_profit_incl_min_int_inc_after":
-                value = income_latest.get("net_profit_incl_min_int_inc_after") or income_latest.get("net_profit_incl_min_int_inc")
+            elif key == "net_profit_excl_min_int_inc":
+                value = income_latest.get("net_profit_excl_min_int_inc")
         yoy = latest.get(yoy_key) if yoy_key else None
         if not _is_finite_number(value) and not _is_finite_number(yoy):
             continue

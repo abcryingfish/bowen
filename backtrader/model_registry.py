@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from models.configurable_signal_rules import runner as configurable_runner
+from models.ths_monthly_threshold import runner as ths_monthly_threshold_runner
 from models.zxw_init_10pct_snapshot import runner as pct10_runner
 from models.zxw_factor_check_only import runner as zxw_factor_check_runner
 from models.zxw_factor_check_profit_threshold_dual_assumption import (
@@ -62,6 +63,15 @@ def _doc_configurable() -> str:
         "<li>已持仓且 <code>sell_signal &gt; 0</code> 且浮动盈亏 <strong>&gt; 30%</strong> → 卖出约 <strong>50%</strong> 持仓。</li>"
         "</ul>"
         "<p><strong>前端因子</strong>：<strong>必须</strong>配置买卖规则；未选因子时 <code>buy_signal</code>/<code>sell_signal</code> 多为 0，策略几乎无主动卖信号。</p>"
+    )
+
+
+def _doc_ths_monthly_threshold() -> str:
+    return (
+        "<p><strong>THS板块月度因子等权</strong>：直接模拟 <code>.THS</code> 板块指数，不展开成分股。</p>"
+        "<p>每月最后交易日按买入因子条件筛选，支持数值阈值、截面比例和具体名次；"
+        "下月首个交易日开盘将所有合格板块重新调整为等权，100单位一手。</p>"
+        "<p>买卖单边综合成本0.15%（往返0.3%），不使用涨跌停限制；卖出因子区域不参与。</p>"
     )
 
 
@@ -149,6 +159,14 @@ def _doc_zxw_factor_check_base_threshold() -> str:
 
 
 REGISTRY: dict[str, ModelEntry] = {
+    "ths_monthly_threshold": ModelEntry(
+        id="ths_monthly_threshold",
+        title="THS板块月度因子等权",
+        description_html=_doc_ths_monthly_threshold(),
+        web_runnable=True,
+        uses_frontend_buy_sell_rules=True,
+        run=ths_monthly_threshold_runner.run,
+    ),
     "zxw_factor_check_only": ModelEntry(
         id="zxw_factor_check_only",
         title="ZXW 组合规则（只为了检验因子策略）",
@@ -221,6 +239,7 @@ def list_models_public() -> list[dict[str, Any]]:
             }
         )
     order = [
+        "ths_monthly_threshold",
         "zxw_factor_check_only",
         "zxw_factor_check_profit_threshold_dual_assumption",
         "zxw_factor_check_sell_signal_step_position",

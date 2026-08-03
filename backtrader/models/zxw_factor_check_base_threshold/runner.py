@@ -10,7 +10,7 @@ import pandas as pd
 
 from settings import run_zxw_backtest
 
-from models.configurable_signal_rules.data import normalize_rules
+from models.configurable_signal_rules.data import factor_rule_to_payload, normalize_rules
 from models.zxw_factor_check_base_threshold.fundamental_filter import (
     apply_base_threshold_filter,
     load_base_threshold_frames,
@@ -160,8 +160,8 @@ def run(
         create_cerebro_fn=zxw.create_cerebro,
     )
 
-    buy_rules_payload = [{"factor": r.factor, "threshold": r.threshold} for r in buy_template]
-    sell_rules_payload = [{"factor": r.factor, "threshold": r.threshold} for r in sell_template]
+    buy_rules_payload = [factor_rule_to_payload(r) for r in buy_template]
+    sell_rules_payload = [factor_rule_to_payload(r) for r in sell_template]
     config_payload: dict[str, Any] = {
         "codes": codes,
         "actual_codes": actual_codes,

@@ -10,7 +10,7 @@ r"""日频换手率生成。
 D:\database\qmt_turnover_data\year=YYYY\month=MM\merged.parquet
 
 换手率口径：turnover_rate = volume / circulating_capital * 100。
-Capital 按 report_date <= 交易日 的最近一条匹配。
+Capital 按 max(report_date, announce_date) <= 交易日 的最近一条匹配。
 """
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def parse_codes(codes: str | None) -> list[str]:
 
 
 def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.DataFrame:
-    """用日 K 成交股数和 Capital.circulating_capital 计算百分数换手率。"""
+    """用日 K 和 Capital 计算换手率及市值，并清洗无效自由流通股本。"""
     if daily is None or daily.empty or capital is None or capital.empty:
         return pd.DataFrame()
 
@@ -106,6 +106,9 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
         capital_df["announce_date"] = pd.to_datetime(capital_df["announce_date"], errors="coerce").dt.floor("D")
     else:
         capital_df["announce_date"] = capital_df["report_date"]
+    capital_df["capital_effective_date"] = capital_df[
+        ["report_date", "announce_date"]
+    ].max(axis=1)
 
     daily_df["volume"] = pd.to_numeric(daily_df["volume"], errors="coerce")
     if "value" in daily_df.columns:
@@ -117,16 +120,34 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
         if column not in capital_df.columns:
             capital_df[column] = pd.NA
         capital_df[column] = pd.to_numeric(capital_df[column], errors="coerce")
+    capital_df["freeFloatCapital"] = capital_df["freeFloatCapital"].where(
+        capital_df["freeFloatCapital"].gt(0)
+        & capital_df["freeFloatCapital"].le(capital_df["circulating_capital"])
+    )
 
     daily_df = daily_df.dropna(subset=["htsc_code", "time", "volume"])
-    capital_df = capital_df.dropna(subset=["htsc_code", "report_date", "circulating_capital"])
+    capital_df = capital_df.dropna(
+        subset=["htsc_code", "capital_effective_date", "circulating_capital"]
+    )
     daily_df = daily_df[daily_df["volume"] > 0].copy()
     capital_df = capital_df[capital_df["circulating_capital"] > 0].copy()
     if daily_df.empty or capital_df.empty:
         return pd.DataFrame()
 
     daily_df = daily_df.sort_values(["htsc_code", "time"]).reset_index(drop=True)
-    capital_df = capital_df.sort_values(["htsc_code", "report_date"]).reset_index(drop=True)
+    capital_df = (
+        capital_df.sort_values(
+            [
+                "htsc_code",
+                "capital_effective_date",
+                "announce_date",
+                "report_date",
+            ],
+            na_position="first",
+        )
+        .drop_duplicates(["htsc_code", "capital_effective_date"], keep="last")
+        .reset_index(drop=True)
+    )
 
     frames: list[pd.DataFrame] = []
     capital_groups = dict(tuple(capital_df.groupby("htsc_code", sort=False)))
@@ -140,13 +161,14 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
                 [
                     "report_date",
                     "announce_date",
+                    "capital_effective_date",
                     "total_capital",
                     "circulating_capital",
                     "freeFloatCapital",
                 ]
-            ].sort_values("report_date"),
+            ].sort_values("capital_effective_date"),
             left_on="time",
-            right_on="report_date",
+            right_on="capital_effective_date",
             direction="backward",
         )
         frames.append(merged)
@@ -155,6 +177,13 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
         return pd.DataFrame()
 
     out = pd.concat(frames, ignore_index=True).dropna(subset=["circulating_capital"]).copy()
+    out["freeFloatCapital"] = out.groupby("htsc_code", sort=False)[
+        "freeFloatCapital"
+    ].ffill()
+    out["freeFloatCapital"] = out["freeFloatCapital"].where(
+        out["freeFloatCapital"].gt(0)
+        & out["freeFloatCapital"].le(out["circulating_capital"])
+    )
     out["turnover_rate"] = out["volume"] / out["circulating_capital"] * 100.0
     out["capital_report_date"] = out["report_date"]
     out["capital_announce_date"] = out["announce_date"]
@@ -163,9 +192,11 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
 
     if "close" in out.columns:
         out["floating_market_val"] = out["close"] * out["circulating_capital"]
+        out["free_float_market_val"] = out["close"] * out["freeFloatCapital"]
         out["total_market_val"] = out["close"] * out["total_capital"]
     else:
         out["floating_market_val"] = pd.NA
+        out["free_float_market_val"] = pd.NA
         out["total_market_val"] = pd.NA
 
     if "value" in out.columns:
@@ -185,12 +216,14 @@ def calculate_turnover_frame(daily: pd.DataFrame, capital: pd.DataFrame) -> pd.D
         "turnover_rate",
         "avg_price",
         "floating_market_val",
+        "free_float_market_val",
         "total_market_val",
         "total_capital",
         "circulating_capital",
         "freeFloatCapital",
         "capital_report_date",
         "capital_announce_date",
+        "capital_effective_date",
         "turnover_source",
         "updated_at",
     ]
@@ -272,18 +305,33 @@ def save_partitioned_parquet(df: pl.DataFrame, base_dir: str) -> set[tuple[int, 
     return touched
 
 
-def rebuild_merged_parquets(base_dir: str, touched_partitions: set[tuple[int, int]]) -> list[Path]:
+def rebuild_merged_parquets(
+    base_dir: str,
+    touched_partitions: set[tuple[int, int]],
+    *,
+    replace_existing: bool = False,
+) -> list[Path]:
     rebuilt: list[Path] = []
     for year, month in sorted(touched_partitions):
         partition_dir = Path(base_dir) / f"year={year}" / f"month={month:02d}"
         merged_path = partition_dir / MERGED_FILE_NAME
         raw_files = sorted(path for path in partition_dir.glob("*.parquet") if path.name != MERGED_FILE_NAME)
-        input_files = ([merged_path] if merged_path.exists() else []) + raw_files
+        input_files = raw_files if replace_existing else (
+            ([merged_path] if merged_path.exists() else []) + raw_files
+        )
         input_files = [path for path in input_files if _is_readable_parquet(path)]
         if not input_files:
             continue
 
         merged_df = pl.concat([pl.scan_parquet(str(path)) for path in input_files], how="diagonal_relaxed").collect(engine="streaming")
+        if replace_existing:
+            if "capital_effective_date" not in merged_df.columns:
+                raise ValueError(
+                    f"替换分区缺少 capital_effective_date 新口径字段: {partition_dir}"
+                )
+            merged_df = merged_df.filter(
+                pl.col("capital_effective_date").is_not_null()
+            )
         merged_df = transform_turnover_merged(merged_df)
         _write_parquet_atomic_with_retry(merged_df, merged_path, compression="zstd")
         rebuilt.append(merged_path)
@@ -362,6 +410,11 @@ def main() -> None:
     parser.add_argument("--start", default="", help="开始日期 YYYY-MM-DD，默认从本地最新换手率回溯 5 天")
     parser.add_argument("--end", default=datetime.now().strftime("%Y-%m-%d"), help="结束日期 YYYY-MM-DD")
     parser.add_argument("--codes", default="", help="逗号分隔股票代码；空表示全量")
+    parser.add_argument(
+        "--replace-existing-partitions",
+        action="store_true",
+        help="用本次完整结果替换涉及月份；仅用于统一口径的全量重建",
+    )
     args = parser.parse_args()
 
     codes = parse_codes(args.codes)
@@ -375,7 +428,11 @@ def main() -> None:
         print("[WARN] 未生成任何 QMT 换手率记录。")
         return
     touched = save_partitioned_parquet(pl.from_pandas(result), args.base_dir)
-    rebuild_merged_parquets(args.base_dir, touched)
+    rebuild_merged_parquets(
+        args.base_dir,
+        touched,
+        replace_existing=args.replace_existing_partitions,
+    )
     print(f"[OK] QMT 换手率生成完成: {len(result)} 条 | 分区 {len(touched)} 个")
 
 

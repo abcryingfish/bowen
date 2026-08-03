@@ -31,6 +31,7 @@ UNIVERSE_CSV_PATH = STOCK_POOL_DIR / "ALL_A_\u5168\u5e02\u573a\u80a1\u7968_20260
 FACTOR_CATALOG_PATH = PROJECT_ROOT / "\u56e0\u5b50\u5206\u7c7b" / "factor_catalog.json"
 RECORDS_DIR = Path(__file__).resolve().parent / "records"
 FACTOR_DIR_PREFIX = "factor="
+PURE_TECHNICAL_CATALOG_CACHE_FILE = "pure_technical_factor_catalog_cache.json"
 MERGED_FILE_NAME = "merged.parquet"
 DEFAULT_PERIODS = [1, 3, 5, 10, 20, 60]
 PRICE_ADJUST_MODE = "backward_ratio"
@@ -53,6 +54,248 @@ NAME_COLUMN_CANDIDATES = ("stock_name", "etf_name", "name", "股票名称", "证
 CSV_ENCODINGS = ("utf-8-sig", "utf-8", "gb18030")
 STOCK_POOL_SUFFIXES = {".csv", ".xlsx", ".xls"}
 STOCK_CODE_RE = re.compile(r"^\d{6}\.(?:SH|SZ|BJ)$")
+
+# 复制自量化因子参考页的显示名映射；本模块独立维护，避免跨业务服务依赖。
+_FACTOR_DISPLAY_TO_INTERNAL: dict[str, tuple[str, ...]] = {
+    "MAC总": ("mac_total",),
+    "DIF": ("dif",),
+    "DEA": ("dea",),
+    "MAC": ("mac",),
+    "红柱": ("red_bar",),
+    "金叉": ("golden_cross",),
+    "绿柱": ("green_bar",),
+    "死叉": ("death_cross",),
+    "P标弧底": ("p_mark_arc_bottom",),
+    "P弧新低初": ("p_new_low_start",),
+    "P新低初背离": ("p_initial_bottom_divergence",),
+    "P新低延续背离": ("p_continued_bottom_divergence",),
+    "P标弧顶(MAC总)": ("p_mark_arc_top",),
+    "P弧新高初(MAC总)": ("p_new_high_start",),
+    "P新高初背离(MAC总)": ("p_initial_top_divergence",),
+    "P新高延续背离(MAC总)": ("p_continued_top_divergence",),
+    "MAC总顶背离": ("top_divergence_in_mac_total",),
+    "底背离": ("bottom_divergence",),
+    "底背离&红柱": ("bottom_divergence_and_red_bar",),
+    "底背离&金叉": ("bottom_divergence_and_golden_cross",),
+    "金叉&红柱": ("golden_cross_and_red_bar",),
+    "FTR": ("ftr",),
+    "P标弧顶": ("p_mark_arc_top",),
+    "P弧新高初": ("p_new_high_start",),
+    "P新高初背离": ("p_initial_top_divergence",),
+    "P新高延续背离": ("p_continued_top_divergence",),
+    "顶背离": ("top_divergence",),
+    "顶背离&绿柱": ("top_divergence_and_green_bar",),
+    "顶背离&死叉": ("top_divergence_and_death_cross",),
+    "死叉&绿柱": ("death_cross_and_green_bar",),
+    "MAC卖出总": ("mac_sell_total",),
+    "后穿D数": ("back_cross_d_count",),
+    "最高P至今": ("highest_p_since",),
+    "PHL": ("phl",),
+    "U域": ("u_zone",),
+    "SHL": ("shl",),
+    "LHL": ("lhl",),
+    "低距L": ("low_range_l",),
+    "顶距H": ("top_range_h",),
+    "TLL": ("tll",),
+    "阴形量": ("negative_shape_volume",),
+    "纯阴量": ("pure_negative_volume",),
+    "前D阳顶": ("prior_d_positive_top",),
+    "后穿F数": ("back_cross_f_count",),
+    "后阴顶穿": ("negative_top_break",),
+    "基础下笔反K时长": ("base_lower_stroke_reverse_k_duration",),
+    "下笔反K": ("lower_stroke_reverse_k",),
+    "阴J贯穿": ("negative_j_break",),
+    "S笔反K": ("upper_stroke_reverse_k",),
+    "RSV": ("rsv",),
+    "K值": ("k_value",),
+    "D值": ("d_value",),
+    "J值": ("j_raw",),
+    "J值超卖因子": ("j_oversold_factor",),
+    "J值超买因子": ("j_overbought_factor",),
+    "R条件": ("r_condition", "KDJ信号"),
+    "KDJ信号": ("r_condition", "R条件"),
+    "迷你底": ("mini_bottom",),
+    "小底": ("small_bottom",),
+    "大底": ("major_bottom",),
+    "近历史大底": ("near_historical_bottom",),
+    "历史大底": ("historical_bottom",),
+    "抄底总分": ("bottom_fishing_score",),
+    "逃顶总分": ("top_escape_score",),
+    "平阳量": ("flat_positive_volume",),
+    "后穿情形": ("back_cross_situation",),
+    "MAX上笔反K": ("max_upper_stroke_reverse_k",),
+    "五年底": ("five_year_bottom",),
+    "两年底": ("two_year_bottom",),
+    "大底抬升": ("major_bottom_lift",),
+    "两五大底抬升": ("two_five_year_bottom_lift",),
+    "价同比数": ("price_yoy_ratio",),
+    "K同比数": ("k_yoy_ratio",),
+    "年内双底": ("yearly_double_bottom",),
+    "近年内双底": ("recent_yearly_double_bottom",),
+    "年内底": ("yearly_bottom",),
+    "近年内底": ("recent_yearly_bottom",),
+    "年内双底抬升": ("yearly_double_bottom_lift",),
+    "K线底数": ("kline_bottom_rank_raw",),
+    "K线底基": ("kline_bottom_base",),
+    "K底": ("k_bottom",),
+    "相对低顶": ("relative_low_top",),
+    "K底要求": ("k_bottom_requirement",),
+    "K线底1": ("kline_bottom_1",),
+    "K底来要求": ("k_bottom_arrival_requirement",),
+    "K底来幅": ("k_bottom_arrival_base",),
+    "K线底2": ("kline_bottom_2",),
+    "K线底": ("kline_bottom",),
+    "历史大顶": ("historical_top",),
+    "五年顶": ("five_year_top",),
+    "近历史大顶": ("near_historical_top",),
+    "两年顶": ("two_year_top",),
+    "大顶回落": ("major_top_drop",),
+    "两五大顶回落": ("two_five_year_top_drop",),
+    "年内双顶": ("yearly_double_top",),
+    "近年内双顶": ("recent_yearly_double_top",),
+    "年内顶": ("yearly_top",),
+    "近年内顶": ("recent_yearly_top",),
+    "年内双顶回落": ("yearly_double_top_drop",),
+    "K线顶数": ("kline_top_rank_raw",),
+    "K线顶基": ("kline_top_base",),
+    "K顶": ("k_top",),
+    "相对高底": ("relative_high_bottom",),
+    "K顶要求": ("k_top_requirement",),
+    "K线顶1": ("kline_top_1",),
+    "K顶来要求": ("k_top_arrival_requirement",),
+    "K顶来幅": ("k_top_arrival_base",),
+    "K线顶2": ("kline_top_2",),
+    "K线顶": ("kline_top",),
+    "洪超迷你底": ("hong_ultra_mini_bottom",),
+    "洪迷你底": ("hong_mini_bottom",),
+    "洪小底": ("hong_small_bottom",),
+    "洪大底": ("hong_major_bottom",),
+    "洪近历史大底": ("hong_near_historical_bottom",),
+    "洪历史大底": ("hong_historical_bottom",),
+    "洪抄底总分": ("hong_bottom_fishing_score",),
+    "单峰密度指标": ("single_peak_density_value", "单峰密度指标"),
+    "筹码单峰密度": ("chip_single_peak_density", "筹码单峰密度"),
+    "核心宽度占比指标": ("single_peak_core_ratio_value", "核心宽度占比指标"),
+    "核心宽度占比条件": ("chip_single_peak_core_ratio_condition", "核心宽度占比条件"),
+    "筹码单峰态": ("chip_single_peak_state", "筹码单峰态"),
+    "峰中心价格": ("single_peak_center_price", "峰中心价格"),
+    "成本34": ("cost_34pct_interp", "成本34"),
+    "成本35": ("cost_35pct_interp", "成本35"),
+    "成本66": ("cost_66pct_interp", "成本66"),
+    "成本67": ("cost_67pct_interp", "成本67"),
+    "低位单峰": ("chip_single_peak_low", "低位单峰"),
+    "中位单峰": ("chip_single_peak_mid", "中位单峰"),
+    "高位单峰": ("chip_single_peak_high", "高位单峰"),
+    "替代成本价": ("single_peak_replacement_cost", "替代成本价"),
+    "筹码单峰优": ("chip_single_peak_best", "筹码单峰优"),
+    "集中度": ("chip_concentration", "集中度"),
+    "核心集中度": ("core_chip_concentration", "核心集中度"),
+    "核心占比": ("core_chip_ratio", "核心占比"),
+    "筹码中心位置": ("chip_center_position", "筹码中心位置"),
+    "集中度评分": ("chip_concentration_score", "集中度评分"),
+    "核心集中度评分": ("core_chip_concentration_score", "核心集中度评分"),
+    "核心占比评分": ("core_chip_ratio_score", "核心占比评分"),
+    "集中总分": ("chip_concentration_total_score", "集中总分"),
+    "RSI6": ("rsi_6", "RSI6"),
+    "RSI12": ("rsi_12", "RSI12"),
+    "RSI24": ("rsi_24", "RSI24"),
+    "RSI48": ("rsi_48", "RSI48"),
+    "RSI96": ("rsi_96", "RSI96"),
+    "RSI120": ("rsi_120", "RSI120"),
+    "RSI超卖": ("rsi_6_oversold", "RSI超卖"),
+    "RSI超买": ("rsi_6_overbought", "RSI超买"),
+    "RSI金叉": ("rsi_6_cross_up_rsi_12", "RSI金叉"),
+    "RSI死叉": ("rsi_6_cross_down_rsi_12", "RSI死叉"),
+    "RSI多头排列": ("rsi_multi_bullish", "RSI多头排列"),
+    "RSI空头排列": ("rsi_multi_bearish", "RSI空头排列"),
+    "RSI极端超卖": ("rsi_6_extreme_oversold", "RSI极端超卖"),
+    "RSI买入信号": ("rsi_6_extreme_oversold", "RSI极端超卖", "RSI买入信号"),
+    "RSI总分": ("rsi_total_score", "RSI总分"),
+    "OBV": ("obv",),
+    "OBV斜率20": ("obv_slope_20",),
+    "OBV斜率60": ("obv_slope_60",),
+    "OBV斜率120": ("obv_slope_120",),
+    "OBV多头排列": ("obv_bullish_arrange",),
+    "OBV相对位置": ("obv_position_ratio",),
+    "OBV顶背离": ("obv_bearish_divergence",),
+    "OBV底背离": ("obv_bullish_divergence",),
+    "OBV动量20": ("obv_mom_20",),
+    "OBV动量60": ("obv_mom_60",),
+    "OBV加速度": ("obv_accel",),
+    "OBV波动率": ("obv_volatility",),
+    "OBV集中度": ("obv_concentration",),
+    "OBV价共振": ("obv_price_combo",),
+    "OBV突破": ("obv_breakout",),
+    "OBV总分": ("obv_total_score",),
+    "唐奇安下轨": ("唐奇安下轨",),
+    "唐奇安下破": ("唐奇安下破",),
+    "动态波动率通道": ("动态波动率通道",),
+    "动态波动率下破": ("动态波动率下破",),
+    "20日新高占比": ("new_high_ratio_20d", "20日新高占比"),
+    "20日新低占比": ("new_low_ratio_20d", "20日新低占比"),
+    "总卖出信号": ("total_sell_signal", "总卖出信号"),
+    "布林上轨": ("boll_upper", "布林上轨"),
+    "布林中轨": ("boll_mid", "布林中轨"),
+    "布林下轨": ("boll_lower", "布林下轨"),
+    "上穿上布林带": ("cross_up_boll_upper", "上穿上布林带"),
+    "下穿上布林带": ("cross_down_boll_upper", "下穿上布林带"),
+    "上穿下布林带": ("cross_up_boll_lower", "上穿下布林带"),
+    "下穿下布林带": ("cross_down_boll_lower", "下穿下布林带"),
+    "MA5": ("ma_5", "MA5"),
+    "MA10": ("ma_10", "MA10"),
+    "MA15": ("ma_15", "MA15"),
+    "MA20": ("ma_20", "MA20"),
+    "MA30": ("ma_30", "MA30"),
+    "MA40": ("ma_40", "MA40"),
+    "MA50": ("ma_50", "MA50"),
+    "MA60": ("ma_60", "MA60"),
+    "MA70": ("ma_70", "MA70"),
+    "MA120": ("ma_120", "MA120"),
+    "价格下穿MA5": ("dead_cross_price_ma5", "价格下穿MA5"),
+    "价格下穿MA10": ("dead_cross_price_ma10", "价格下穿MA10"),
+    "价格下穿MA15": ("dead_cross_price_ma15", "价格下穿MA15"),
+    "价格下穿MA20": ("dead_cross_price_ma20", "价格下穿MA20"),
+    "价格下穿MA30": ("dead_cross_price_ma30", "价格下穿MA30"),
+    "价格下穿MA40": ("dead_cross_price_ma40", "价格下穿MA40"),
+    "价格下穿MA50": ("dead_cross_price_ma50", "价格下穿MA50"),
+    "价格下穿MA60": ("dead_cross_price_ma60", "价格下穿MA60"),
+    "价格下穿MA70": ("dead_cross_price_ma70", "价格下穿MA70"),
+    "价格下穿MA120": ("dead_cross_price_ma120", "价格下穿MA120"),
+    "MA5下穿MA10": ("dead_cross_ma5_ma10", "MA5下穿MA10"),
+    "MA5下穿MA15": ("dead_cross_ma5_ma15", "MA5下穿MA15"),
+    "MA15下穿MA20": ("dead_cross_ma15_ma20", "MA15下穿MA20"),
+    "量比20": ("volume_ratio_20", "量比20"),
+    "小放量下跌": ("small_volume_drop", "小放量下跌"),
+    "中放量下跌": ("medium_volume_drop", "中放量下跌"),
+    "大放量下跌": ("large_volume_drop", "大放量下跌"),
+    "放量下跌": ("volume_drop_signal", "放量下跌"),
+    "放量1.2倍": ("volume_surge_1_2x", "放量1.2倍"),
+    "放量1.5倍": ("volume_surge_1_5x", "放量1.5倍"),
+    "放量1.8倍": ("volume_surge_1_8x", "放量1.8倍"),
+    "放量2倍": ("volume_surge_2x", "放量2倍"),
+    "放量3倍": ("volume_surge_3x", "放量3倍"),
+    "总买入信号": ("total_buy_signal",),
+    "总买入信号改": ("total_buy_signal_adjusted",),
+    "总买入信号（去两弱）": ("total_buy_signal_no_two_weak",),
+    "总买入超强底": ("super_strong_bottom",),
+    "强底": ("tdx_strong_bottom",),
+    "超强底": ("tdx_super_strong_bottom",),
+    "五日内六级": ("tdx_five_day_level6",),
+    "五日内六级（去掉集中总）": ("tdx_five_day_level6_no_concentration",),
+    "MAC总信号": ("tdx_signal_e",),
+    "K线底信号": ("tdx_signal_k",),
+    "集中总信号": ("tdx_signal_a",),
+    "筹码峰信号": ("tdx_signal_b",),
+    "均线类信号": ("tdx_signal_i",),
+    "KDJ超卖R信号": ("tdx_signal_r",),
+    "ZXW因子": ("zxw_factor", "ZXW因子"),
+    "ZXW因子+破30日均线": ("zxw_factor_below_ma30",),
+    "ZXW因子+破60日均线": ("zxw_factor_below_ma60",),
+    "卖出因子（1.5-60）": ("sell_factor_1_5_60",),
+    "卖出因子（2-60）": ("sell_factor_2_60",),
+    "卖出因子（1.5-120）": ("sell_factor_1_5_120",),
+    "卖出因子（2-120）": ("sell_factor_2_120",),
+}
 
 _jobs_lock = threading.Lock()
 _jobs: dict[str, dict[str, Any]] = {}
@@ -374,6 +617,30 @@ def _load_available_factors() -> list[str]:
     return sorted(set(names))
 
 
+def _build_factor_display_label_map(available_factors: list[str]) -> dict[str, str]:
+    available_set = set(available_factors)
+    label_map: dict[str, str] = {name: name for name in available_factors}
+    for display_name, aliases in _FACTOR_DISPLAY_TO_INTERNAL.items():
+        if display_name in available_set:
+            label_map[display_name] = display_name
+        for alias in aliases:
+            if alias in available_set and (alias not in label_map or label_map[alias] == alias):
+                label_map[alias] = display_name
+    return label_map
+
+
+def _load_pure_technical_factor_labels(base_path: Path) -> dict[str, str]:
+    path = Path(base_path) / "_meta" / PURE_TECHNICAL_CATALOG_CACHE_FILE
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    labels = payload.get("factor_labels")
+    return labels if isinstance(labels, dict) else {}
+
+
 def _load_factor_catalog(available_factors: list[str]) -> list[dict[str, Any]]:
     available = set(available_factors)
     if not FACTOR_CATALOG_PATH.exists():
@@ -413,7 +680,15 @@ def list_factor_validation_factors() -> dict[str, Any]:
     groups = _load_factor_catalog(ordinary_factors)
     if morph_factors:
         groups.append({"group_id": "morph", "group_name": "形态面", "children": morph_factors})
-    factor_labels = {name: name for name in ordinary_factors}
+    factor_labels = _build_factor_display_label_map(ordinary_factors)
+    available = set(ordinary_factors)
+    factor_labels.update(
+        {
+            str(factor_id): str(label)
+            for factor_id, label in _load_pure_technical_factor_labels(SIGNAL_DAILY_BASE_PATH).items()
+            if str(factor_id) in available and str(label).strip()
+        }
+    )
     factor_labels.update(_build_morph_factor_labels(morph_factors))
     return {
         "factors": factors,

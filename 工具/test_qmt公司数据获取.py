@@ -64,3 +64,43 @@ def test_fundamental_valuation_uses_parent_profit_for_point_in_time_and_ttm():
 
     assert result.loc[0, "net_profit_parent"] == 20.0
     assert result.loc[0, "net_profit_parent_ttm"] == 110.0
+
+
+def test_normalize_qmt_table_frame_drops_invalid_announce_dates():
+    raw = pd.DataFrame(
+        {
+            "m_timetag": ["20240331", "20240630", "20240930"],
+            "m_anntime": ["20240430", None, "invalid-date"],
+            "revenue": [100.0, 200.0, 300.0],
+        }
+    )
+
+    result = service.normalize_qmt_table_frame(
+        raw,
+        table_name="Income",
+        code="000001.SZ",
+        name="平安银行",
+        updated_at="2026-08-02T00:00:00",
+    )
+
+    assert result["report_date"].tolist() == [pd.Timestamp("2024-03-31")]
+    assert result["announce_date"].tolist() == [pd.Timestamp("2024-04-30")]
+
+
+def test_normalize_qmt_table_frame_drops_rows_when_announce_column_is_missing():
+    raw = pd.DataFrame(
+        {
+            "m_timetag": ["20240331", "20240630"],
+            "revenue": [100.0, 200.0],
+        }
+    )
+
+    result = service.normalize_qmt_table_frame(
+        raw,
+        table_name="Income",
+        code="000001.SZ",
+        name="平安银行",
+        updated_at="2026-08-02T00:00:00",
+    )
+
+    assert result.empty

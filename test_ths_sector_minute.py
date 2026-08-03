@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-import inspect
 from datetime import date, datetime
 from pathlib import Path
 
@@ -173,6 +172,27 @@ def test_scan_prior_local_values_many_returns_latest_value_per_code(module, tmp_
     assert result == {"881101.THS": (10.0, 5), "881102.THS": (20.0, 10)}
 
 
+def test_scan_previous_month_values_only_reads_target_month(module, tmp_path: Path):
+    rows = []
+    for moment, close, index in [
+        (datetime(2023, 7, 31, 15, 0), 10.0, 4),
+        (datetime(2023, 8, 31, 15, 0), 20.0, 9),
+    ]:
+        rows.append({
+            "htsc_code": "881102.THS", "time": moment, "close": close,
+            "open": close, "high": close, "low": close, "volume": 1.0,
+            "amount": 1.0, "date": moment.date().isoformat(), "pre_close": close,
+            "change": 0.0, "pct_chg": 0.0, "__index_level_0__": index,
+        })
+    frame = pl.DataFrame(rows, schema=module.OUTPUT_SCHEMA, strict=False)
+    module.write_daily_parts(frame, tmp_path)
+    module.rebuild_daily_partitions(tmp_path, module.find_unmerged_partitions(tmp_path))
+
+    result = module.scan_previous_month_values(tmp_path, ["881102.THS"], date(2023, 9, 1))
+
+    assert result == {"881102.THS": (20.0, 10)}
+
+
 def test_daily_partition_merge_is_idempotent(module, tmp_path: Path):
     rows = [
         {"time": datetime(2018, 1, 2, 9, 30), "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5, "volume": 1.0, "amount": 10.0}
@@ -246,12 +266,91 @@ def test_combined_entry_registers_independent_ths_minute_stage():
     assert entry.STAGE_KEY_ALIASES["ths_mins"] == "ths_index_mins"
 
 
-def test_client_only_source_has_no_external_quote_request(module):
-    source = inspect.getsource(module)
-    assert "fuyao" not in source.lower()
-    assert "urllib.request" not in source
-    assert "http://" not in source.lower()
-    assert "https://" not in source.lower()
+def test_build_fuyao_payload_uses_month_range(module):
+    payload = module.build_request_payload("881102", date(2018, 5, 1), date(2018, 5, 31))
+
+    assert payload["code_list"] == [{"codes": ["881102"], "market": "48"}]
+    assert payload["trade_class"] == "intraday"
+    assert payload["time_period"] == "min_1"
+    assert payload["trade_date"] == 0
+    assert payload["begin_time"] < payload["end_time"]
+
+
+def test_parse_fuyao_payload_maps_fields_and_filters_window(module):
+    payload = {
+        "status_code": 0,
+        "data": {
+            "quote_data": [{
+                "market": "48",
+                "code": "881102",
+                "data_fields": ["1", "7", "8", "9", "11", "13", "19"],
+                "value": [
+                    [1514766600000, 1, 1, 1, 1, 1, 1],
+                    [1526607000000, 10, 11, 9, 10.5, 100, 1000],
+                ],
+            }]
+        },
+    }
+
+    rows = module.parse_quote_payload(payload, "881102", date(2018, 5, 1), date(2018, 5, 31))
+
+    assert len(rows) == 1
+    assert rows[0]["time"] == datetime(2018, 5, 18, 9, 30)
+    assert rows[0]["close"] == pytest.approx(10.5)
+
+
+def test_parse_fuyao_payload_rejects_auth_or_server_error(module):
+    with pytest.raises(module.QuoteRequestError):
+        module.parse_quote_payload({"status_code": 401}, "881102", date(2018, 5, 1), date(2018, 5, 31))
+
+
+def test_fuyao_source_retries_old_empty_windows_by_default(module):
+    empty = module.DownloadState(
+        "881102.THS", "2018-05", "empty", 0, None, None, datetime(2026, 8, 1), ""
+    )
+    assert module.should_request_window(empty, retry_empty=False, source="fuyao-v2") is True
+
+
+def test_fuyao_v2_skips_verified_unavailable_window(module):
+    unavailable = module.DownloadState(
+        "881102.THS", "2019-04", "unavailable", 0, None, None, datetime(2026, 8, 2), "Fuyao明确返回空"
+    )
+    assert module.should_request_window(unavailable, retry_empty=False, source="fuyao-v2") is False
+    assert module.should_request_window(unavailable, retry_empty=True, source="fuyao-v2") is True
+
+
+def test_find_missing_trade_days_uses_daily_calendar(module):
+    expected = {
+        "881102.THS": {date(2018, 5, 17), date(2018, 5, 18)},
+        "881103.THS": {date(2018, 5, 18)},
+    }
+    actual = {
+        "881102.THS": {date(2018, 5, 17)},
+        "881103.THS": set(),
+    }
+
+    assert module.find_missing_trade_days(expected, actual) == [
+        ("881102.THS", date(2018, 5, 18)),
+        ("881103.THS", date(2018, 5, 18)),
+    ]
+
+
+def test_window_has_expected_day_distinguishes_pre_listing_month(module):
+    trading_days = {date(2018, 5, 18), date(2018, 6, 1)}
+    assert module.window_has_expected_day(trading_days, date(2018, 5, 1), date(2018, 5, 31)) is True
+    assert module.window_has_expected_day(trading_days, date(2010, 1, 1), date(2010, 1, 31)) is False
+
+
+def test_group_missing_days_is_day_major(module):
+    gaps = [
+        ("881102.THS", date(2018, 5, 18)),
+        ("881101.THS", date(2018, 5, 18)),
+        ("881102.THS", date(2018, 5, 21)),
+    ]
+    assert module.group_missing_days(gaps) == [
+        (date(2018, 5, 18), ["881101.THS", "881102.THS"]),
+        (date(2018, 5, 21), ["881102.THS"]),
+    ]
 
 
 def test_parse_client_export_decodes_gb18030_and_normalizes_columns(module, tmp_path: Path):

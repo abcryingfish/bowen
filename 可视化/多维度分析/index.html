@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../shared/edge_float.css">
+  <title>板块研究统一看板｜全展开原型</title>
+  <style>
+    :root {
+      --bg: #0e1318;
+      --panel: #171e25;
+      --panel-2: #202832;
+      --panel-3: #131920;
+      --line: #303b46;
+      --text: #edf2f5;
+      --muted: #98a6b3;
+      --gold: #e0b64b;
+      --green: #42c4a2;
+      --red: #ef7373;
+      --blue: #6ba6e6;
+      --orange: #df9758;
+    }
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; line-height: 1.6; }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+    a { color: var(--blue); }
+    code { font-family: Consolas, monospace; }
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: auto minmax(220px, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 60px;
+      padding: 9px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(14, 19, 24, .97);
+    }
+    .brand { color: var(--gold); font-weight: 800; white-space: nowrap; }
+    .header-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .header select, .header input, .toolbar select {
+      min-height: 34px;
+      padding: 5px 30px 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel-3);
+      color: var(--text);
+    }
+    #entity-selector { width: min(330px, 100%); }
+    .header-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .command {
+      min-height: 34px;
+      padding: 5px 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel-2);
+      color: var(--text);
+    }
+    .anchor-nav {
+      position: sticky;
+      top: 60px;
+      z-index: 15;
+      display: flex;
+      gap: 4px;
+      padding: 7px max(16px, calc((100% - 1360px) / 2));
+      overflow-x: auto;
+      border-bottom: 1px solid var(--line);
+      background: #10161c;
+      scrollbar-width: thin;
+    }
+    .anchor-nav a { padding: 5px 9px; color: var(--muted); font-size: 11px; text-decoration: none; white-space: nowrap; }
+    .anchor-nav a:hover { color: var(--text); background: var(--panel-2); }
+    .shell { width: min(1360px, calc(100% - 32px)); margin: 16px auto 38px; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--gold);
+      background: var(--panel);
+    }
+    .hero-kicker, .muted { color: var(--muted); }
+    .hero-kicker { margin: 0 0 5px; font-size: 12px; }
+    .hero h1 { margin: 0; font-size: 34px; letter-spacing: 0; }
+    .hero-verdict { margin: 7px 0 0; color: #f2d57f; font-size: 17px; font-weight: 700; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .badge { padding: 3px 8px; border: 1px solid var(--line); background: var(--panel-2); color: #c8d0d7; font-size: 11px; }
+    .badge.ok { border-color: #315f54; color: #9ee1ce; }
+    .badge.warn { border-color: #6e5930; color: #f0cf77; }
+    .hero-side { display: grid; grid-template-columns: auto auto auto; gap: 22px; align-items: end; }
+    .hero-metric span { display: block; color: var(--muted); font-size: 11px; }
+    .hero-metric strong { font-size: 17px; }
+    .overall { color: var(--gold); font-size: 50px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .overall small { color: var(--muted); font-size: 14px; }
+    .layout { display: grid; gap: 14px; margin-top: 14px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .block { min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+    .block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .block-head h2 { margin: 0; font-size: 15px; }
+    .block-head small { color: var(--muted); }
+    .block-body { padding: 14px; }
+    .lead-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+    .lead-copy { margin: 0; color: #d5dde3; font-size: 13px; }
+    .contradiction { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: var(--panel-2); font-size: 13px; }
+    .change-list { display: grid; gap: 8px; }
+    .change-item { padding: 9px 10px; border: 1px solid #2b3641; background: var(--panel-2); font-size: 12px; }
+    .change-item strong { color: #f1d47e; }
+    .score-list { display: grid; gap: 11px; }
+    .score-row { display: grid; grid-template-columns: 64px minmax(90px, 1fr) 40px 54px; gap: 9px; align-items: center; }
+    .score-name { color: #c8d0d7; font-size: 13px; }
+    .score-track { height: 8px; background: #29323c; overflow: hidden; }
+    .score-fill { height: 100%; background: var(--gold); transition: width .2s ease; }
+    .score-value { text-align: right; font: 700 13px/1 Consolas, monospace; }
+    .delta { text-align: right; font-size: 11px; }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .neutral { color: var(--muted); }
+    .forecast { min-height: 188px; padding: 14px; border: 1px solid #2c3641; background: var(--panel-2); }
+    .forecast-label { color: var(--muted); font-size: 11px; }
+    .forecast h3 { margin: 6px 0 2px; font-size: 18px; }
+    .forecast-range { color: #f1d47e; font-size: 17px; font-weight: 800; }
+    .forecast-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 11px; color: #c8d0d7; font-size: 11px; }
+    .forecast-invalid { margin: 11px 0 0; padding-top: 9px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .indicator-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); }
+    .indicator { min-height: 80px; padding: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+    .indicator:nth-child(4n) { border-right: 0; }
+    .indicator-name { color: var(--muted); font-size: 11px; }
+    .indicator-value { margin-top: 5px; color: #f1d47e; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .indicator-meta { color: #778591; font-size: 10px; }
+    .chart-shell { position: relative; min-height: 300px; border: 1px solid #2c3641; background: #12181e; overflow: hidden; }
+    .chart-shell svg { display: block; width: 100%; height: 300px; }
+    .chart-grid { stroke: #29343e; stroke-width: 1; }
+    .chart-axis { fill: #8795a1; font-size: 10px; }
+    .chart-main { fill: none; stroke: var(--gold); stroke-width: 2.2; }
+    .chart-benchmark { fill: none; stroke: var(--blue); stroke-width: 1.5; }
+    .chart-ma20 { fill: none; stroke: var(--green); stroke-width: 1.3; }
+    .chart-ma60 { fill: none; stroke: var(--orange); stroke-width: 1.3; }
+    .chart-score { fill: none; stroke: var(--gold); stroke-width: 2.3; }
+    .chart-point { fill: var(--gold); }
+    .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+    .segment { min-width: 42px; min-height: 30px; padding: 4px 9px; border: 0; border-right: 1px solid var(--line); background: #151b21; color: var(--muted); }
+    .segment:last-child { border-right: 0; }
+    .segment.active { background: #303426; color: #f0d27a; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 9px; color: var(--muted); font-size: 10px; }
+    .legend span::before { content: ""; display: inline-block; width: 16px; height: 2px; margin: 0 5px 3px 0; background: var(--legend); }
+    .metric-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); margin-top: 10px; }
+    .metric { min-height: 68px; padding: 9px 10px; border-right: 1px solid var(--line); background: var(--panel-2); }
+    .metric:last-child { border-right: 0; }
+    .metric span { display: block; color: var(--muted); font-size: 10px; }
+    .metric strong { display: block; margin-top: 4px; font-size: 14px; }
+    .factor-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .subhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .subhead h3 { margin: 0; font-size: 13px; }
+    .factor-list { display: grid; }
+    .factor { display: grid; grid-template-columns: 34px 1fr auto; gap: 9px; padding: 9px 0; border-bottom: 1px solid #29333e; }
+    .factor:last-child { border-bottom: 0; }
+    .tag { display: inline-grid; place-items: center; min-height: 25px; border: 1px solid #50605a; color: var(--green); font: 700 11px/1 Consolas, monospace; }
+    .risk-list .tag { border-color: #68484b; color: var(--red); }
+    .factor-copy { color: #d5dce2; font-size: 12px; }
+    .factor-source { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .table-wrap { overflow-x: auto; }
+    .nested-table { margin: 0; max-height: 280px; overflow: auto; }
+    .nested-table table { min-width: 420px; background: var(--panel-3); }
+    .nested-table th, .nested-table td { padding: 5px 7px; font-size: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 11px; }
+    th { color: var(--muted); font-weight: 600; background: var(--panel-2); white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #1d252d; }
+    .mono { font-family: Consolas, monospace; color: var(--blue); }
+    .status { padding: 2px 6px; border: 1px solid var(--line); white-space: nowrap; }
+    .status.good { color: var(--green); border-color: #315f54; }
+    .status.warn { color: #f0cf77; border-color: #6e5930; }
+    .status.bad { color: var(--red); border-color: #68484b; }
+    .breadth-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 14px; }
+    .breadth-bars { display: grid; gap: 11px; }
+    .breadth-row { display: grid; grid-template-columns: 105px 1fr 48px; gap: 8px; align-items: center; font-size: 11px; }
+    .breadth-track { height: 9px; background: #29323c; }
+    .breadth-fill { height: 100%; background: var(--green); }
+    .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .scenario { padding: 13px; border-top: 3px solid var(--line); background: var(--panel-2); }
+    .scenario.bull { border-color: var(--green); }
+    .scenario.base { border-color: var(--gold); }
+    .scenario.bear { border-color: var(--red); }
+    .scenario h3 { margin: 0 0 7px; font-size: 14px; }
+    .scenario p { margin: 5px 0; color: #c8d0d7; font-size: 11px; }
+    .focus-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+    .item-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .item-list li { padding: 9px 10px; border-left: 2px solid var(--gold); background: var(--panel-2); font-size: 12px; }
+    .item-list strong { color: #f1d47e; }
+    .quality-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .quality-item { padding: 11px; border: 1px solid #2c3641; background: var(--panel-2); }
+    .quality-item span { color: var(--muted); font-size: 10px; }
+    .quality-item strong { display: block; margin-top: 4px; font-size: 15px; }
+    .audit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .audit-pair { padding: 10px; border: 1px solid #2c3641; background: var(--panel-2); }
+    .audit-pair span { display: block; color: var(--muted); font-size: 10px; }
+    .audit-pair code { display: block; margin-top: 4px; overflow-wrap: anywhere; font-size: 11px; }
+    .note { margin: 14px 0 0; color: #788591; font-size: 10px; text-align: right; }
+    @media (max-width: 1050px) {
+      .header { grid-template-columns: auto 1fr auto; }
+      .header-meta { display: none; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-side { justify-content: start; }
+      .indicator-grid { grid-template-columns: repeat(2, 1fr); }
+      .indicator:nth-child(4n) { border-right: 1px solid var(--line); }
+      .indicator:nth-child(2n) { border-right: 0; }
+      .metric-strip { grid-template-columns: repeat(3, 1fr); }
+      .metric:nth-child(3n) { border-right: 0; }
+      .lead-grid, .breadth-grid, .focus-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .header { grid-template-columns: 1fr auto; padding: 8px 11px; }
+      .brand { display: none; }
+      .header-controls { min-width: 0; }
+      #analysis-date { display: none; }
+      .anchor-nav { top: 52px; padding-left: 10px; }
+      .shell { width: calc(100% - 18px); margin-top: 9px; }
+      .hero { padding: 15px; }
+      .hero h1 { font-size: 28px; }
+      .hero-side { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .overall { grid-row: 1 / 3; font-size: 43px; }
+      .grid-2, .grid-3, .factor-columns, .scenario-grid { grid-template-columns: 1fr; }
+      .indicator-grid, .quality-grid, .audit-grid { grid-template-columns: 1fr; }
+      .indicator, .indicator:nth-child(4n), .indicator:nth-child(2n) { border-right: 0; }
+      .metric-strip { grid-template-columns: repeat(2, 1fr); }
+      .metric, .metric:nth-child(3n) { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .metric:nth-child(2n) { border-right: 0; }
+      .score-row { grid-template-columns: 58px 1fr 36px 46px; }
+      .factor { grid-template-columns: 30px 1fr; }
+      .factor-source { grid-column: 2; white-space: normal; }
+      .block-head { align-items: flex-start; flex-wrap: wrap; }
+      .chart-shell, .chart-shell svg { min-height: 240px; height: 240px; }
+    }
+    @media print {
+      .header, .anchor-nav, .command { display: none; }
+      .shell { width: 100%; margin: 0; }
+      .block, .hero { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">量化研究</div>
+    <div class="header-controls">
+      <select id="entity-selector" aria-label="选择板块">
+        <option value="gold">黄金概念 · 885530.THS</option>
+        <option value="semiconductor">半导体 · 881121.THS</option>
+        <option value="reform">国企改革 · 886021.THS</option>
+      </select>
+      <input id="analysis-date" type="date" value="2026-07-15" aria-label="分析日期">
+    </div>
+    <div class="header-meta">最后发布：2026-07-15 16:08</div>
+    <button class="command" id="print-button" type="button">打印</button>
+  </header>
+
+  <nav class="anchor-nav" aria-label="页面栏目">
+    <a href="#overview">总览</a><a href="#scores">评分</a><a href="#forecasts">预测</a><a href="#index-history">指数历史</a><a href="#score-history">评分历史</a><a href="#constituents">成分</a><a href="#factors">因素</a><a href="#score-evidence">评分依据</a><a href="#scenarios">情景</a><a href="#history">观点变化</a><a href="#claims">主张</a><a href="#evidence">证据</a><a href="#quality">质量</a><a href="#audit">审计</a>
+  </nav>
+
+  <main class="shell">
+    <section class="hero" id="overview">
+      <div>
+        <p class="hero-kicker"><span data-field="entity.sector_type">产业链主题</span> · <code data-field="entity.code">885530.THS</code></p>
+        <h1 data-field="entity.name">黄金概念</h1>
+        <p class="hero-verdict" data-field="assessment.verdict">震荡偏强，等待量能确认</p>
+        <div class="badge-row">
+          <span class="badge ok" data-field="assessment.state_regime">trend_up</span>
+          <span class="badge">沪深分析成分 72</span>
+          <span class="badge">排除 BJ 3</span>
+          <span class="badge ok">数据完整度 98%</span>
+          <span class="badge warn">类型待年度复核</span>
+        </div>
+      </div>
+      <div class="hero-side">
+        <div class="overall"><span data-field="assessment.overall_score">7.4</span> <small>/ 10</small></div>
+        <div class="hero-metric"><span>研究置信度</span><strong>78%</strong></div>
+        <div class="hero-metric"><span>较上次</span><strong class="positive">+0.4</strong></div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="block">
+        <div class="block-head"><h2>核心逻辑与观点变化</h2><small>analysis_run_id · demo_20260715</small></div>
+        <div class="block-body lead-grid">
+          <div>
+            <p class="lead-copy"><strong>核心逻辑：</strong>示例板块的中期盈利趋势仍有支撑，指数位于60日均线上方，20日成分广度保持在可接受区间；政策和产业事实提供方向性支持，但短期成交扩张尚未完全确认。</p>
+            <p class="contradiction"><strong>关键矛盾：</strong>基本面改善与中期趋势向上，对比短期估值修复较快、资金增量有限。</p>
+          </div>
+          <div class="change-list">
+            <div class="change-item"><strong>延续：</strong>中期趋势判断保持不变。</div>
+            <div class="change-item"><strong>加强：</strong>20日上涨成分占比由52%升至61%。</div>
+            <div class="change-item"><strong>削弱：</strong>估值分位上升，安全边际收窄。</div>
+            <div class="change-item"><strong>失效：</strong>上一轮“量能持续收缩”主张已失效。</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="block" id="scores">
+          <div class="block-head"><h2>六维评分</h2><small>风险为压力分，越高越危险</small></div>
+          <div class="block-body"><div id="score-list" class="score-list"></div></div>
+        </section>
+
+        <section class="block" id="market-state">
+          <div class="block-head"><h2>当前市场状态</h2><small>指数与沪深成分</small></div>
+          <div class="block-body">
+            <div class="indicator-grid">
+              <article class="indicator"><div class="indicator-name">最新收盘</div><div class="indicator-value">1,684.32</div><div class="indicator-meta">2026-07-15</div></article>
+              <article class="indicator"><div class="indicator-name">20日收益</div><div class="indicator-value positive">+6.82%</div><div class="indicator-meta">交易日口径</div></article>
+              <article class="indicator"><div class="indicator-name">60日收益</div><div class="indicator-value positive">+11.40%</div><div class="indicator-meta">交易日口径</div></article>
+              <article class="indicator"><div class="indicator-name">60日最大回撤</div><div class="indicator-value negative">-8.71%</div><div class="indicator-meta">本地收盘计算</div></article>
+              <article class="indicator"><div class="indicator-name">20日年化波动</div><div class="indicator-value">24.60%</div><div class="indicator-meta">日收益标准差</div></article>
+              <article class="indicator"><div class="indicator-name">相对MA20</div><div class="indicator-value positive">+3.15%</div><div class="indicator-meta">趋势状态</div></article>
+              <article class="indicator"><div class="indicator-name">量能5日/20日</div><div class="indicator-value positive">+12.30%</div><div class="indicator-meta">成交量均值</div></article>
+              <article class="indicator"><div class="indicator-name">相对基准20日</div><div class="indicator-value positive">+2.48%</div><div class="indicator-meta">建议基准演示</div></article>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="block" id="forecasts">
+        <div class="block-head"><h2>短中长期预测</h2><small>Forecast不可回改，到期另写Outcome</small></div>
+        <div class="block-body grid-3">
+          <article class="forecast"><div class="forecast-label">短期 · 5个交易日</div><h3>震荡偏强</h3><div class="forecast-range">-2% 至 +4%</div><div class="forecast-stats"><span>上涨概率 58%</span><span>置信度 71%</span><span>历史覆盖 48期</span><span>状态 trend_up</span></div><p class="forecast-invalid">失效条件：收盘跌破20日均线且成分广度降至40%以下。</p></article>
+          <article class="forecast"><div class="forecast-label">中期 · 20个交易日</div><h3>震荡上行</h3><div class="forecast-range">-4% 至 +9%</div><div class="forecast-stats"><span>上涨概率 64%</span><span>置信度 76%</span><span>历史覆盖 44期</span><span>状态 trend_up</span></div><p class="forecast-invalid">失效条件：盈利预期下修，同时指数跌破60日均线。</p></article>
+          <article class="forecast"><div class="forecast-label">长期 · 60个交易日</div><h3>中性偏多</h3><div class="forecast-range">-9% 至 +16%</div><div class="forecast-stats"><span>上涨概率 61%</span><span>置信度 62%</span><span>历史覆盖 31期</span><span>状态 range/up</span></div><p class="forecast-invalid">失效条件：产业价格趋势反转或核心成分盈利连续下修。</p></article>
+        </div>
+      </section>
+
+      <section class="block" id="index-history">
+        <div class="block-head">
+          <h2>板块历史指数</h2>
+          <div class="toolbar" id="history-range" aria-label="历史区间">
+            <div class="segmented"><button class="segment" type="button" data-range="20">1月</button><button class="segment" type="button" data-range="60">3月</button><button class="segment active" type="button" data-range="250">1年</button><button class="segment" type="button" data-range="500">全部</button></div>
+          </div>
+        </div>
+        <div class="block-body">
+          <div class="chart-shell"><svg id="index-history-chart" viewBox="0 0 1120 300" role="img" aria-label="板块历史指数、均线和基准"></svg></div>
+          <div class="legend"><span style="--legend:var(--gold)">板块指数</span><span style="--legend:var(--green)">MA20</span><span style="--legend:var(--orange)">MA60</span><span style="--legend:var(--blue)">基准归一化</span></div>
+          <div class="metric-strip"><div class="metric"><span>历史起点</span><strong data-field="history.start_date">2024-07-15</strong></div><div class="metric"><span>区间收益</span><strong class="positive" data-field="history.return">+28.4%</strong></div><div class="metric"><span>区间最大回撤</span><strong class="negative" data-field="history.max_drawdown">-16.7%</strong></div><div class="metric"><span>相对基准</span><strong class="positive" data-field="history.excess_return">+9.8%</strong></div><div class="metric"><span>Beta</span><strong data-field="history.beta">1.14</strong></div><div class="metric"><span>年化波动</span><strong data-field="history.volatility">26.2%</strong></div></div>
+        </div>
+      </section>
+
+      <section class="block" id="score-history">
+        <div class="block-head"><h2>评分变化</h2><small>每次正式研究批次</small></div>
+        <div class="block-body">
+          <div class="chart-shell"><svg id="score-history-chart" viewBox="0 0 1120 300" role="img" aria-label="综合评分历史变化"></svg></div>
+          <div class="legend"><span style="--legend:var(--gold)">综合</span><span style="--legend:#7aa2f7">政策</span><span style="--legend:#55c2a5">基本面</span><span style="--legend:#a78bfa">资金</span><span style="--legend:#f5a524">技术</span><span style="--legend:#8bd450">估值</span><span style="--legend:#ff6b6b">风险压力</span></div>
+          <div class="table-wrap" style="margin-top:10px">
+            <table><thead><tr><th>研究日期</th><th>综合</th><th>政策</th><th>基本面</th><th>资金</th><th>技术</th><th>估值</th><th>风险压力</th><th>变化原因</th></tr></thead><tbody id="score-history-rows"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="constituents">
+        <div class="block-head"><h2>成分股快照与广度</h2><small>snapshot_id · demo_members_20260715</small></div>
+        <div class="block-body breadth-grid">
+          <div>
+            <div class="quality-grid" style="grid-template-columns:repeat(2,1fr)"><div class="quality-item"><span>来源成分</span><strong>75</strong></div><div class="quality-item"><span>排除BJ</span><strong>3</strong></div><div class="quality-item"><span>沪深成分</span><strong>72</strong></div><div class="quality-item"><span>行情覆盖</span><strong class="positive">100%</strong></div></div>
+            <div class="breadth-bars" style="margin-top:12px"><div class="breadth-row"><span>站上MA20</span><div class="breadth-track"><div class="breadth-fill" style="width:61%"></div></div><strong>61%</strong></div><div class="breadth-row"><span>站上MA60</span><div class="breadth-track"><div class="breadth-fill" style="width:67%"></div></div><strong>67%</strong></div><div class="breadth-row"><span>20日上涨</span><div class="breadth-track"><div class="breadth-fill" style="width:58%"></div></div><strong>58%</strong></div><div class="breadth-row"><span>正PE覆盖</span><div class="breadth-track"><div class="breadth-fill" style="width:78%;background:var(--gold)"></div></div><strong>78%</strong></div></div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>代码</th><th>名称</th><th>20日收益</th><th>贡献度</th><th>PE TTM</th><th>状态</th></tr></thead><tbody><tr><td class="mono">600489.SH</td><td>示例龙头A</td><td class="positive">+14.2%</td><td>18.4%</td><td>21.6</td><td><span class="status good">领先</span></td></tr><tr><td class="mono">601899.SH</td><td>示例龙头B</td><td class="positive">+9.8%</td><td>15.1%</td><td>18.9</td><td><span class="status good">领先</span></td></tr><tr><td class="mono">000975.SZ</td><td>示例公司C</td><td class="positive">+6.1%</td><td>7.2%</td><td>32.4</td><td><span class="status">同步</span></td></tr><tr><td class="mono">600547.SH</td><td>示例公司D</td><td class="negative">-3.7%</td><td>-2.8%</td><td>27.1</td><td><span class="status warn">落后</span></td></tr><tr><td class="mono">002155.SZ</td><td>示例公司E</td><td class="negative">-8.4%</td><td>-4.1%</td><td>亏损</td><td><span class="status bad">风险</span></td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="block" id="factors">
+        <div class="block-head"><h2>支持因素与风险因素</h2><small>全部显示</small></div>
+        <div class="block-body factor-columns">
+          <div><div class="subhead"><h3 class="positive">支持因素</h3><small class="muted">4项</small></div><div class="factor-list"><article class="factor"><span class="tag">P1</span><div class="factor-copy">行业价格中枢保持稳定，核心公司的盈利预期仍在改善。</div><span class="factor-source">公司公告/行业数据</span></article><article class="factor"><span class="tag">P2</span><div class="factor-copy">指数站上20日和60日均线，中期趋势尚未破坏。</div><span class="factor-source">本地行情</span></article><article class="factor"><span class="tag">P3</span><div class="factor-copy">成分股上涨广度由52%提升至61%，不是单一龙头推动。</div><span class="factor-source">成分快照</span></article><article class="factor"><span class="tag">P4</span><div class="factor-copy">政策方向与产业资本开支形成中期支持。</div><span class="factor-source">官方文件</span></article></div></div>
+          <div><div class="subhead"><h3 class="negative">风险因素</h3><small class="muted">4项</small></div><div class="factor-list risk-list"><article class="factor"><span class="tag">R1</span><div class="factor-copy">估值分位较上次上升，安全边际有所收窄。</div><span class="factor-source">本地估值</span></article><article class="factor"><span class="tag">R2</span><div class="factor-copy">成交量扩张尚未连续确认，资金维度仍偏中性。</div><span class="factor-source">本地行情</span></article><article class="factor"><span class="tag">R3</span><div class="factor-copy">前五大成分贡献度偏高，指数存在龙头主导风险。</div><span class="factor-source">成分贡献</span></article><article class="factor"><span class="tag">R4</span><div class="factor-copy">外部价格快速回落可能触发盈利预期下修。</div><span class="factor-source">情景推断</span></article></div></div>
+        </div>
+      </section>
+
+      <section class="block" id="score-evidence">
+        <div class="block-head"><h2>评分依据与类型适配</h2><small>sector_adapter.industry_chain.v1</small></div>
+        <div class="table-wrap"><table><thead><tr><th>维度</th><th>评分</th><th>较上次</th><th>主要指标</th><th>评分方法</th><th>证据质量</th><th>限制</th></tr></thead><tbody id="score-evidence-rows"></tbody></table></div>
+      </section>
+
+      <section class="block" id="scenarios">
+        <div class="block-head"><h2>情景与阶段推演</h2><small>概率合计100%</small></div>
+        <div class="block-body scenario-grid"><article class="scenario bull"><h3>乐观情景 · 25%</h3><p>价格与盈利预期同步上修，量能连续高于20日均值。</p><p><strong>20日区间：</strong>+7% 至 +13%</p><p><strong>确认：</strong>突破前高且广度高于70%</p></article><article class="scenario base"><h3>基准情景 · 55%</h3><p>基本面稳定，指数沿均线震荡上行，内部保持分化。</p><p><strong>20日区间：</strong>-4% 至 +9%</p><p><strong>确认：</strong>MA20上方缩量整理</p></article><article class="scenario bear"><h3>悲观情景 · 20%</h3><p>外部价格回落并引发盈利预期下修，资金快速撤离。</p><p><strong>20日区间：</strong>-12% 至 -5%</p><p><strong>确认：</strong>跌破MA60且广度低于35%</p></article></div>
+      </section>
+
+      <section class="block" id="focus">
+        <div class="block-head"><h2>重点公司与观察信号</h2><small>非股票推荐</small></div>
+        <div class="block-body focus-grid"><div><div class="subhead"><h3>重点公司</h3></div><ul class="item-list"><li><strong>示例龙头A：</strong>板块权重高，盈利对产业价格变化敏感。</li><li><strong>示例龙头B：</strong>成本优势突出，是基本面验证样本。</li><li><strong>示例公司C：</strong>扩产节奏快，适合观察资本开支兑现。</li><li><strong>示例公司D：</strong>估值较高，用于跟踪风险偏好变化。</li></ul></div><div><div class="subhead"><h3>观察信号</h3></div><ul class="item-list"><li>指数能否持续站稳MA20与MA60。</li><li>20日上涨成分占比能否维持在55%以上。</li><li>5日量能相对20日均值是否连续扩张。</li><li>核心公司盈利预测是否继续上修。</li><li>估值分位是否进入历史高风险区间。</li></ul></div></div>
+      </section>
+
+      <section class="block" id="history">
+        <div class="block-head"><h2>历史状态与观点变化</h2><small>只追加，不覆盖</small></div>
+        <div class="table-wrap"><table><thead><tr><th>日期</th><th>综合分</th><th>状态</th><th>延续观点</th><th>新增/变化</th><th>失效主张</th><th>复核</th></tr></thead><tbody><tr><td>2026-07-15</td><td>7.4</td><td>trend_up</td><td>中期趋势偏强</td><td>广度改善、估值压力上升</td><td>量能持续收缩</td><td><span class="status good">通过</span></td></tr><tr><td>2026-07-12</td><td>7.0</td><td>rebound</td><td>盈利预期稳定</td><td>指数重新站上MA20</td><td>无</td><td><span class="status good">通过</span></td></tr><tr><td>2026-07-09</td><td>6.6</td><td>range</td><td>政策方向稳定</td><td>成交量收缩</td><td>无</td><td><span class="status warn">低置信</span></td></tr></tbody></table></div>
+      </section>
+
+      <section class="block" id="claims">
+        <div class="block-head"><h2>知识主张与关系</h2><div class="toolbar"><select id="claim-filter"><option value="all">全部状态</option><option value="active">有效</option><option value="weakened">削弱</option><option value="invalid">失效</option></select></div></div>
+        <div class="table-wrap"><table><thead><tr><th>主张ID</th><th>主体</th><th>关系</th><th>客体</th><th>原子主张</th><th>置信度</th><th>有效期</th><th>状态</th></tr></thead><tbody id="claim-rows"><tr data-status="active"><td class="mono">clm_001</td><td>板块</td><td class="mono">has_trend</td><td>trend_up</td><td>指数位于20日与60日均线上方。</td><td>92%</td><td>2026-07-15—</td><td><span class="status good">有效</span></td></tr><tr data-status="active"><td class="mono">clm_002</td><td>核心公司</td><td class="mono">has_earnings_support</td><td>板块基本面</td><td>盈利预期上修构成中期基本面支撑。</td><td>81%</td><td>2026-07-12—</td><td><span class="status good">有效</span></td></tr><tr data-status="weakened"><td class="mono">clm_003</td><td>板块估值</td><td class="mono">provides_margin</td><td>安全边际</td><td>估值仍具有明显安全边际。</td><td>54%</td><td>2026-07-09—</td><td><span class="status warn">削弱</span></td></tr><tr data-status="invalid"><td class="mono">clm_004</td><td>板块量能</td><td class="mono">continues_to_contract</td><td>资金状态</td><td>成交量持续收缩。</td><td>18%</td><td>2026-07-09—07-15</td><td><span class="status bad">失效</span></td></tr></tbody></table></div>
+      </section>
+
+      <section class="block" id="evidence">
+        <div class="block-head"><h2>证据与来源</h2><div class="toolbar"><select id="source-filter"><option value="all">全部来源</option><option value="official">官方</option><option value="announcement">公告</option><option value="research">研报</option><option value="market">行情</option></select></div></div>
+        <div class="table-wrap"><table><thead><tr><th>证据ID</th><th>类型</th><th>来源</th><th>标题/内容</th><th>发布日期</th><th>抓取时间</th><th>质量</th><th>引用主张</th></tr></thead><tbody id="source-rows"><tr data-type="official"><td class="mono">ev_001</td><td>官方</td><td>主管部门</td><td>产业政策与执行口径示例</td><td>2026-07-10</td><td>07-15 15:42</td><td>0.95</td><td>clm_005</td></tr><tr data-type="announcement"><td class="mono">ev_002</td><td>公告</td><td>上市公司公告</td><td>核心公司中期业绩预告</td><td>2026-07-14</td><td>07-15 15:44</td><td>0.92</td><td>clm_002</td></tr><tr data-type="research"><td class="mono">ev_003</td><td>研报</td><td>示例券商</td><td>行业供需与盈利敏感性研究</td><td>2026-07-13</td><td>07-15 15:45</td><td>0.78</td><td>clm_002</td></tr><tr data-type="market"><td class="mono">ev_004</td><td>行情</td><td>本地Parquet</td><td>指数、成分股、成交量和估值快照</td><td>2026-07-15</td><td>07-15 15:50</td><td>0.99</td><td>clm_001/003/004</td></tr></tbody></table></div>
+      </section>
+
+      <section class="block" id="quality">
+        <div class="block-head"><h2>数据质量与待补项</h2><small>评分前质量门槛</small></div>
+        <div class="block-body"><div class="quality-grid"><div class="quality-item"><span>板块指数日线</span><strong class="positive">完整</strong></div><div class="quality-item"><span>沪深成分行情</span><strong class="positive">100%</strong></div><div class="quality-item"><span>估值覆盖</span><strong>96.8%</strong></div><div class="quality-item"><span>历史成分快照</span><strong class="warn">基线后可用</strong></div><div class="quality-item"><span>真实资金流</span><strong class="negative">待接入</strong></div><div class="quality-item"><span>拥挤度</span><strong class="negative">仅量价代理</strong></div><div class="quality-item"><span>主基准</span><strong class="warn">建议未下载</strong></div><div class="quality-item"><span>证据冲突</span><strong>1项待复核</strong></div></div></div>
+      </section>
+
+      <section class="block" id="audit">
+        <div class="block-head"><h2>评分规则与审计信息</h2><small>可复现标识</small></div>
+        <div class="block-body"><div class="audit-grid"><div class="audit-pair"><span>分析批次</span><code>sector_research_20260715_160800</code></div><div class="audit-pair"><span>成分快照</span><code>ths_l1_20260715_153512</code></div><div class="audit-pair"><span>实体版本</span><code>sector:ths:885530:v1</code></div><div class="audit-pair"><span>评分策略</span><code>sector_overall_score_policy.v1</code></div><div class="audit-pair"><span>类型适配器</span><code>sector_adapter.industry_chain.v1</code></div><div class="audit-pair"><span>提示词版本</span><code>sector_research_prompt.v1</code></div><div class="audit-pair"><span>模型</span><code>gpt-5.x-research</code></div><div class="audit-pair"><span>模式版本</span><code>sector_research_schema.v1</code></div><div class="audit-pair"><span>市场范围</span><code>SH,SZ / BJ hard_exclude</code></div></div><div class="contradiction"><strong>总分：</strong>0.20×政策 + 0.25×基本面 + 0.15×资金 + 0.15×技术 + 0.15×估值 + 0.10×(10-风险压力)。维度覆盖低于80%，或基本面、技术、风险压力任一无效时，不发布综合分。</div></div>
+      </section>
+    </div>
+
+    <p class="note">统一全展开原型 · 数据为页面功能演示 · 不构成投资建议</p>
+  </main>
+
+  <script>
+    const entities = {
+      gold: {name:"黄金概念", code:"885530.THS", type:"产业链主题", verdict:"震荡偏强，等待量能确认", score:7.4, regime:"trend_up", history:{start_date:"2024-07-15",return:"+28.4%",max_drawdown:"-16.7%",excess_return:"+9.8%",beta:"1.14",volatility:"26.2%"}},
+      semiconductor: {name:"半导体", code:"881121.THS", type:"行业", verdict:"趋势修复，结构分化", score:7.1, regime:"rebound", history:{start_date:"2024-07-15",return:"+17.6%",max_drawdown:"-21.3%",excess_return:"+2.7%",beta:"1.32",volatility:"31.8%"}},
+      reform: {name:"国企改革", code:"886021.THS", type:"政策主题", verdict:"政策支撑，宽基震荡", score:6.8, regime:"range", history:{start_date:"2024-07-15",return:"+11.9%",max_drawdown:"-13.2%",excess_return:"-1.4%",beta:"0.93",volatility:"19.7%"}}
+    };
+
+    const scoresByEntity = {
+      gold: [["政策",7.8,0.2],["基本面",8.2,0.5],["资金",6.4,0.3],["技术",7.7,0.8],["估值",6.2,-0.4],["风险压力",5.6,0.2]],
+      semiconductor: [["政策",8.3,0.1],["基本面",7.4,0.2],["资金",6.8,0.5],["技术",7.2,0.6],["估值",5.8,-0.2],["风险压力",6.1,-0.1]],
+      reform: [["政策",8.8,0.4],["基本面",6.2,0.0],["资金",6.0,-0.2],["技术",6.7,0.3],["估值",6.9,0.1],["风险压力",5.9,0.2]]
+    };
+
+    const scoreEvidence = [
+      ["政策","7.8","+0.2","政策层级、执行进度、产业覆盖","政策新颖度与执行强度加权","0.86","政策提及不等于盈利兑现"],
+      ["基本面","8.2","+0.5","盈利预期、价格、供需、ROE","行业适配器 + 历史分位","0.82","部分公司数据尚未披露"],
+      ["资金","6.4","+0.3","成交额、换手、量价参与广度","量价代理；不命名为主力流入","0.65","proxy_only，置信度上限0.75"],
+      ["技术","7.7","+0.8","收益、均线、相对强弱、价格广度","绝对阈值 + 横截面分位","0.95","短历史板块需要降级"],
+      ["估值","6.2","-0.4","正PE、PB、亏损占比、行业中性分位","行业中性化聚合","0.79","跨行业主题不可直接横比PE"],
+      ["风险压力","5.6","+0.2","回撤、波动、集中度、可验证拥挤度","压力项加权；高分更危险","0.78","证据冲突只影响置信度"]
+    ];
+
+    const scoreHistoryByEntity = {gold: [
+      ["06-12",6.1,7.2,6.8,5.5,5.9,7.1,6.8,"建立基线"],["06-18",6.3,7.3,7.0,5.7,6.2,7.0,6.6,"政策证据增加"],["06-24",6.5,7.5,7.2,5.8,6.5,6.8,6.4,"趋势修复"],["06-30",6.6,7.5,7.4,5.9,6.7,6.7,6.2,"盈利预期上修"],["07-03",6.4,7.5,7.3,5.7,6.3,6.8,6.5,"短期回撤"],["07-06",6.5,7.6,7.5,5.8,6.4,6.7,6.3,"广度企稳"],["07-09",6.6,7.6,7.6,5.9,6.6,6.6,6.2,"成交收缩"],["07-12",7.0,7.6,7.7,6.1,7.1,6.6,5.9,"站上MA20"],["07-15",7.4,7.8,8.2,6.4,7.7,6.2,5.6,"广度改善"]
+    ], semiconductor: [
+      ["06-12",6.2,7.8,6.5,5.7,6.0,6.4,6.6,"建立基线"],["06-18",6.4,7.9,6.7,5.9,6.2,6.3,6.5,"产业政策更新"],["06-24",6.6,8.0,6.8,6.1,6.5,6.2,6.4,"需求预期改善"],["06-30",6.5,8.0,6.9,6.0,6.3,6.1,6.6,"高位震荡"],["07-03",6.4,8.1,6.8,5.9,6.1,6.2,6.7,"短期回撤"],["07-06",6.6,8.1,7.0,6.2,6.5,6.1,6.5,"量能恢复"],["07-09",6.7,8.2,7.1,6.3,6.7,6.0,6.4,"广度改善"],["07-12",6.9,8.2,7.2,6.5,7.0,5.9,6.2,"趋势修复"],["07-15",7.1,8.3,7.4,6.8,7.2,5.8,6.1,"结构性走强"]
+    ], reform: [
+      ["06-12",6.0,8.0,5.9,5.8,5.9,7.0,6.2,"建立基线"],["06-18",6.2,8.2,6.0,5.9,6.1,7.0,6.1,"政策预期增强"],["06-24",6.3,8.4,6.0,6.0,6.2,7.0,6.0,"主题扩散"],["06-30",6.4,8.5,6.1,6.1,6.3,6.9,6.0,"广度改善"],["07-03",6.2,8.5,6.0,5.8,6.0,7.0,6.3,"指数回撤"],["07-06",6.3,8.6,6.0,5.9,6.2,7.0,6.2,"企稳观察"],["07-09",6.5,8.7,6.1,6.0,6.4,6.9,6.1,"政策证据增加"],["07-12",6.7,8.7,6.2,6.1,6.6,6.9,6.0,"站上MA20"],["07-15",6.8,8.8,6.2,6.0,6.7,6.9,5.9,"宽基震荡"]
+    ]};
+
+    function renderScores(entityKey) {
+      const root = document.getElementById("score-list");
+      root.textContent = "";
+      scoresByEntity[entityKey].forEach(([name, score, delta]) => {
+        const row = document.createElement("div");
+        row.className = "score-row";
+        const fill = name === "风险压力" ? "var(--red)" : "var(--gold)";
+        const deltaClass = delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral";
+        row.innerHTML = `<span class="score-name">${name}</span><div class="score-track" role="img" aria-label="${name}评分 ${score}"><div class="score-fill" style="width:${score * 10}%;background:${fill}"></div></div><span class="score-value">${score.toFixed(1)}</span><span class="delta ${deltaClass}">${delta > 0 ? "+" : ""}${delta.toFixed(1)}</span>`;
+        root.appendChild(row);
+      });
+    }
+
+    function bindEntity(key) {
+      const item = entities[key];
+      const values = {"entity.name":item.name,"entity.code":item.code,"entity.sector_type":item.type,"assessment.verdict":item.verdict,"assessment.overall_score":item.score.toFixed(1),"assessment.state_regime":item.regime,"history.start_date":item.history.start_date,"history.return":item.history.return,"history.max_drawdown":item.history.max_drawdown,"history.excess_return":item.history.excess_return,"history.beta":item.history.beta,"history.volatility":item.history.volatility};
+      Object.entries(values).forEach(([field, value]) => document.querySelectorAll(`[data-field="${field}"]`).forEach(node => node.textContent = value));
+      ["history.return","history.excess_return"].forEach(field => document.querySelectorAll(`[data-field="${field}"]`).forEach(node => {
+        node.classList.toggle("positive", !String(values[field]).startsWith("-"));
+        node.classList.toggle("negative", String(values[field]).startsWith("-"));
+      }));
+      renderScores(key);
+      renderIndexChart(currentRange, key);
+      renderScoreHistory(key);
+    }
+
+    function makeSeries(count, drift, phase, volatility) {
+      const sector = [], benchmark = [];
+      let s = 100, b = 100;
+      for (let i = 0; i < count; i += 1) {
+        s += Math.sin((i + phase) / 11) * volatility + Math.sin((i + phase) / 37) * .2 + drift + ((i % 29) - 14) * .006;
+        b += Math.sin(i / 16) * .18 + .025;
+        sector.push(s); benchmark.push(b);
+      }
+      return {sector, benchmark};
+    }
+
+    const indexDataByEntity = {gold:makeSeries(500,.055,0,.34), semiconductor:makeSeries(500,.038,17,.43), reform:makeSeries(500,.027,31,.27)};
+    let currentRange = 250;
+    function movingAverage(values, windowSize) {
+      return values.map((_, index) => index + 1 < windowSize ? null : values.slice(index + 1 - windowSize, index + 1).reduce((a,b) => a + b, 0) / windowSize);
+    }
+    function linePath(values, x, y) {
+      let started = false;
+      return values.map((value, index) => {
+        if (value === null || Number.isNaN(value)) return "";
+        const command = started ? "L" : "M"; started = true;
+        return `${command}${x(index).toFixed(1)},${y(value).toFixed(1)}`;
+      }).join(" ");
+    }
+    function renderIndexChart(range, entityKey = document.getElementById("entity-selector").value) {
+      const svg = document.getElementById("index-history-chart");
+      const indexData = indexDataByEntity[entityKey];
+      const start = Math.max(0, indexData.sector.length - range);
+      const sector = indexData.sector.slice(start), benchmark = indexData.benchmark.slice(start);
+      const ma20 = movingAverage(sector, 20), ma60 = movingAverage(sector, 60);
+      const all = sector.concat(benchmark, ma20.filter(Boolean), ma60.filter(Boolean));
+      const low = Math.min(...all) * .985, high = Math.max(...all) * 1.015;
+      const x = i => 54 + i * 1038 / Math.max(1, sector.length - 1);
+      const y = value => 20 + (high - value) * 238 / Math.max(.001, high - low);
+      const grids = [0,.25,.5,.75,1].map(part => { const value = high - (high-low)*part; return `<line class="chart-grid" x1="54" x2="1092" y1="${y(value)}" y2="${y(value)}"></line><text class="chart-axis" x="4" y="${y(value)+4}">${value.toFixed(0)}</text>`; }).join("");
+      svg.innerHTML = `${grids}<path class="chart-main" d="${linePath(sector,x,y)}"></path><path class="chart-ma20" d="${linePath(ma20,x,y)}"></path><path class="chart-ma60" d="${linePath(ma60,x,y)}"></path><path class="chart-benchmark" d="${linePath(benchmark,x,y)}"></path><text class="chart-axis" x="54" y="286">${range === 500 ? "全部" : `${range}个交易日`}</text><text class="chart-axis" x="1092" y="286" text-anchor="end">2026-07-15</text>`;
+    }
+
+    function renderScoreHistory(entityKey = document.getElementById("entity-selector").value) {
+      const svg = document.getElementById("score-history-chart");
+      const scoreHistory = scoreHistoryByEntity[entityKey];
+      const series = [
+        [1,"var(--gold)",2.5,""],[2,"#7aa2f7",1.35,""],[3,"#55c2a5",1.35,""],[4,"#a78bfa",1.35,""],
+        [5,"#f5a524",1.35,""],[6,"#8bd450",1.35,""],[7,"#ff6b6b",1.5,"4 3"]
+      ];
+      const values = scoreHistory.map(row => row[1]);
+      const x = i => 58 + i * 1024 / Math.max(1, values.length - 1);
+      const y = value => 22 + (10 - value) * 24;
+      const grids = [4,5,6,7,8,9,10].map(value => `<line class="chart-grid" x1="58" x2="1082" y1="${y(value)}" y2="${y(value)}"></line><text class="chart-axis" x="25" y="${y(value)+4}">${value}</text>`).join("");
+      const points = values.map((value,index) => `<circle class="chart-point" cx="${x(index)}" cy="${y(value)}" r="3"></circle><text class="chart-axis" x="${x(index)}" y="282" text-anchor="middle">${scoreHistory[index][0]}</text>`).join("");
+      const lines = series.map(([column,color,width,dash]) => `<path fill="none" stroke="${color}" stroke-width="${width}" stroke-dasharray="${dash}" d="${linePath(scoreHistory.map(row => row[column]),x,y)}"></path>`).join("");
+      svg.innerHTML = `${grids}${lines}${points}`;
+      document.getElementById("score-history-rows").innerHTML = scoreHistory.slice().reverse().map(row => `<tr><td>2026-${row[0]}</td><td><strong>${row[1].toFixed(1)}</strong></td><td>${row[2].toFixed(1)}</td><td>${row[3].toFixed(1)}</td><td>${row[4].toFixed(1)}</td><td>${row[5].toFixed(1)}</td><td>${row[6].toFixed(1)}</td><td>${row[7].toFixed(1)}</td><td>${row[8]}</td></tr>`).join("");
+    }
+
+    function renderScoreEvidence() {
+      document.getElementById("score-evidence-rows").innerHTML = scoreEvidence.map(row => `<tr><td>${row[0]}</td><td><strong>${row[1]}</strong></td><td class="${row[2].startsWith("-") ? "negative" : "positive"}">${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[6]}</td></tr>`).join("");
+    }
+
+    document.querySelectorAll("[data-range]").forEach(button => button.addEventListener("click", () => {
+      document.querySelectorAll("[data-range]").forEach(item => item.classList.toggle("active", item === button));
+      currentRange = Number(button.dataset.range);
+      renderIndexChart(currentRange);
+    }));
+    document.getElementById("entity-selector").addEventListener("change", event => bindEntity(event.target.value));
+    document.getElementById("source-filter").addEventListener("change", event => document.querySelectorAll("#source-rows tr").forEach(row => row.style.display = event.target.value === "all" || row.dataset.type === event.target.value ? "" : "none"));
+    document.getElementById("claim-filter").addEventListener("change", event => document.querySelectorAll("#claim-rows tr").forEach(row => row.style.display = event.target.value === "all" || row.dataset.status === event.target.value ? "" : "none"));
+    document.getElementById("print-button").addEventListener("click", () => window.print());
+
+    bindEntity("gold");
+    renderScoreEvidence();
+  </script>
+  <script>
+    (() => {
+      const API_ROOT = "http://127.0.0.1:8000/api";
+      const DEFAULT_SECTOR = "885462.THS";
+      const FALLBACK_CATALOG = [{code: DEFAULT_SECTOR, name: "乳业"}];
+      const esc = value => String(value ?? "未提供").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+      const arr = value => Array.isArray(value) ? value : value == null ? [] : [value];
+      const fmt = (value, digits = 2) => typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : esc(value);
+      const scoreFmt = value => typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : esc(value);
+      const pct = (value, digits = 2) => typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(digits)}%` : esc(value);
+      const percentFrom = (source, percentKey, ratioKey) => {
+        const percentValue = source && source[percentKey];
+        if (typeof percentValue === "number" && Number.isFinite(percentValue)) return percentValue;
+        const ratioValue = source && source[ratioKey];
+        return typeof ratioValue === "number" && Number.isFinite(ratioValue) ? ratioValue * 100 : null;
+      };
+      const dateOnly = value => value ? String(value).slice(0, 10) : "未提供";
+      const label = {policy:"政策", fundamental:"基本面", capital:"资金", technical:"技术", valuation:"估值", risk:"风险压力"};
+      const FIELD_LABELS = {
+        market_coverage_count:"行情覆盖数", financial_coverage_count:"财务覆盖数", valuation_pe_coverage_count:"估值PE覆盖数",
+        profitable_member_pct:"盈利成分占比", revenue_yoy_pct:"收入同比分布", profit_yoy_pct:"利润同比分布",
+        profit_yoy_stable_positive_base_pct:"利润同比稳定正基数分布", leader_market_cap_contribution_pct:"龙头市值贡献占比",
+        leader_revenue_contribution_pct:"龙头营收贡献占比", leader_positive_profit_contribution_pct:"龙头正利润贡献占比",
+        median_roe_pct:"ROE中位数", median_net_margin_pct:"净利率中位数", positive_pe_ttm:"正PE样本数",
+        same_period_yoy_rows:"同期同比明细", excluded_bj_codes:"排除北交所代码", stock_code:"股票代码", name:"名称",
+        status:"状态", valid_count:"有效数量", count:"数量", coverage_count:"覆盖数量", evidence_count:"证据数量", source_type:"来源类别",
+        p25:"25%分位数", median:"中位数", p75:"75%分位数",
+        round_id:"轮次", query:"查询", reason:"原因", accepted:"采纳", rejected:"拒绝", next_query_reason:"下一轮原因",
+        policy:"政策", formal_research:"正式研报", announcement:"公告", news:"新闻", industry_data:"行业数据", capital_data:"资金数据",
+        official:"官方", research:"研报", market:"行情", financial:"财务", valuation:"估值", fundamental:"基本面",
+        not_available:"不可用", member_detail_not_loaded:"成分明细未加载"
+      };
+      const CATEGORY_LABELS = {policy:"政策", formal_research:"正式研报", announcement:"公告", news:"新闻", industry_data:"行业数据", capital_data:"资金数据", official:"官方", research:"研报", market:"行情", financial:"财务", valuation:"估值"};
+      const read = (obj, path, fallback = null) => path.split(".").reduce((node, key) => node == null ? undefined : node[key], obj) ?? fallback;
+      const statusLabel = value => ({valid:"有效", conflicted:"有冲突", retrieval_failed:"获取失败", mismatch:"不匹配", post_date_excluded:"日期排除"}[value] || value || "未提供");
+      const cell = value => `<td>${esc(value)}</td>`;
+      const fieldLabel = key => FIELD_LABELS[key] || CATEGORY_LABELS[key] || String(key).replace(/_/g, " ");
+      const categoryLabel = value => CATEGORY_LABELS[value] || fieldLabel(value);
+      const statusCount = value => {
+        if (!value || typeof value !== "object") return "未提供";
+        return value.count ?? value.valid_count ?? value.evidence_count ?? value.accepted_count ?? "未提供";
+      };
+      const DISTRIBUTION_KEYS = new Set(["p25", "median", "p75", "mean", "min", "max"]);
+      const isPercentField = key => /(?:^|_)pct$/.test(String(key || ""));
+      const renderValue = (value, key = "", inheritPercent = false) => {
+        const formatAsPercent = isPercentField(key) || (inheritPercent && DISTRIBUTION_KEYS.has(key));
+        if (Array.isArray(value)) {
+          if (!value.length) return "<span class=\"muted\">无</span>";
+          if (value.every(item => item && typeof item === "object" && !Array.isArray(item))) {
+            const keys = Object.keys(value.reduce((all, item) => Object.assign(all, item), {}));
+            return `<div class="table-wrap nested-table"><table><thead><tr>${keys.map(itemKey => `<th>${esc(fieldLabel(itemKey))}</th>`).join("")}</tr></thead><tbody>${value.map(item => `<tr>${keys.map(itemKey => `<td>${renderValue(item[itemKey], itemKey)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+          }
+          return esc(value.map(item => typeof item === "object" ? JSON.stringify(item) : item).join("、"));
+        }
+        if (value && typeof value === "object") return `<div class="table-wrap nested-table"><table><tbody>${Object.entries(value).map(([itemKey, item]) => `<tr>${cell(fieldLabel(itemKey))}<td>${renderValue(item, itemKey, isPercentField(key))}</td></tr>`).join("")}</tbody></table></div>`;
+        if (typeof value === "number" && Number.isFinite(value) && formatAsPercent) return pct(value);
+        return esc(value);
+      };
+      const rowsFromObject = obj => Object.entries(obj || {}).map(([key, value]) => `<tr>${cell(fieldLabel(key))}<td>${renderValue(value, key)}</td></tr>`).join("");
+      const section = (id, title, body, meta = "") => `<section class="block" id="${id}"><div class="block-head"><h2>${title}</h2>${meta ? `<small>${meta}</small>` : ""}</div><div class="block-body">${body}</div></section>`;
+
+      function requestedCode() {
+        const code = new URLSearchParams(location.search).get("sector");
+        return code || DEFAULT_SECTOR;
+      }
+
+      async function loadCatalog() {
+        try {
+          const response = await fetch(`${API_ROOT}/sector/entities`);
+          const payload = await response.json();
+          const rows = Array.isArray(payload.data) ? payload.data : [];
+          const mapped = rows.map(row => ({code: row.sector_code, name: row.sector_name || row.sector_code, report_stage: row.report_stage || "formal"})).filter(row => row.code);
+          return mapped.length ? mapped : FALLBACK_CATALOG;
+        } catch (_) { return FALLBACK_CATALOG; }
+      }
+
+      async function loadReport(code) {
+        const response = await fetch(`${API_ROOT}/sector/report?sector_code=${encodeURIComponent(code)}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.data) throw new Error(read(payload, "error.message", "板块研究报告不存在"));
+        return payload.data;
+      }
+
+      function setTop(report, catalog) {
+        const oldSelector = document.getElementById("entity-selector");
+        const selector = oldSelector.cloneNode(false);
+        oldSelector.replaceWith(selector);
+        selector.innerHTML = catalog.map(item => `<option value="${esc(item.code)}">${item.report_stage === "staging" ? "[候选] " : ""}${esc(item.name)} · ${esc(item.code)}</option>`).join("");
+        selector.value = report.sector_code;
+        selector.onchange = () => { const url = new URL(location.href); url.searchParams.set("sector", selector.value); location.href = url.toString(); };
+        const dateInput = document.getElementById("analysis-date");
+        dateInput.value = report.analysis_date || "";
+        dateInput.disabled = true;
+        const reportStage = report._report_stage === "staging" ? "staging候选" : "正式报告";
+        document.querySelector(".header-meta").textContent = `分析日：${report.analysis_date || "未提供"} · 报告：${reportStage} · 发布：${read(report, "publication.status", "未提供")}`;
+        document.querySelector(".anchor-nav").innerHTML = [
+          ["overview","总览"],["scores","评分"],["market-state","市场"],["forecasts","预测"],["index-history","指数"],["score-history","评分历史"],["classification","分类"],["constituents","成分"],["aggregates","聚合"],["factors","因素"],["scenarios","情景"],["focus","重点公司"],["history","观点变化"],["research-process","研究过程"],["claims","主张"],["evidence","证据"],["quality","质量"],["audit","审计"]
+        ].map(([id, text]) => `<a href="#${id}">${text}</a>`).join("");
+      }
+
+      function renderHero(report) {
+        const metrics = read(report, "objective_metrics", {});
+        const eligible = read(metrics, "eligible_member_count", "未提供");
+        const excluded = read(metrics, "excluded_bj_count", 0);
+        const confidence = read(report, "classification_confidence", null);
+        document.querySelector("[data-field='entity.name']").textContent = report.sector_name || "未提供";
+        document.querySelector("[data-field='entity.code']").textContent = report.sector_code || "未提供";
+        document.querySelector("[data-field='entity.sector_type']").textContent = report.analysis_archetype || "未提供";
+        document.querySelector("[data-field='assessment.verdict']").textContent = report.verdict || "未提供";
+        document.querySelector("[data-field='assessment.overall_score']").textContent = report.overall_score == null ? "未发布" : scoreFmt(report.overall_score);
+        document.querySelector("[data-field='assessment.state_regime']").textContent = read(report, "publication.status", "未提供");
+        const reportStage = report._report_stage === "staging" ? "staging候选" : "正式报告";
+        document.querySelector(".badge-row").innerHTML = `<span class="badge ${report._report_stage === "staging" ? "warn" : "ok"}">报告：${reportStage}</span><span class="badge ok">${esc(read(report, "type_review_status", "未提供"))}</span><span class="badge">沪深有效成分 ${esc(eligible)}</span><span class="badge">排除 BJ ${esc(excluded)}</span><span class="badge ${read(report, "publication.officially_published", false) ? "ok" : "warn"}">发布：${read(report, "publication.officially_published", false) ? "是" : "否"}</span><span class="badge">分类置信度 ${confidence == null ? "未提供" : pct(confidence * 100, 0)}</span>`;
+        const side = document.querySelector(".hero-side");
+        side.innerHTML = `<div class="overall">${report.overall_score == null ? "未发布" : scoreFmt(report.overall_score)} <small>/ 10</small></div><div class="hero-metric"><span>分类置信度</span><strong>${confidence == null ? "未提供" : pct(confidence * 100, 0)}</strong></div><div class="hero-metric"><span>行情截止</span><strong>${esc(read(metrics, "index_metrics.data_cutoff", report.market_data_cutoff))}</strong></div>`;
+      }
+
+      function renderScores(report) {
+        const dims = report.dimension_scores || {};
+        document.getElementById("score-list").innerHTML = Object.entries(label).map(([key, name]) => {
+          const item = dims[key] || {};
+          const score = item.score;
+          const width = typeof score === "number" ? Math.max(0, Math.min(100, score * 10)) : 0;
+          return `<div class="score-row"><span class="score-name">${name}</span><div class="score-track"><div class="score-fill" style="width:${width}%;background:${key === "risk" ? "var(--red)" : "var(--gold)"}"></div></div><span class="score-value">${score == null ? "未发布" : fmt(score, 1)}</span><span class="delta">置信度 ${item.confidence == null ? "未提供" : pct(item.confidence * 100, 0)}</span></div>`;
+        }).join("");
+      }
+
+      function renderLayout(report) {
+        const m = report.objective_metrics || {};
+        const idx = m.index_metrics || {};
+        const breadth = m.member_breadth || {};
+        const turnover = m.turnover || {};
+        const forecasts = arr(report.forecasts);
+        const dims = report.dimension_scores || {};
+        const evidence = arr(report.evidence);
+        const claims = arr(report.claims);
+        const logs = arr(report.search_logs);
+        const statuses = report.evidence_category_statuses || {};
+        const members = arr(m.member_market_rows);
+        const aggregates = m.member_aggregates || {};
+        const indexCutoff = idx.data_cutoff || m.market_data_cutoff || report.market_data_cutoff;
+        const aboveMa20Pct = percentFrom(breadth, "above_ma20_pct", "above_ma20_ratio");
+        const aboveMa60Pct = percentFrom(breadth, "above_ma60_pct", "above_ma60_ratio");
+        const positiveReturn20dPct = percentFrom(breadth, "positive_return_20d_pct", "positive_return_20d_ratio");
+        const amountChangePct = idx.amount_5d_vs_20d_pct ?? (
+          typeof (idx.amount_5d_to_20d_ratio ?? idx.amount_ratio_5_to_20) === "number"
+            ? ((idx.amount_5d_to_20d_ratio ?? idx.amount_ratio_5_to_20) - 1) * 100
+            : null
+        );
+        const warnings = arr(read(report, "publication.warnings", []));
+        const unconfirmed = arr(report.unconfirmed_items);
+        const scoreRows = Object.entries(label).map(([key, name]) => { const d = dims[key] || {}; return `<tr>${cell(name)}${cell(d.score == null ? "未发布" : fmt(d.score, 1))}${cell(statusLabel(d.status))}${cell(d.confidence == null ? "未提供" : pct(d.confidence * 100, 0))}${cell(d.explanation || "未提供")}</tr>`; }).join("");
+        const forecastCards = forecasts.length ? forecasts.map(item => `<article class="forecast"><div class="forecast-label">${esc(item.horizon_trading_days)} 个交易日</div><h3>${esc(item.direction)}</h3><div class="forecast-range">${arr(item.return_range_pct).map(v => fmt(v, 1) + "%").join(" 至 ")}</div><div class="forecast-stats"><span>上涨概率 ${pct((item.up_probability || 0) * 100, 0)}</span><span>置信度 ${pct((item.confidence || 0) * 100, 0)}</span><span>${esc(item.calibration_status)}</span></div><p class="forecast-invalid">失效条件：${arr(item.invalidation_conditions).map(esc).join("；") || "未提供"}</p></article>`).join("") : `<div class="empty-state">未提供正式预测</div>`;
+        const metricCards = [["最新收盘",fmt(idx.latest_close)], ["5日收益",pct(percentFrom(idx, "return_5d_pct", "return_5d"))], ["20日收益",pct(percentFrom(idx, "return_20d_pct", "return_20d"))], ["60日收益",pct(percentFrom(idx, "return_60d_pct", "return_60d"))], ["60日最大回撤",pct(percentFrom(idx, "max_drawdown_60d_pct", "max_drawdown_60d"))], ["20日年化波动",pct(percentFrom(idx, "volatility_20d_annualized_pct", "volatility_20d"))], ["相对MA20",pct(percentFrom(idx, "close_vs_ma20_pct", "close_to_ma20"))], ["相对MA60",pct(percentFrom(idx, "close_vs_ma60_pct", "close_to_ma60"))], ["5日较20日成交额",pct(amountChangePct)], ["行情截止",indexCutoff]].map(([name,value]) => `<article class="indicator"><div class="indicator-name">${name}</div><div class="indicator-value">${esc(value)}</div><div class="indicator-meta">本地计算/接口数据</div></article>`).join("");
+        const evidenceRows = evidence.map(item => `<tr>${cell(item.evidence_id)}${cell(statusLabel(item.evidence_status || item.status))}${cell(categoryLabel(item.source_type))}${cell(item.source)}${cell(item.title)}${cell(dateOnly(item.published_at))}${cell(arr(item.linked_dimensions || item.dimensions).join("、"))}${cell((item.evidence_quality ?? item.quality_score) == null ? "未提供" : fmt(item.evidence_quality ?? item.quality_score, 2))}<td><a href="${esc(item.url || "#")}" target="_blank" rel="noreferrer">来源</a></td></tr>`).join("");
+        const claimRows = claims.map(item => `<tr>${cell(item.claim_id)}${cell(item.dimension)}${cell(item.claim_text)}${cell(item.confidence == null ? "未提供" : pct(item.confidence * 100, 0))}${cell(item.limitations || item.limitation)}${cell(arr(item.supporting_evidence_ids).join("、"))}</tr>`).join("");
+        const logRows = logs.map(item => `<tr>${cell(item.round_id)}${cell(categoryLabel(item.source_type))}${cell(item.query)}${cell(item.reason)}${cell(arr(item.accepted).join("、"))}${cell(arr(item.rejected).join("；"))}${cell(item.next_query_reason)}</tr>`).join("");
+        const statusRows = Object.entries(statuses).map(([key, value]) => `<tr>${cell(categoryLabel(key))}${cell(typeof value === "object" ? statusLabel(value.status) : statusLabel(value))}${cell(statusCount(value))}${cell(typeof value === "object" ? value.detail || value.reason || value.note || value.message || "" : "")}</tr>`).join("");
+        const memberRows = members.map(item => `<tr>${cell(item.stock_code)}${cell(item.name)}${cell(pct(item.return_20d_pct))}${cell(pct(item.return_60d_pct))}${cell(fmt(item.latest_close))}${cell(pct(item.close_vs_ma20_pct))}${cell(pct(item.close_vs_ma60_pct))}${cell(pct(item.max_drawdown_60d_pct))}</tr>`).join("");
+        const aggregateRows = rowsFromObject(aggregates) + rowsFromObject({same_period_yoy_rows: m.same_period_yoy_rows, excluded_bj_codes: m.excluded_bj_codes});
+        const factorRows = claims.filter(item => ["policy","fundamental","capital","technical","valuation","risk"].includes(item.dimension)).map(item => `<article class="factor"><span class="tag">${esc(item.claim_id)}</span><div class="factor-copy">${esc(item.claim_text)}</div><span class="factor-source">${esc(item.dimension)} · ${item.confidence == null ? "未提供" : pct(item.confidence * 100, 0)}</span></article>`).join("");
+        const stagingNotice = report._report_stage === "staging" ? `<div class="contradiction"><strong>候选报告：</strong>此报告仍在 staging，仅用于比较研究深度，尚未写入正式报告或 current。</div>` : "";
+        const layout = document.querySelector(".layout");
+        layout.innerHTML = `
+          ${section("core", "核心逻辑与数据边界", `${stagingNotice}<p class="lead-copy"><strong>综合解释：</strong>${esc(report.overall_explanation || "未提供")}</p><p class="contradiction"><strong>板块边界：</strong>${esc(read(report, "boundary.included", "未提供"))}<br><strong>排除说明：</strong>${esc(read(report, "boundary.excluded_from_core_interpretation", "未提供"))}</p>`, `run_id · ${esc(report.run_id || "未提供")}`)}
+          <div class="grid-2"><section class="block" id="scores"><div class="block-head"><h2>六维评分</h2><small>风险为压力分，越高越危险</small></div><div class="block-body"><div id="score-list" class="score-list"></div></div></section><section class="block" id="market-state"><div class="block-head"><h2>当前市场状态</h2><small>真实数据截止 ${esc(indexCutoff || "未提供")}</small></div><div class="block-body"><div class="indicator-grid">${metricCards}</div></div></section></div>
+          ${section("forecasts", "短中长期预测", `<div class="grid-3">${forecastCards}</div>`)}
+          ${section("index-history", "板块历史指数", `<div class="empty-state">当前报告未携带完整历史序列，仅提供统计指标。历史曲线不会使用演示数据。</div><div class="metric-strip"><div class="metric"><span>观测数</span><strong>${esc(idx.observations || "未提供")}</strong></div><div class="metric"><span>MA20</span><strong>${esc(idx.ma20 || "未提供")}</strong></div><div class="metric"><span>MA60</span><strong>${esc(idx.ma60 || "未提供")}</strong></div><div class="metric"><span>数据截止</span><strong>${esc(indexCutoff || "未提供")}</strong></div></div>`)}
+          ${section("score-history", "评分变化", `<div class="empty-state">当前板块只有一个正式研究批次（${esc(report.analysis_date)}），暂无真实评分历史。</div>`)}
+          ${section("classification", "板块类型、分类属性与研究问题", `<div class="table-wrap"><table><tbody>${rowsFromObject({analysis_archetype: report.analysis_archetype, classification_facets: report.classification_facets, classification_confidence: report.classification_confidence, type_review_status: report.type_review_status, classification_reason: report.classification_reason})}</tbody></table></div><h3>研究问题</h3><ul class="item-list">${arr(report.research_questions).map(item => `<li>${esc(typeof item === "object" ? JSON.stringify(item) : item)}</li>`).join("") || "<li>本次研究未生成</li>"}</ul>`)}
+          ${section("constituents", "成分股快照与广度", `<div class="quality-grid"><div class="quality-item"><span>来源成分</span><strong>${esc(m.source_member_count)}</strong></div><div class="quality-item"><span>沪深有效</span><strong>${esc(m.eligible_member_count)}</strong></div><div class="quality-item"><span>排除BJ</span><strong>${esc(m.excluded_bj_count)}</strong></div><div class="quality-item"><span>行情覆盖</span><strong>${esc(m.member_aggregates && m.member_aggregates.market_coverage_count || "未提供")}</strong></div><div class="quality-item"><span>站上MA20</span><strong>${pct(aboveMa20Pct)}</strong></div><div class="quality-item"><span>站上MA60</span><strong>${pct(aboveMa60Pct)}</strong></div><div class="quality-item"><span>20日上涨</span><strong>${pct(positiveReturn20dPct)}</strong></div><div class="quality-item"><span>平均换手</span><strong>${pct(turnover.mean_turnover_rate_pct)}</strong></div></div><p class="muted">排除北交所：${esc(arr(m.excluded_bj_codes).join("、") || "无")}</p><div class="table-wrap"><table><thead><tr><th>代码</th><th>名称</th><th>20日收益</th><th>60日收益</th><th>收盘</th><th>相对MA20</th><th>相对MA60</th><th>60日回撤</th></tr></thead><tbody>${memberRows || `<tr><td colspan="8">未提供成分行情明细</td></tr>`}</tbody></table></div>`)}
+          ${section("aggregates", "财务、估值与板块聚合", `<div class="table-wrap"><table><thead><tr><th>聚合字段</th><th>值</th></tr></thead><tbody>${aggregateRows || `<tr><td colspan="2">未提供聚合数据</td></tr>`}</tbody></table></div>`)}
+          ${section("factors", "评分因素与知识判断", `<div class="factor-columns"><div><div class="subhead"><h3 class="positive">关联主张</h3></div><div class="factor-list">${factorRows || "<div class=\"empty-state\">未提供维度主张</div>"}</div></div><div><div class="subhead"><h3 class="negative">发布警告</h3></div><div class="factor-list risk-list">${warnings.concat(unconfirmed).map((item, i) => `<article class="factor"><span class="tag">W${i + 1}</span><div class="factor-copy">${esc(typeof item === "object" ? JSON.stringify(item) : item)}</div><span class="factor-source">publication/unconfirmed</span></article>`).join("") || "<div class=\"empty-state\">无额外警告</div>"}</div></div></div>`)}
+          ${section("scenarios", "情景与阶段推演", `<div class="empty-state">当前 JSON 未提供正式的乐观/基准/悲观情景概率。页面仅展示预测区间和失效条件，不使用演示情景。</div>`)}
+          ${section("focus", "重点公司与观察信号", `<div class="focus-grid"><div><div class="subhead"><h3>20日领先成分</h3></div><ul class="item-list">${arr(breadth.top_20d).map(item => `<li><strong>${esc(item.name || item.stock_code)}：</strong>${pct(item.return_20d_pct)}</li>`).join("") || "<li>未提供</li>"}</ul><div class="subhead"><h3>20日落后成分</h3></div><ul class="item-list">${arr(breadth.bottom_20d).map(item => `<li><strong>${esc(item.name || item.stock_code)}：</strong>${pct(item.return_20d_pct)}</li>`).join("") || "<li>未提供</li>"}</ul></div><div><div class="subhead"><h3>观察信号</h3></div><ul class="item-list">${forecasts.flatMap(item => arr(item.invalidation_conditions)).map(item => `<li>${esc(item)}</li>`).join("") || "<li>未提供</li>"}</ul></div></div>`)}
+          ${section("history", "历史状态与观点变化", `<div class="empty-state">当前板块只有一个正式研究批次，暂无可比较的历史评分、观点变化或主张失效记录。</div>`)}
+          ${section("research-process", "研究过程、证据类别与搜索日志", `<h3>证据类别状态</h3><div class="table-wrap"><table><thead><tr><th>类别</th><th>状态</th><th>数量</th><th>说明</th></tr></thead><tbody>${statusRows || `<tr><td colspan="4">未提供</td></tr>`}</tbody></table></div><h3>搜索日志</h3><div class="table-wrap"><table><thead><tr><th>轮次</th><th>类型</th><th>查询</th><th>原因</th><th>采纳</th><th>拒绝</th><th>下一轮原因</th></tr></thead><tbody>${logRows || `<tr><td colspan="7">未提供</td></tr>`}</tbody></table></div>`)}
+          ${section("claims", "知识主张与关系", `<div class="table-wrap"><table><thead><tr><th>ID</th><th>维度</th><th>主张</th><th>置信度</th><th>限制</th><th>支持证据</th></tr></thead><tbody>${claimRows || `<tr><td colspan="6">未提供</td></tr>`}</tbody></table></div>`)}
+          ${section("evidence", "证据与来源", `<div class="table-wrap"><table><thead><tr><th>ID</th><th>状态</th><th>类别</th><th>来源</th><th>标题</th><th>发布日期</th><th>关联维度</th><th>质量</th><th>链接</th></tr></thead><tbody>${evidenceRows || `<tr><td colspan="9">未提供证据</td></tr>`}</tbody></table></div>`)}
+          ${section("quality", "数据质量与待补项", `<div class="quality-grid"><div class="quality-item"><span>指数数据截止</span><strong>${esc(idx.data_cutoff || "未提供")}</strong></div><div class="quality-item"><span>最近完整交易日</span><strong>${esc(report.latest_complete_trade_date || "未提供")}</strong></div><div class="quality-item"><span>证据数量</span><strong>${evidence.length}</strong></div><div class="quality-item"><span>主张数量</span><strong>${claims.length}</strong></div><div class="quality-item"><span>搜索轮次</span><strong>${logs.length}</strong></div><div class="quality-item"><span>资金证据限制</span><strong>按报告警告</strong></div></div><ul class="item-list">${warnings.map(item => `<li>${esc(item)}</li>`).join("") || "<li>无发布警告</li>"}</ul>`)}
+          ${section("audit", "评分规则与审计信息", `<div class="audit-grid">${[["分析日期",report.analysis_date],["报告路径",report._report_path],["分析批次",report.run_id],["任务ID",report.task_id],["成分快照",m.snapshot_id],["适配类型",report.analysis_archetype],["模式版本",read(report,"schema_version","sector_research_schema.v1")],["市场范围","SH,SZ / BJ hard_exclude"],["抓取时间",report.fetched_at]].map(([key,value]) => `<div class="audit-pair"><span>${key}</span><code>${esc(value)}</code></div>`).join("")}</div><div class="contradiction"><strong>评分公式：</strong>${esc(report.overall_formula || "未提供")}</div>`)}
+        `;
+        renderScores(report);
+      }
+
+      async function boot() {
+        try {
+          const catalog = await loadCatalog();
+          const code = requestedCode();
+          const report = await loadReport(code);
+          setTop(report, catalog);
+          renderHero(report);
+          renderLayout(report);
+          document.title = `${report.sector_name || "板块"} · 多维度分析`;
+        } catch (error) {
+          document.querySelector(".shell").innerHTML = `<section class="block"><div class="block-head"><h2>板块研究加载失败</h2></div><div class="block-body"><p class="contradiction">${esc(error.message || error)}</p><p class="muted">请确认 API 服务已启动，并检查 sector 参数、正式报告或白名单 staging 路径。</p></div></section>`;
+        }
+      }
+      boot();
+    })();
+  </script>
+
+  <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+    <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+      <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600" aria-hidden="true"></canvas>
+    </div>
+  </div>
+  <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+  <script>window.PAGE_VIEW = "multi-dimensional-analysis";</script>
+  <script defer src="../shared/edge_float_nav.js"></script>
+  <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+  <script defer src="../shared/edge_float_hud.js"></script>
+</body>
+</html>

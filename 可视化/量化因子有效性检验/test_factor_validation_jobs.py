@@ -121,6 +121,47 @@ class PriceAdjustModeTests(unittest.TestCase):
         return path
 
 
+class OrdinaryFactorLabelTests(unittest.TestCase):
+    def test_list_factors_maps_reference_page_labels_and_keeps_unknown_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            signal_base = base / "signal_daily"
+            morph_base = base / "morph"
+            (signal_base / "factor=mac_total").mkdir(parents=True)
+            (signal_base / "factor=ADX_golden_cross").mkdir(parents=True)
+            (signal_base / "factor=unknown_factor").mkdir(parents=True)
+            meta_dir = signal_base / "_meta"
+            meta_dir.mkdir()
+            (meta_dir / "pure_technical_factor_catalog_cache.json").write_text(
+                json.dumps(
+                    {
+                        "factor_labels": {
+                            "ADX_golden_cross": "ADX_金叉",
+                            "missing_factor": "不应加载",
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            morph_base.mkdir()
+
+            original_signal = service.SIGNAL_DAILY_BASE_PATH
+            original_morph = service.MORPH_CANDLESTICK_BASE_PATH
+            service.SIGNAL_DAILY_BASE_PATH = signal_base
+            service.MORPH_CANDLESTICK_BASE_PATH = morph_base
+            try:
+                payload = service.list_factor_validation_factors()
+            finally:
+                service.SIGNAL_DAILY_BASE_PATH = original_signal
+                service.MORPH_CANDLESTICK_BASE_PATH = original_morph
+
+        self.assertEqual(payload["factor_labels"]["mac_total"], "MAC总")
+        self.assertEqual(payload["factor_labels"]["ADX_golden_cross"], "ADX_金叉")
+        self.assertEqual(payload["factor_labels"]["unknown_factor"], "unknown_factor")
+        self.assertNotIn("missing_factor", payload["factor_labels"])
+
+
 class MorphFactorTests(unittest.TestCase):
     def test_parse_morph_factor_name_keeps_level_and_pattern(self) -> None:
         self.assertEqual(

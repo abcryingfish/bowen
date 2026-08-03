@@ -11,15 +11,21 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import json
 import os
+import random
 import sys
 import time
 import errno
+import urllib.error
+import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time as dt_time, timedelta
 from pathlib import Path
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 import duckdb
 import polars as pl
@@ -33,11 +39,16 @@ if hasattr(sys.stderr, "reconfigure"):
 
 
 BASE_DIR = Path(r"D:\database\index_data_mins")
+DAILY_BASE_DIR = Path(r"D:\database\index_data_daily")
 THS_ROOT = Path(r"D:\同花顺\同花顺")
 STOCKNAME_FILE = THS_ROOT / "stockname" / "stockname_48_0.txt"
 SOFTWARE_LEVEL1_PREFIXES = ("881", "882", "885", "886")
 DEFAULT_START_DATE = "2010-01-01"
 MERGED_FILE_NAME = "merged.parquet"
+FUYAO_URL = "https://quota-h.10jqka.com.cn/fuyao/common_hq_aggr/quote/v1/single_kline"
+FUYAO_SOURCE_VERSION = "fuyao-v2"
+SHANGHAI = ZoneInfo("Asia/Shanghai")
+FIELD_IDS = {"1": "timestamp", "7": "open", "8": "high", "9": "low", "11": "close", "13": "volume", "19": "amount"}
 
 OUTPUT_COLUMNS = [
     "htsc_code",
@@ -96,6 +107,10 @@ class ClientExportError(RuntimeError):
     """客户端导出文件无法读取或字段不完整。"""
 
 
+class QuoteRequestError(RuntimeError):
+    """Fuyao 请求失败、认证失效或响应结构异常。"""
+
+
 @dataclass(frozen=True)
 class DownloadState:
     htsc_code: str
@@ -108,9 +123,13 @@ class DownloadState:
     error: str
 
 
-def should_request_window(existing: DownloadState | None, retry_empty: bool) -> bool:
+def should_request_window(existing: DownloadState | None, retry_empty: bool, source: str = "client") -> bool:
     if existing is None or existing.status == "failed":
         return True
+    if source == FUYAO_SOURCE_VERSION and existing.status in {"empty", "needs_history_replay"}:
+        return True
+    if source == FUYAO_SOURCE_VERSION and existing.status == "unavailable":
+        return retry_empty
     return retry_empty and existing.status == "empty"
 
 
@@ -123,6 +142,53 @@ def iter_month_windows(start: date, end: date) -> list[tuple[date, date]]:
         month_end = date(cursor.year, cursor.month, calendar.monthrange(cursor.year, cursor.month)[1])
         result.append((cursor, min(month_end, end)))
         cursor = month_end + timedelta(days=1)
+    return result
+
+
+def find_missing_trade_days(
+    expected: dict[str, set[date]], actual: dict[str, set[date]]
+) -> list[tuple[str, date]]:
+    return sorted(
+        (code, trading_day)
+        for code, trading_days in expected.items()
+        for trading_day in trading_days - actual.get(code, set())
+    )
+
+
+def window_has_expected_day(trading_days: set[date], start: date, end: date) -> bool:
+    return any(start <= trading_day <= end for trading_day in trading_days)
+
+
+def group_missing_days(gaps: Iterable[tuple[str, date]]) -> list[tuple[date, list[str]]]:
+    grouped: dict[date, list[str]] = {}
+    for code, trading_day in gaps:
+        grouped.setdefault(trading_day, []).append(code)
+    return [(trading_day, sorted(set(codes))) for trading_day, codes in sorted(grouped.items())]
+
+
+def scan_trade_day_sets(base_dir: str | Path, codes: Iterable[str]) -> dict[str, set[date]]:
+    normalized_codes = sorted({str(code).upper().strip() for code in codes})
+    result = {code: set() for code in normalized_codes}
+    if not normalized_codes:
+        return result
+    pattern = str(Path(base_dir) / "year=*" / "month=*" / "merged.parquet").replace("\\", "/")
+    if not list(Path(base_dir).glob("year=*/month=*/merged.parquet")):
+        pattern = str(Path(base_dir) / "year=*" / "month=*" / "day=*" / "merged.parquet").replace("\\", "/")
+    placeholders = ",".join("?" for _ in normalized_codes)
+    try:
+        rows = duckdb.execute(
+            f"""
+            SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))), CAST(time AS DATE)
+            FROM read_parquet('{pattern}', union_by_name=true)
+            WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) IN ({placeholders})
+            """,
+            normalized_codes,
+        ).fetchall()
+    except Exception:
+        return result
+    for code, trading_day in rows:
+        if trading_day is not None:
+            result[str(code)].add(trading_day)
     return result
 
 
@@ -141,6 +207,91 @@ def resolve_end_date(now: datetime | None = None, include_current_day: bool = Fa
     if current.time() < dt_time(15, 30):
         candidate -= timedelta(days=1)
     return _previous_weekday(candidate)
+
+
+def _shanghai_millis(day: date, clock: dt_time) -> int:
+    return int(datetime.combine(day, clock, tzinfo=SHANGHAI).timestamp() * 1000)
+
+
+def build_request_payload(code: str, start: date, end: date) -> dict[str, object]:
+    return {
+        "code_list": [{"codes": [code.upper().removesuffix('.THS')], "market": "48"}],
+        "trade_class": "intraday",
+        "time_period": "min_1",
+        "trade_date": 0,
+        "begin_time": _shanghai_millis(start, dt_time(9, 30)),
+        "end_time": _shanghai_millis(end, dt_time(15, 0)),
+        "adjust_type": "actual",
+        "gpid": 2,
+    }
+
+
+def parse_quote_payload(payload: dict[str, object], code: str, start: date, end: date) -> list[dict[str, object]]:
+    status = payload.get("status_code")
+    if status != 0:
+        raise QuoteRequestError(f"Fuyao 返回失败状态: {status} | {payload.get('status_msg') or payload.get('message') or ''}")
+    quote_data = ((payload.get("data") or {}).get("quote_data") or [])
+    if not quote_data:
+        return []
+    expected = code.upper().removesuffix(".THS")
+    item = next((value for value in quote_data if str(value.get("code", "")) == expected), None)
+    if item is None:
+        raise QuoteRequestError(f"Fuyao 响应代码不匹配: expected={expected}")
+    fields = [FIELD_IDS.get(str(value), str(value)) for value in item.get("data_fields", [])]
+    required = {"timestamp", "open", "high", "low", "close"}
+    if not required.issubset(fields):
+        raise QuoteRequestError(f"Fuyao 响应缺少字段: {sorted(required - set(fields))}")
+    rows: list[dict[str, object]] = []
+    for values in item.get("value", []) or []:
+        if len(values) != len(fields):
+            raise QuoteRequestError("Fuyao 字段和值数量不一致")
+        row = dict(zip(fields, values, strict=True))
+        moment = datetime.fromtimestamp(int(row["timestamp"]) / 1000, SHANGHAI).replace(tzinfo=None, second=0, microsecond=0)
+        if not (start <= moment.date() <= end):
+            continue
+        rows.append({
+            "time": moment,
+            "open": row["open"],
+            "high": row["high"],
+            "low": row["low"],
+            "close": row["close"],
+            "volume": row.get("volume"),
+            "amount": row.get("amount"),
+        })
+    return rows
+
+
+def fetch_fuyao_window(code: str, start: date, end: date, *, auth_token: str, timeout: float, retries: int) -> list[dict[str, object]]:
+    headers = {
+        "Source-Id": "hxkline-NEWS_appNewsFlowHome_Page",
+        "X-Fuyao-Auth": auth_token,
+        "Platform": "hxkline",
+        "X-Auth-Type": "ths",
+        "X-Auth-Version": "1.0",
+        "X-Auth-ProgId": "7047",
+        "X-Auth-AppName": "AINVEST",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+    }
+    body = json.dumps(build_request_payload(code, start, end), separators=(",", ":")).encode("utf-8")
+    last_error: Exception | None = None
+    for attempt in range(max(1, retries + 1)):
+        request = urllib.request.Request(FUYAO_URL, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            return parse_quote_payload(payload, code, start, end)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                raise QuoteRequestError(f"Fuyao 认证失败: HTTP {exc.code}") from exc
+            last_error = exc
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, QuoteRequestError) as exc:
+            last_error = exc
+            if isinstance(exc, QuoteRequestError) and "失败状态" in str(exc):
+                raise
+        if attempt < retries:
+            time.sleep(min(8.0, 2**attempt) + random.random())
+    raise QuoteRequestError(f"Fuyao 请求重试后仍失败: {code} {start}~{end} | {last_error}") from last_error
 
 
 def load_client_universe(path: Path = STOCKNAME_FILE) -> list[dict[str, str]]:
@@ -577,6 +728,44 @@ def scan_prior_local_values_many(
     return result
 
 
+def scan_previous_month_values(
+    base_dir: str | Path,
+    htsc_codes: Iterable[str],
+    window_start: date,
+) -> dict[str, tuple[float | None, int]]:
+    codes = [str(code).upper().strip() for code in htsc_codes]
+    result = {code: (None, 0) for code in codes}
+    if not codes:
+        return result
+    previous_day = window_start - timedelta(days=1)
+    month_dir = Path(base_dir) / f"year={previous_day.year:04d}" / f"month={previous_day.month:02d}"
+    if not list(month_dir.glob("day=*/merged.parquet")):
+        return result
+    pattern = str(month_dir / "day=*" / "merged.parquet").replace("\\", "/")
+    query = f"""
+        SELECT htsc_code, close, __index_level_0__
+        FROM (
+            SELECT
+                UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                TRY_CAST(close AS DOUBLE) AS close,
+                TRY_CAST(__index_level_0__ AS BIGINT) AS __index_level_0__,
+                ROW_NUMBER() OVER (
+                    PARTITION BY UPPER(TRIM(CAST(htsc_code AS VARCHAR)))
+                    ORDER BY CAST(time AS TIMESTAMP) DESC
+                ) AS rn
+            FROM read_parquet('{pattern}', union_by_name=true)
+            WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) IN ({','.join('?' for _ in codes)})
+        )
+        WHERE rn = 1
+    """
+    for code, close, index in duckdb.execute(query, codes).fetchall():
+        result[str(code)] = (
+            float(close) if close is not None else None,
+            int(index) + 1 if index is not None else 0,
+        )
+    return result
+
+
 def _failure_file(base_dir: Path, failures: list[tuple[str, str, str]]) -> Path:
     path = base_dir / "_meta" / f"failed_ths_minute_requests_{datetime.now():%Y%m%d_%H%M%S}.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -592,11 +781,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--default-start", default=DEFAULT_START_DATE, help="首次回溯起点 YYYY-MM-DD")
     parser.add_argument("--end", default="", help="截止日期 YYYY-MM-DD；默认最近完整交易日")
     parser.add_argument("--codes", nargs="*", default=None, help="仅处理指定六位代码或 .THS 代码")
-    parser.add_argument(
-        "--client-export-dir",
-        default=str(THS_ROOT / "output"),
-        help="同花顺客户端原生数据导出目录；不会访问网络",
-    )
+    parser.add_argument("--workers", type=int, default=6, help="Fuyao 并发请求数")
+    parser.add_argument("--timeout", type=float, default=45.0, help="单次请求超时秒数")
+    parser.add_argument("--retries", type=int, default=3, help="单窗口网络重试次数")
+    parser.add_argument("--auth-token", default=os.getenv("THS_FUYAO_AUTH", ""), help="Fuyao 认证；默认读取 THS_FUYAO_AUTH")
     parser.add_argument("--include-current-day", action="store_true", help="允许写入当日未完成分钟")
     parser.add_argument("--retry-empty", action="store_true", help="重新请求已记录为空的月份")
     parser.add_argument("--dry-run", action="store_true", help="只输出计划，不请求和写入")
@@ -632,31 +820,38 @@ def run(args: argparse.Namespace) -> int:
     meta_dir = base_dir / "_meta"
     universe_path = meta_dir / "ths_level1_universe.parquet"
     state_path = meta_dir / "ths_minute_download_state.parquet"
-    source_marker = meta_dir / "ths_minute_source_client_export.txt"
+    source_marker = meta_dir / "ths_minute_source.txt"
     previous_universe = read_universe_snapshot(universe_path)
     universe = merge_universe_snapshot(load_client_universe(Path(args.stockname_file)), previous_universe, datetime.now())
     windows = iter_month_windows(start, end)
-    state = (
-        read_download_state(state_path)
-        if source_marker.is_file() and source_marker.read_text(encoding="utf-8").strip() == "client-export-only-v1"
-        else {}
-    )
+    expected_days = scan_trade_day_sets(DAILY_BASE_DIR, [str(row["htsc_code"]) for row in current_rows])
+    state = read_download_state(state_path)
     pending_count = sum(
         should_request_window(
             state.get((f"{row['htsc_code']}", f"{window_start:%Y-%m}")),
             retry_empty=bool(args.retry_empty),
+            source=FUYAO_SOURCE_VERSION,
         )
         for window_start, _ in windows
         for row in current_rows
+        if window_has_expected_day(
+            expected_days.get(str(row["htsc_code"]), set()),
+            window_start,
+            min(date(window_start.year, window_start.month, calendar.monthrange(window_start.year, window_start.month)[1]), end),
+        )
     )
     print(f"软件一级板块: {len(current_rows)} | 月窗口: {len(windows)} | 待请求: {pending_count}")
     print(f"范围: {start} ~ {end} | 目录: {base_dir}")
     if args.dry_run:
         return 0
+    if not args.auth_token:
+        raise ValueError("缺少 Fuyao 认证，请设置 THS_FUYAO_AUTH 或传入 --auth-token")
+    if args.workers < 1 or args.retries < 0 or args.timeout <= 0:
+        raise ValueError("workers/timeout/retries 参数无效")
 
     base_dir.mkdir(parents=True, exist_ok=True)
     source_marker.parent.mkdir(parents=True, exist_ok=True)
-    source_marker.write_text("client-export-only-v1\n", encoding="utf-8")
+    source_marker.write_text(f"{FUYAO_SOURCE_VERSION}\n", encoding="utf-8")
     write_universe_snapshot(universe, universe_path)
     residual = find_unmerged_partitions(base_dir)
     if residual:
@@ -664,56 +859,58 @@ def run(args: argparse.Namespace) -> int:
         rebuild_daily_partitions(base_dir, residual)
 
     failures: list[tuple[str, str, str]] = []
-    export_dir = Path(args.client_export_dir)
-    if not export_dir.is_dir():
-        raise FileNotFoundError(f"同花顺客户端导出目录不存在: {export_dir}")
-
     for window_number, (window_start, window_end) in enumerate(windows, start=1):
         year_month = f"{window_start:%Y-%m}"
         month_states: list[DownloadState] = []
-        for row in current_rows:
-            htsc_code = str(row["htsc_code"])
-            existing = state.get((htsc_code, year_month))
-            if not should_request_window(existing, retry_empty=bool(args.retry_empty)):
-                continue
-            matches = [path for path in export_dir.rglob("*") if path.is_file() and htsc_code.removesuffix(".THS") in path.name]
-            if not matches:
-                month_states.append(
-                    DownloadState(
-                        htsc_code, year_month, "needs_history_replay", 0, None, None, datetime.now(),
-                        "客户端未提供该窗口的导出文件；需要在同花顺历史分时窗口触发",
-                    )
-                )
-                continue
-            try:
-                frame = pl.concat(
-                    [parse_client_export(path, expected_code=htsc_code) for path in matches],
-                    how="vertical_relaxed",
-                ).filter(
-                    (pl.col("time") >= datetime.combine(window_start, dt_time.min))
-                    & (pl.col("time") < datetime.combine(window_end + timedelta(days=1), dt_time.min))
-                )
-                if frame.is_empty():
-                    raise ClientExportError("导出文件不包含请求窗口")
-                touched = write_daily_parts(frame, base_dir)
-                rebuild_daily_partitions(base_dir, touched)
-                month_states.append(
-                    DownloadState(htsc_code, year_month, "success", frame.height, frame["time"].min(), frame["time"].max(), datetime.now(), "")
-                )
-            except Exception as exc:  # noqa: BLE001
-                failures.append((htsc_code, year_month, str(exc)))
-                month_states.append(DownloadState(htsc_code, year_month, "failed", 0, None, None, datetime.now(), str(exc)))
+        pending = [
+            str(row["htsc_code"])
+            for row in current_rows
+            if window_has_expected_day(expected_days.get(str(row["htsc_code"]), set()), window_start, window_end)
+            if should_request_window(
+                state.get((str(row["htsc_code"]), year_month)),
+                retry_empty=bool(args.retry_empty),
+                source=FUYAO_SOURCE_VERSION,
+            )
+        ]
+        prior_values = scan_previous_month_values(base_dir, pending, window_start)
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            futures = {
+                pool.submit(
+                    fetch_fuyao_window, htsc_code, window_start, window_end,
+                    auth_token=args.auth_token, timeout=args.timeout, retries=args.retries,
+                ): htsc_code
+                for htsc_code in pending
+            }
+            for future in as_completed(futures):
+                htsc_code = futures[future]
+                try:
+                    rows = future.result()
+                    if not rows:
+                        month_states.append(DownloadState(
+                            htsc_code, year_month, "unavailable", 0, None, None, datetime.now(),
+                            "Fuyao 接口成功但该月无分钟数据",
+                        ))
+                        continue
+                    prior_close, index_offset = prior_values.get(htsc_code, (None, 0))
+                    frame, _, _ = normalize_rows(rows, htsc_code.removesuffix(".THS"), prior_close, index_offset)
+                    touched = write_daily_parts(frame, base_dir)
+                    rebuilt = rebuild_daily_partitions(base_dir, touched)
+                    if len(rebuilt) != len(touched):
+                        raise OSError(f"分区合并未全部完成: {len(rebuilt)}/{len(touched)}")
+                    month_states.append(DownloadState(
+                        htsc_code, year_month, "success", frame.height, frame["time"].min(), frame["time"].max(), datetime.now(), ""
+                    ))
+                except Exception as exc:  # noqa: BLE001
+                    failures.append((htsc_code, year_month, str(exc)))
+                    month_states.append(DownloadState(htsc_code, year_month, "failed", 0, None, None, datetime.now(), str(exc)))
         for item in month_states:
             state[(item.htsc_code, item.year_month)] = item
-            if item.status == "needs_history_replay":
-                failures.append((item.htsc_code, item.year_month, item.error))
         _save_state_map(state, state_path)
         success_count = sum(item.status == "success" for item in month_states)
-        empty_count = sum(item.status == "empty" for item in month_states)
+        empty_count = sum(item.status == "unavailable" for item in month_states)
         failed_count = sum(item.status == "failed" for item in month_states)
         print(
-            f"[{year_month}] 有数据 {success_count} | 空窗口 {empty_count} | 失败 {failed_count} | "
-            f"待历史回放/失败 {sum(item.status != 'success' for item in month_states)}",
+            f"[{window_number}/{len(windows)} {year_month}] 有数据 {success_count} | Fuyao无数据 {empty_count} | 失败 {failed_count}",
             flush=True,
         )
 
@@ -721,7 +918,7 @@ def run(args: argparse.Namespace) -> int:
         failure_path = _failure_file(base_dir, failures)
         print(f"失败窗口: {len(failures)} | 详情: {failure_path}")
         return 1
-    print("同花顺客户端导出处理完成；仍需历史回放的窗口已保留在状态文件。")
+    print("Fuyao 分钟数据处理完成；明确无数据的窗口已保留为 unavailable。")
     return 0
 
 

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型有效性</title>
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="./model_validity.css">
+</head>
+
+<body class="page-model-validity">
+    <div class="model-validity-zoom-content" style="--model-validity-zoom: 1.25; width: 100%;">
+        <header class="model-validity-header">
+            <div class="brand">量化研究工作台</div>
+            <div class="model-validity-title">
+                <span class="eyebrow">MODEL VALIDITY</span>
+                <h1>模型有效性</h1>
+            </div>
+            <div class="model-validity-header-actions">
+                <a class="model-live-link" href="../实盘面/index.html">实盘面</a>
+                <div class="model-validity-zoom-controls" aria-label="页面缩放">
+                    <span class="model-validity-zoom-label">缩放</span>
+                    <button id="model-validity-zoom-decrease" type="button" title="缩小页面">−</button>
+                    <output id="model-validity-zoom-value" for="model-validity-zoom-decrease model-validity-zoom-increase">125%</output>
+                    <button id="model-validity-zoom-reset" type="button" title="恢复 125%">恢复</button>
+                    <button id="model-validity-zoom-increase" type="button" title="放大页面">＋</button>
+                </div>
+                <div id="page-clock" class="page-clock">Time: --</div>
+            </div>
+        </header>
+
+        <main class="model-validity-shell">
+            <section class="intro-line" aria-label="页面状态">
+                <span>全历史演示视图</span>
+                <span>当前点：实时占位</span>
+            </section>
+
+            <section class="model-chart-grid" aria-label="六个风格图表">
+                <article class="model-chart-card" data-chart-index="0">
+                    <div class="chart-card-head"><h2>风格图 1</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-0"></div>
+                </article>
+                <article class="model-chart-card" data-chart-index="1">
+                    <div class="chart-card-head"><h2>风格图 2</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-1"></div>
+                </article>
+                <article class="model-chart-card" data-chart-index="2">
+                    <div class="chart-card-head"><h2>风格图 3</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-2"></div>
+                </article>
+                <article class="model-chart-card" data-chart-index="3">
+                    <div class="chart-card-head"><h2>风格图 4</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-3"></div>
+                </article>
+                <article class="model-chart-card" data-chart-index="4">
+                    <div class="chart-card-head"><h2>风格图 5</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-4"></div>
+                </article>
+                <article class="model-chart-card" data-chart-index="5">
+                    <div class="chart-card-head"><h2>风格图 6</h2><span>全历史</span></div>
+                    <div class="chart-mount" id="chart-5"></div>
+                </article>
+            </section>
+        </main>
+    </div>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600"
+                aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script>window.PAGE_VIEW = "model-validity";</script>
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="./model_validity.js"></script>
+</body>
+
+</html>

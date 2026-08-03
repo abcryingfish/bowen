@@ -7,7 +7,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parent
-SCRIPT = ROOT / "工具" / "形态蜡烛信号生成.py"
+SCRIPT = ROOT / "工具" / "形态蜡烛信号生成_合并保存.py"
 
 
 def load_module():

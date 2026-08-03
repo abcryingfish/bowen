@@ -197,7 +197,11 @@ def normalize_qmt_table_frame(
         return pd.DataFrame()
     out = raw_df.copy()
     report_source = out["m_timetag"] if "m_timetag" in out.columns else pd.NaT
-    announce_source = out["m_anntime"] if "m_anntime" in out.columns else report_source
+    announce_source = (
+        out["m_anntime"]
+        if "m_anntime" in out.columns
+        else pd.Series(pd.NaT, index=out.index)
+    )
     out["report_date"] = pd.Series(report_source).map(parse_qmt_date)
     out["announce_date"] = pd.Series(announce_source).map(parse_qmt_date)
     out["htsc_code"] = normalize_code(code)
@@ -205,10 +209,9 @@ def normalize_qmt_table_frame(
     out["table_name"] = str(table_name)
     out["period"] = out["report_date"].map(period_from_report_date)
     out["updated_at"] = updated_at
-    out = out.dropna(subset=["report_date"]).copy()
+    out = out.dropna(subset=["report_date", "announce_date"]).copy()
     if out.empty:
         return out
-    out["announce_date"] = out["announce_date"].fillna(out["report_date"])
     out = out.drop_duplicates(subset=list(DEDUP_COLUMNS), keep="last")
     meta_cols = ["htsc_code", "name", "table_name", "report_date", "announce_date", "period", "updated_at"]
     other_cols = [col for col in out.columns if col not in meta_cols]

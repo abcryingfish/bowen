@@ -152,28 +152,35 @@ def build_bottom_fishing_factor_bundle(
 ) -> dict[str, dict[str, pd.DataFrame]]:
     index, columns = C.index, C.columns
 
+    llv_3 = LLV(L, 3, index, columns)
     llv_7 = LLV(L, 7, index, columns)
     llv_20 = LLV(L, 20, index, columns)
     llv_200 = LLV(L, 200, index, columns)
     llv_400 = LLV(L, 400, index, columns)
     llv_1000 = LLV(L, 1000, index, columns)
+    prev_llv_3 = REF(llv_3, 1, index, columns)
     prev_llv_7 = REF(llv_7, 1, index, columns)
     prev_llv_20 = REF(llv_20, 1, index, columns)
     prev_llv_200 = REF(llv_200, 1, index, columns)
     prev_llv_400 = REF(llv_400, 1, index, columns)
     prev_llv_1000 = REF(llv_1000, 1, index, columns)
 
+    ultra_mini_bottom = (L <= prev_llv_3) & _history_ready_mask(4, index, columns)
     mini_bottom = (L <= prev_llv_7) & _history_ready_mask(8, index, columns)
     small_bottom = (L <= prev_llv_20) & _history_ready_mask(21, index, columns)
     major_bottom = (L <= prev_llv_200) & _history_ready_mask(201, index, columns)
     near_historical_bottom = (L <= prev_llv_400) & _history_ready_mask(401, index, columns)
     historical_bottom = (L <= prev_llv_1000) & _history_ready_mask(1001, index, columns)
+    ultra_mini_signal_low = L.where(ultra_mini_bottom)
     mini_signal_low = L.where(mini_bottom)
     small_signal_low = L.where(small_bottom)
     major_signal_low = L.where(major_bottom)
     near_historical_signal_low = L.where(near_historical_bottom)
     historical_signal_low = L.where(historical_bottom)
 
+    ultra_mini_seen, _, ultra_mini_rise = _get_last_signal_low_and_rise(
+        ultra_mini_bottom, ultra_mini_signal_low, H, index, columns
+    )
     mini_seen, _, mini_rise = _get_last_signal_low_and_rise(mini_bottom, mini_signal_low, H, index, columns)
     small_seen, _, small_rise = _get_last_signal_low_and_rise(small_bottom, small_signal_low, H, index, columns)
     major_seen, _, major_rise = _get_last_signal_low_and_rise(major_bottom, major_signal_low, H, index, columns)
@@ -184,6 +191,7 @@ def build_bottom_fishing_factor_bundle(
         historical_bottom, historical_signal_low, H, index, columns
     )
 
+    ultra_mini_active = ultra_mini_seen & (ultra_mini_rise < 0.05)
     mini_active = mini_seen & (mini_rise < 0.20)
     small_active = small_seen & (small_rise < 0.20)
     historical_active = historical_seen & (historical_rise < 0.20)
@@ -198,6 +206,14 @@ def build_bottom_fishing_factor_bundle(
     major_mask = (~historical_mask) & (~near_historical_mask) & major_active.to_numpy()
     small_mask = (~historical_mask) & (~near_historical_mask) & (~major_mask) & small_active.to_numpy()
     mini_mask = (~historical_mask) & (~near_historical_mask) & (~major_mask) & (~small_mask) & mini_active.to_numpy()
+    ultra_mini_mask = (
+        (~historical_mask)
+        & (~near_historical_mask)
+        & (~major_mask)
+        & (~small_mask)
+        & (~mini_mask)
+        & ultra_mini_active.to_numpy()
+    )
 
     base_score_values = base_score.to_numpy()
     base_rise_values = base_rise.to_numpy()
@@ -207,7 +223,9 @@ def build_bottom_fishing_factor_bundle(
     base_score_values[major_mask] = 1.0
     base_score_values[small_mask] = 1.0
     base_score_values[mini_mask] = 0.5
+    base_score_values[ultra_mini_mask] = 0.25
 
+    ultra_mini_rise_values = ultra_mini_rise.to_numpy()
     mini_rise_values = mini_rise.to_numpy()
     small_rise_values = small_rise.to_numpy()
     historical_rise_values = historical_rise.to_numpy()
@@ -215,6 +233,7 @@ def build_bottom_fishing_factor_bundle(
     major_rise_values = major_rise.to_numpy()
 
     base_rise_values[mini_mask] = mini_rise_values[mini_mask]
+    base_rise_values[ultra_mini_mask] = ultra_mini_rise_values[ultra_mini_mask]
     base_rise_values[small_mask] = small_rise_values[small_mask]
     base_rise_values[historical_mask] = historical_rise_values[historical_mask]
     base_rise_values[near_historical_mask] = near_historical_rise_values[near_historical_mask]
@@ -224,6 +243,7 @@ def build_bottom_fishing_factor_bundle(
     bottom_fishing_score = bottom_fishing_score.where(base_score > 0, 0.0)
 
     raw_factor_dfs: dict[str, pd.DataFrame] = {
+        "ultra_mini_bottom": ultra_mini_bottom,
         "mini_bottom": mini_bottom,
         "small_bottom": small_bottom,
         "major_bottom": major_bottom,
@@ -233,6 +253,7 @@ def build_bottom_fishing_factor_bundle(
     }
 
     raw_factor_name_map: dict[str, str] = {
+        "超迷你底": "ultra_mini_bottom",
         "迷你底": "mini_bottom",
         "小底": "small_bottom",
         "大底": "major_bottom",
@@ -257,6 +278,7 @@ BUNDLE_ID = "hong_bottom_fishing"
 _DEFAULT_LOOKBACK_DAYS = 1100
 
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {
+    "hong_ultra_mini_bottom": 15,
     "hong_mini_bottom": 30,
     "hong_small_bottom": 60,
     "hong_major_bottom": 260,

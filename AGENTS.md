@@ -136,6 +136,7 @@ flowchart LR
 | 信号逻辑说明文档（HTML） | `因子解释/` 或 `临时脚本存放(系统用)/` |
 | SDK 字段确认、接口 demo | `华泰数据获取/query_demo.py` |
 | 股票池 meta | `全市场股票代码/` |
+| 单个板块深度研究 | **必须先读** [`docs/单板块Codex深度研究运行规范.md`](docs/单板块Codex深度研究运行规范.md)；一个Codex任务只处理一个板块，模型主导检索和语义判断 |
 
 ---
 
@@ -159,6 +160,7 @@ flowchart LR
 | `因子分类/factor_catalog.json` | 前端因子分组（与 notebook 产出列名应对齐） |
 | `backtrader/model_registry.py` | 回测模型注册表 → 前端 `GET /api/backtest/models` |
 | `backtrader/settings.py` | 回测公共路径、资金、DuckDB 视图等 |
+| `docs/单板块Codex深度研究运行规范.md` | 单板块独立Codex任务的强制流程、模型/Python职责边界、证据与发布契约 |
 
 ---
 

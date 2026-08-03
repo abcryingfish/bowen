@@ -451,6 +451,23 @@ function getBacktestPositionSnapshotHandlers() {
 }
 
 let factorSnapshotListClickBound = false;
+function toggleFactorSnapshotGroup(groupId) {
+    const normalizedGroupId = String(groupId || "").trim();
+    if (!normalizedGroupId) {
+        return;
+    }
+    if (expandedFactorGroupIds.has(normalizedGroupId)) {
+        expandedFactorGroupIds.delete(normalizedGroupId);
+    } else {
+        expandedFactorGroupIds.add(normalizedGroupId);
+    }
+    persistExpandedFactorGroups();
+    scheduleFactorSnapshotForRightPanel(
+        Number.isFinite(currentFactorSnapshotTime) ? currentFactorSnapshotTime : lastBarTime,
+        true
+    );
+}
+
 function bindFactorSnapshotListInteractions() {
     const { listEl } = getFactorSnapshotPanelElements();
     if (!listEl || factorSnapshotListClickBound) {
@@ -469,19 +486,14 @@ function bindFactorSnapshotListInteractions() {
             event.preventDefault();
             event.stopPropagation();
             const groupId = String(toggleBtn.getAttribute("data-group-id") || "").trim();
-            if (!groupId) {
-                return;
-            }
-            if (expandedFactorGroupIds.has(groupId)) {
-                expandedFactorGroupIds.delete(groupId);
-            } else {
-                expandedFactorGroupIds.add(groupId);
-            }
-            persistExpandedFactorGroups();
-            scheduleFactorSnapshotForRightPanel(
-                Number.isFinite(currentFactorSnapshotTime) ? currentFactorSnapshotTime : lastBarTime,
-                true
-            );
+            toggleFactorSnapshotGroup(groupId);
+            return;
+        }
+        const groupHeader = event.target.closest(".factor-group-header");
+        if (groupHeader && groupHeader.getAttribute("data-directory-only") === "true") {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleFactorSnapshotGroup(groupHeader.getAttribute("data-group-id"));
             return;
         }
         const itemEl = event.target.closest(".factor-snapshot-item[data-factor-name]");
@@ -852,10 +864,15 @@ function buildCatalogSnapshotGroups(valueByName) {
                 continue;
             }
             const children = Array.isArray(group.children) ? group.children : [];
+            const keepAsDirectoryEntry = isFactorGroupWithoutCore(group);
             const filteredChildren = [];
             for (const name of children) {
                 const factorName = String(name || "").trim();
-                if (!factorName || !valueByName.has(factorName) || filteredChildren.includes(factorName)) {
+                if (
+                    !factorName
+                    || (!keepAsDirectoryEntry && !valueByName.has(factorName))
+                    || filteredChildren.includes(factorName)
+                ) {
                     continue;
                 }
                 filteredChildren.push(factorName);
@@ -948,6 +965,22 @@ function getFactorGroupDisplayTitle(group) {
         return name;
     }
     return String(group.group_id || "").trim() || "--";
+}
+
+function isFactorGroupWithoutCore(group) {
+    const coreFactors = Array.isArray(group && group.core_factors) ? group.core_factors : [];
+    const groupId = String(group && group.group_id || "").trim();
+    const groupName = String(group && group.group_name || "").trim();
+    return coreFactors.length === 0 && (
+        groupId.startsWith("pure_technical_")
+        || /^纯技术\s*[-－—:]/u.test(groupName)
+    );
+}
+
+function getFactorDirectoryGroupTitle(group) {
+    const groupName = String(group && group.group_name || "").trim();
+    const pureTechnicalName = groupName.replace(/^纯技术\s*[-－—:]\s*/u, "").trim();
+    return pureTechnicalName || groupName || String(group && group.group_id || "").trim() || "--";
 }
 
 function getDisplayLabelForFactorColumn(col) {
@@ -1192,10 +1225,15 @@ function renderFactorSnapshotToRightPanel(snapshot, targetTs) {
         const groupId = String(group.group_id || "").trim();
         const expanded = Boolean(filterQuery) || expandedFactorGroupIds.has(groupId);
         const isUngrouped = groupId === "__ungrouped__" || groupId === "ungrouped";
-        const summaryCol = isUngrouped
+        const isDirectoryOnlyGroup = !isUngrouped && isFactorGroupWithoutCore(group);
+        const summaryCol = isDirectoryOnlyGroup
+            ? ""
+            : isUngrouped
             ? getUngroupedPrimaryColumn(group.children)
             : getCatalogGroupSummaryColumn(group, valueByName);
-        const summaryDisplay = isUngrouped
+        const summaryDisplay = isDirectoryOnlyGroup
+            ? getFactorDirectoryGroupTitle(group)
+            : isUngrouped
             ? (String(group.group_name || "Ungrouped").trim() || "Ungrouped")
             : (getCatalogGroupFactorDisplayLabel(group, summaryCol) || summaryCol);
         const summaryVal = valueByName.get(summaryCol);
@@ -1205,9 +1243,14 @@ function renderFactorSnapshotToRightPanel(snapshot, targetTs) {
             (expanded ? "收起" : "展开") +
             "</button>"
         );
-        const childNames = isUngrouped ? group.children : group.children.filter((c) => c !== summaryCol);
+        const childNames = (isUngrouped || isDirectoryOnlyGroup)
+            ? group.children
+            : group.children.filter((c) => c !== summaryCol);
         const expandedCols = expanded
             ? sortFactorNamesByCustomOrder(groupId, childNames).filter((name) => {
+                if (!valueByName.has(name)) {
+                    return false;
+                }
                 if (!filterQuery) {
                     return true;
                 }
@@ -1220,13 +1263,17 @@ function renderFactorSnapshotToRightPanel(snapshot, targetTs) {
         const groupBlob = escapeHtml(buildCatalogGroupSearchBlob(group, summaryDisplay, summaryCol, group.children || []));
         htmlParts.push(
             "<div class=\"factor-group-block\" data-factor-group=\"" + escapeHtml(groupId) + "\" data-group-filter-text=\"" + groupBlob + "\">" +
-            "<div class=\"factor-group-header\">" +
+            "<div class=\"factor-group-header" + (isDirectoryOnlyGroup ? " factor-group-header--directory" : "") + "\" data-group-id=\"" + escapeHtml(groupId) + "\" data-directory-only=\"" + String(isDirectoryOnlyGroup) + "\">" +
             "<div class=\"factor-group-head-main\">" +
             "<div class=\"factor-group-summary-wrap\">" +
-            "<div class=\"factor-group-summary-row factor-snapshot-item factor-snapshot-item--header-summary" + summaryActive + "\" data-factor-name=\"" + escapeHtml(summaryCol) + "\"" + getFactorActiveStyleAttr(summaryCol) + ">" +
-            renderFactorNameWithBar(summaryDisplay, summaryVal, maxAbs) +
-            "<span class=\"factor-snapshot-value\">" + formatFactorSnapshotValue(summaryVal) + "</span>" +
-            "</div>" +
+            (isDirectoryOnlyGroup
+                ? ("<div class=\"factor-group-title\">" + escapeHtml(summaryDisplay) + "</div>")
+                : (
+                    "<div class=\"factor-group-summary-row factor-snapshot-item factor-snapshot-item--header-summary" + summaryActive + "\" data-factor-name=\"" + escapeHtml(summaryCol) + "\"" + getFactorActiveStyleAttr(summaryCol) + ">" +
+                    renderFactorNameWithBar(summaryDisplay, summaryVal, maxAbs) +
+                    "<span class=\"factor-snapshot-value\">" + formatFactorSnapshotValue(summaryVal) + "</span>" +
+                    "</div>"
+                )) +
             "</div>" +
             "</div>" +
             toggleBtn +
@@ -1306,7 +1353,7 @@ async function selectFactorAndRefresh(nextFactorName) {
         activeFactorNames.push(factorName);
     }
     promoteFactorToPrimary(factorName);
-    // 鍏堝悓姝ュ埛鏂板彸渚у洜瀛愬垪琛ㄩ珮浜紝閬垮厤绛?refreshSignalData 缃戠粶杩斿洖鍚庢墠鍑虹幇 .active
+    // 先同步刷新右侧因子列表高亮，避免等待 refreshSignalData 网络返回后才出现 .active。
     if (
         currentRightTabName === "量化因子" &&
         currentFactorSnapshotPayload &&
@@ -1859,6 +1906,14 @@ async function loadFactorOptions() {
             }
         }
         updateExportFactorOptions();
+        // 因子目录异步加载后，旧的核心快照可能不包含新分组的摘要因子。
+        rightPanelSnapshotCache.clear();
+        if (currentRightTabName === "量化因子" && Number.isFinite(lastBarTime)) {
+            scheduleFactorSnapshotForRightPanel(
+                Number.isFinite(currentFactorSnapshotTime) ? currentFactorSnapshotTime : lastBarTime,
+                true
+            );
+        }
     } catch (err) {
         factorNames = [];
         factorGroups = [];
@@ -2123,15 +2178,6 @@ function endFactorSnapshotDrag(event) {
                 .filter(Boolean);
             if (order.length) {
                 factorOrderByGroup[sourceGroupId] = order;
-            }
-        }
-    } else {
-        const { sourceFactorName } = factorSnapshotDragState;
-        if (sourceFactorName && Date.now() >= suppressFactorSnapshotClickUntil) {
-            if (event.metaKey || event.ctrlKey || isFactorSnapshotActive(sourceFactorName)) {
-                void toggleFactorActiveState(sourceFactorName);
-            } else {
-                void selectFactorAndRefresh(sourceFactorName);
             }
         }
     }
