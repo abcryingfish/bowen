@@ -12,6 +12,7 @@ import duckdb
 
 from .config import StyleModelDefinition
 from .portfolio import PortfolioState
+from .query import StyleMonitorValidationError, query_curves, query_positions, query_summary, query_trades
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +163,34 @@ class StyleMonitorRepository:
         conn = self._connect()
         try:
             return int(conn.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
+        finally:
+            conn.close()
+
+    def query_summary(self):
+        conn = self._connect()
+        try:
+            return query_summary(conn)
+        finally:
+            conn.close()
+
+    def query_curves(self, model_id: str, range_key: str):
+        conn = self._connect()
+        try:
+            return query_curves(conn, model_id, range_key)
+        finally:
+            conn.close()
+
+    def query_positions(self, model_id: str, leg: str, trade_date: str | None):
+        conn = self._connect()
+        try:
+            return query_positions(conn, model_id, leg, trade_date)
+        finally:
+            conn.close()
+
+    def query_trades(self, model_id: str, leg: str, limit: int):
+        conn = self._connect()
+        try:
+            return query_trades(conn, model_id, leg, limit)
         finally:
             conn.close()
 
