@@ -108,6 +108,12 @@ def is_rebalance_day(
     trading_days = set(calendar)
     if trade_date not in trading_days:
         return False
+    current_period = _period_key(trade_date, frequency)
+    first_available = min(
+        day for day in trading_days if _period_key(day, frequency) == current_period
+    )
+    if trade_date != first_available:
+        return False
     if last_rebalance_date is None:
         return True
-    return _period_key(trade_date, frequency) != _period_key(last_rebalance_date, frequency)
+    return current_period != _period_key(last_rebalance_date, frequency)

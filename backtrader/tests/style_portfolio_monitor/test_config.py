@@ -37,6 +37,7 @@ def test_rebalance_day_uses_actual_period_boundaries():
     assert is_rebalance_day(date(2026, 2, 2), date(2026, 1, 30), "weekly", calendar)
     assert is_rebalance_day(date(2026, 2, 2), date(2026, 1, 30), "monthly", calendar)
     assert not is_rebalance_day(date(2026, 2, 3), date(2026, 2, 2), "monthly", calendar)
+    assert not is_rebalance_day(date(2026, 2, 3), None, "monthly", calendar)
     assert is_rebalance_day(date(2026, 4, 1), date(2026, 2, 2), "quarterly", calendar)
     assert is_rebalance_day(date(2026, 1, 30), None, "monthly", calendar)
     with pytest.raises(ValueError):
