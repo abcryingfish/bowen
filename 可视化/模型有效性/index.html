@@ -31,37 +31,20 @@
         </header>
 
         <main class="model-validity-shell">
-            <section class="intro-line" aria-label="页面状态">
-                <span>全历史演示视图</span>
-                <span>当前点：实时占位</span>
+            <section class="monitor-status" aria-label="页面状态">
+                <div><span class="status-kicker">THEORETICAL MONITOR</span><strong id="style-monitor-as-of">账本日期：--</strong><span id="style-monitor-message">只读账本</span></div>
+                <div class="monitor-actions"><span class="paper-note">理论监控：T 日收盘信号与 T 日收盘理论成交，不代表可实盘成交</span><button id="style-monitor-update" type="button" title="手动更新" aria-label="手动更新">↻</button></div>
             </section>
-
-            <section class="model-chart-grid" aria-label="六个风格图表">
-                <article class="model-chart-card" data-chart-index="0">
-                    <div class="chart-card-head"><h2>风格图 1</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-0"></div>
-                </article>
-                <article class="model-chart-card" data-chart-index="1">
-                    <div class="chart-card-head"><h2>风格图 2</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-1"></div>
-                </article>
-                <article class="model-chart-card" data-chart-index="2">
-                    <div class="chart-card-head"><h2>风格图 3</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-2"></div>
-                </article>
-                <article class="model-chart-card" data-chart-index="3">
-                    <div class="chart-card-head"><h2>风格图 4</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-3"></div>
-                </article>
-                <article class="model-chart-card" data-chart-index="4">
-                    <div class="chart-card-head"><h2>风格图 5</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-4"></div>
-                </article>
-                <article class="model-chart-card" data-chart-index="5">
-                    <div class="chart-card-head"><h2>风格图 6</h2><span>全历史</span></div>
-                    <div class="chart-mount" id="chart-5"></div>
-                </article>
+            <section id="style-summary-rankings" class="summary-rankings" aria-label="风格强弱排名"></section>
+            <section class="range-toolbar" aria-label="曲线范围">
+                <span class="toolbar-label">净值区间</span>
+                <div class="range-switch" role="group" aria-label="净值区间">
+                    <button type="button" data-range="20d">20D</button><button type="button" data-range="60d" class="active">60D</button><button type="button" data-range="ytd">YTD</button><button type="button" data-range="all">全部</button>
+                </div>
+                <span id="style-monitor-progress" class="monitor-progress" aria-live="polite"></span>
             </section>
+            <div id="style-monitor-state" class="page-state" role="status">正在读取账本...</div>
+            <section id="style-chart-grid" class="model-chart-grid" aria-label="风格组合曲线"></section>
         </main>
     </div>
 
@@ -72,6 +55,12 @@
         </div>
     </div>
     <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <aside id="style-detail-drawer" class="style-detail-drawer" aria-hidden="true">
+        <div class="drawer-head"><div><span class="status-kicker">PORTFOLIO DETAIL</span><h2 id="style-detail-title">组合明细</h2></div><button id="style-detail-close" type="button" title="关闭明细" aria-label="关闭明细">×</button></div>
+        <div class="drawer-tabs"><button type="button" class="active" data-detail-tab="positions">持仓</button><button type="button" data-detail-tab="trades">交易</button></div>
+        <div id="style-detail-content" class="drawer-content"></div>
+    </aside>
 
     <script>window.PAGE_VIEW = "model-validity";</script>
     <script defer src="../shared/lightweight-charts.standalone.production.js"></script>

@@ -29,22 +29,15 @@ class StyleModelDefinition:
     """Stable model metadata used by the ledger and API."""
 
     model_id: str
+    title: str
     factor_name: str
     factor_key: str
     rebalance_frequency: RebalanceFrequency
     selection_side: Literal["both"] = "both"
 
     @property
-    def display_name(self) -> str:
-        return self.factor_name
-
-    @property
-    def title(self) -> str:
-        return self.factor_name
-
-    @property
     def name(self) -> str:
-        return self.factor_name
+        return self.title
 
     @property
     def frequency(self) -> RebalanceFrequency:
@@ -52,16 +45,16 @@ class StyleModelDefinition:
 
 
 MODEL_DEFINITIONS: tuple[StyleModelDefinition, ...] = (
-    StyleModelDefinition("large_cap_raw", "大市值风格评分（纯市值）", "large_cap_style_score_pure", "weekly"),
-    StyleModelDefinition("small_cap_raw", "小市值风格评分（纯市值）", "small_cap_style_score_pure", "weekly"),
-    StyleModelDefinition("value_raw", "价值模型综合评分", "value_model_composite_score", "monthly"),
-    StyleModelDefinition("value_industry_neutral", "价值模型综合评分(行业标准化)", "value_model_composite_score_industry_normalized", "monthly"),
-    StyleModelDefinition("growth_raw", "成长风格评分", "growth_style_score", "monthly"),
-    StyleModelDefinition("growth_industry_neutral", "成长风格综合评分(行业标准化)", "growth_style_composite_score_industry_normalized", "monthly"),
-    StyleModelDefinition("momentum_raw", "动量风格评分", "momentum_style_score", "weekly"),
-    StyleModelDefinition("low_volatility_raw", "低波风格评分", "low_volatility_style_score", "monthly"),
-    StyleModelDefinition("dividend_raw", "红利基础百分位", "dividend_base_percentile", "quarterly"),
-    StyleModelDefinition("liquidity_raw", "流动性综合评分", "liquidity_composite_score", "weekly"),
+    StyleModelDefinition("large_cap_raw", "大市值原始版", "大市值风格评分（纯市值）", "large_cap_style_score_pure", "weekly"),
+    StyleModelDefinition("small_cap_raw", "小市值原始版", "小市值风格评分（纯市值）", "small_cap_style_score_pure", "weekly"),
+    StyleModelDefinition("value_raw", "价值原始版", "价值模型综合评分", "value_model_composite_score", "monthly"),
+    StyleModelDefinition("value_industry_neutral", "价值行业中性版", "价值模型综合评分(行业标准化)", "value_model_composite_score_industry_normalized", "monthly"),
+    StyleModelDefinition("growth_raw", "成长原始版", "成长风格评分", "growth_style_score", "monthly"),
+    StyleModelDefinition("growth_industry_neutral", "成长行业中性版", "成长风格综合评分(行业标准化)", "growth_style_composite_score_industry_normalized", "monthly"),
+    StyleModelDefinition("momentum_raw", "动量原始版", "动量风格评分", "momentum_style_score", "weekly"),
+    StyleModelDefinition("low_volatility_raw", "低波原始版", "低波风格评分", "low_volatility_style_score", "monthly"),
+    StyleModelDefinition("dividend_raw", "红利原始版", "红利基础百分位", "dividend_base_percentile", "quarterly"),
+    StyleModelDefinition("liquidity_raw", "流动性原始版", "流动性综合评分", "liquidity_composite_score", "weekly"),
 )
 
 _BUSINESS_CONSTANTS = {

@@ -44,7 +44,7 @@ def ready_repository(tmp_path, last_success_date=None):
         from models.style_portfolio_monitor.config import build_config_hash
         version = repo.ensure_model_version(MODEL_DEFINITIONS[4], build_config_hash(MODEL_DEFINITIONS[4]))
         conn = repo._connect()
-        conn.execute("UPDATE run_state SET last_success_date=? WHERE model_version=?", [last_success_date, version])
+        conn.execute("UPDATE run_state SET last_success_date=?, last_rebalance_date=? WHERE model_version=?", [last_success_date, last_success_date, version])
         conn.close()
     return repo
 
@@ -74,16 +74,16 @@ def test_low_factor_coverage_pauses_on_rebalance_day_without_advancing_watermark
 def test_non_rebalance_day_values_existing_positions_without_reselecting(tmp_path):
     repo = ready_repository(tmp_path, last_success_date=date(2026, 1, 28))
     source = FakeSource(market_dates=[date(2026, 1, 29)])
-    run_incremental_update(model_ids=["growth_raw"], data_source=source)
+    run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
     assert source.snapshot_calls == 0
 
 
 def test_repeated_update_produces_no_duplicate_nav_or_trades(tmp_path):
     repo = ready_repository(tmp_path)
     source = FakeSource()
-    run_incremental_update(model_ids=["growth_raw"], data_source=source)
+    run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
     counts = (repo.count_rows("nav_daily"), repo.count_rows("trade_log"))
-    run_incremental_update(model_ids=["growth_raw"], data_source=source)
+    run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
     assert (repo.count_rows("nav_daily"), repo.count_rows("trade_log")) == counts
 
 

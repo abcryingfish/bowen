@@ -20,7 +20,24 @@ const pageJs = fs.readFileSync(path.join(root, "可视化", "模型有效性", "
 
 assert.match(page, /<title>模型有效性<\/title>/);
 assert.match(page, /window\.PAGE_VIEW\s*=\s*["']model-validity["']/);
-assert.strictEqual((page.match(/class=["'][^"']*model-chart-card/g) || []).length, 6);
+assert.doesNotMatch(pageJs, /buildDemoSeries/);
+assert.doesNotMatch(page, /data-chart-index=/);
+assert.match(page, /id="style-summary-rankings"/);
+assert.match(page, /id="style-chart-grid"/);
+assert.match(page, /id="style-monitor-update"/);
+assert.match(page, /理论监控/);
+assert.match(page, /data-range="20d"/);
+assert.match(page, /data-range="60d"/);
+assert.match(page, /data-range="ytd"/);
+assert.match(page, /data-range="all"/);
+assert.match(page, /id="style-detail-drawer"/);
+assert.match(pageJs, /\/api\/style-monitor\/summary/);
+assert.match(pageJs, /\/api\/style-monitor\/curves/);
+assert.match(pageJs, /\/api\/style-monitor\/update/);
+assert.match(pageJs, /createModelCard/);
+assert.match(pageJs, /renderRankings/);
+assert.match(pageJs, /renderPositions/);
+assert.match(pageJs, /renderTrades/);
 assert.match(page, /edge-float-hud/);
 assert.match(page, /lightweight-charts\.standalone\.production\.js/);
 assert.match(page, /href="\.\.\/实盘面\/index\.html"/);
