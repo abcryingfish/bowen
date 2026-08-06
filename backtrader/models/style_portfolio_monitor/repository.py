@@ -11,6 +11,7 @@ from typing import Any
 import duckdb
 
 from .config import StyleModelDefinition
+from .portfolio import PortfolioState
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +141,20 @@ class StyleMonitorRepository:
             if not row:
                 return RunState(model_version, None, None, "")
             return RunState(str(row[0]), row[1], row[2], str(row[3]))
+        finally:
+            conn.close()
+
+    def load_portfolio_state(self, model_version: str, leg: str) -> tuple[PortfolioState, float | None]:
+        conn = self._connect()
+        try:
+            nav_row = conn.execute("SELECT trade_date,cash,nav FROM nav_daily WHERE model_version=? AND leg=? ORDER BY trade_date DESC LIMIT 1", [model_version, leg]).fetchone()
+            if not nav_row:
+                from .config import INITIAL_CASH
+                return PortfolioState(INITIAL_CASH, {}, {}), None
+            rows = conn.execute("SELECT htsc_code,shares,price FROM position_daily WHERE model_version=? AND leg=? AND trade_date=?", [model_version, leg, nav_row[0]]).fetchall()
+            positions = {str(row[0]): int(row[1]) for row in rows if int(row[1]) > 0}
+            prices = {str(row[0]): float(row[2]) for row in rows if float(row[2]) > 0}
+            return PortfolioState(float(nav_row[1]), positions, prices), float(nav_row[2])
         finally:
             conn.close()
 
