@@ -49,6 +49,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from backtest_job_service import cancel_backtest_job, create_backtest_job, get_backtest_job
+from style_monitor_job_service import StyleMonitorJobBusyError, create_style_monitor_job, get_style_monitor_job
+from style_monitor_service import (
+    query_style_monitor_curves,
+    query_style_monitor_positions,
+    query_style_monitor_summary,
+    query_style_monitor_trades,
+)
 from fundamental_data_service import query_fundamental_panel, warmup_fundamental_views
 from market_data_service import (
     delete_backtest_history,
@@ -343,6 +350,26 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_backtest_models_catalog()
             return
 
+        if parsed.path == "/api/style-monitor/summary":
+            self._handle_style_monitor_summary()
+            return
+
+        if parsed.path == "/api/style-monitor/curves":
+            self._handle_style_monitor_curves(query)
+            return
+
+        if parsed.path == "/api/style-monitor/positions":
+            self._handle_style_monitor_positions(query)
+            return
+
+        if parsed.path == "/api/style-monitor/trades":
+            self._handle_style_monitor_trades(query)
+            return
+
+        if parsed.path.startswith("/api/style-monitor/update/jobs/"):
+            self._handle_style_monitor_job_status(parsed.path.rsplit("/", 1)[-1])
+            return
+
         if parsed.path == "/api/watchlist":
             self._handle_watchlist_get()
             return
@@ -362,6 +389,10 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/backtest/run":
             self._handle_backtest_run()
+            return
+
+        if parsed.path == "/api/style-monitor/update":
+            self._handle_style_monitor_update()
             return
 
         if parsed.path == "/api/backtest/job/cancel":
@@ -1396,6 +1427,66 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                     }
                 },
             )
+
+    def _handle_style_monitor_summary(self) -> None:
+        try:
+            self._send_json(HTTPStatus.OK, query_style_monitor_summary())
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合总览失败", "detail": str(exc)}})
+
+    def _handle_style_monitor_curves(self, query: dict[str, list[str]]) -> None:
+        try:
+            model_id = self._first_query_value(query, "model_id") or ""
+            range_key = self._first_query_value(query, "range") or "60d"
+            self._send_json(HTTPStatus.OK, query_style_monitor_curves(model_id, range_key))
+        except (ValueError, KeyError) as exc:
+            status = HTTPStatus.NOT_FOUND if str(exc).startswith("未知模型") else HTTPStatus.BAD_REQUEST
+            self._send_json(status, {"error": {"code": "NOT_FOUND" if status == HTTPStatus.NOT_FOUND else "INVALID_ARGUMENT", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合曲线失败", "detail": str(exc)}})
+
+    def _handle_style_monitor_positions(self, query: dict[str, list[str]]) -> None:
+        try:
+            model_id = self._first_query_value(query, "model_id") or ""
+            leg = self._first_query_value(query, "leg") or "high"
+            trade_date = self._first_query_value(query, "date")
+            self._send_json(HTTPStatus.OK, query_style_monitor_positions(model_id, leg, trade_date))
+        except (ValueError, KeyError) as exc:
+            status = HTTPStatus.NOT_FOUND if str(exc).startswith("未知模型") else HTTPStatus.BAD_REQUEST
+            self._send_json(status, {"error": {"code": "NOT_FOUND" if status == HTTPStatus.NOT_FOUND else "INVALID_ARGUMENT", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合持仓失败", "detail": str(exc)}})
+
+    def _handle_style_monitor_trades(self, query: dict[str, list[str]]) -> None:
+        try:
+            model_id = self._first_query_value(query, "model_id") or ""
+            leg = self._first_query_value(query, "leg") or "high"
+            raw_limit = self._first_query_value(query, "limit") or "200"
+            self._send_json(HTTPStatus.OK, query_style_monitor_trades(model_id, leg, int(raw_limit)))
+        except (ValueError, KeyError) as exc:
+            status = HTTPStatus.NOT_FOUND if str(exc).startswith("未知模型") else HTTPStatus.BAD_REQUEST
+            self._send_json(status, {"error": {"code": "NOT_FOUND" if status == HTTPStatus.NOT_FOUND else "INVALID_ARGUMENT", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合交易失败", "detail": str(exc)}})
+
+    def _handle_style_monitor_update(self) -> None:
+        try:
+            payload = self._read_json_body()
+            self._send_json(HTTPStatus.ACCEPTED, create_style_monitor_job(payload))
+        except StyleMonitorJobBusyError as exc:
+            self._send_json(HTTPStatus.CONFLICT, {"error": {"code": "CONFLICT", "message": str(exc)}})
+        except (ValueError, KeyError) as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "创建风格组合更新任务失败", "detail": str(exc)}})
+
+    def _handle_style_monitor_job_status(self, job_id: str) -> None:
+        try:
+            self._send_json(HTTPStatus.OK, get_style_monitor_job(job_id))
+        except KeyError as exc:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": {"code": "NOT_FOUND", "message": f"任务不存在: {exc}"}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合任务失败", "detail": str(exc)}})
 
     def _handle_backtest_run(self) -> None:
         try:
