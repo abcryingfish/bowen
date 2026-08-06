@@ -7,7 +7,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Literal
 
 STYLE_MONITOR_DB_PATH = Path(r"D:\database\style_portfolio_monitor\style_monitor.duckdb")
 INITIAL_DATE = date(2015, 1, 1)
@@ -21,28 +21,37 @@ SELECTION_RATIO = 0.20
 MAX_SELECTION_COUNT = 200
 MIN_FACTOR_COVERAGE = 0.80
 
+RebalanceFrequency = Literal["weekly", "monthly", "quarterly"]
+
 
 @dataclass(frozen=True, slots=True)
 class StyleModelDefinition:
+    """Stable model metadata used by the ledger and API."""
+
     model_id: str
-    display_name: str
     factor_name: str
-    rebalance_frequency: str
+    factor_key: str
+    rebalance_frequency: RebalanceFrequency
+    selection_side: Literal["both"] = "both"
 
     @property
-    def key(self) -> str:
-        return self.model_id
+    def display_name(self) -> str:
+        return self.factor_name
+
+    @property
+    def title(self) -> str:
+        return self.factor_name
 
     @property
     def name(self) -> str:
-        return self.display_name
+        return self.factor_name
 
     @property
-    def frequency(self) -> str:
+    def frequency(self) -> RebalanceFrequency:
         return self.rebalance_frequency
 
 
-MODEL_DEFINITIONS = (
+MODEL_DEFINITIONS: tuple[StyleModelDefinition, ...] = (
     StyleModelDefinition("large_cap_raw", "大市值风格评分（纯市值）", "large_cap_style_score_pure", "weekly"),
     StyleModelDefinition("small_cap_raw", "小市值风格评分（纯市值）", "small_cap_style_score_pure", "weekly"),
     StyleModelDefinition("value_raw", "价值模型综合评分", "value_model_composite_score", "monthly"),
@@ -56,22 +65,27 @@ MODEL_DEFINITIONS = (
 )
 
 _BUSINESS_CONSTANTS = {
-    "STYLE_MONITOR_DB_PATH": str(STYLE_MONITOR_DB_PATH), "INITIAL_DATE": INITIAL_DATE.isoformat(),
-    "INITIAL_CASH": INITIAL_CASH, "COMMISSION_RATE": COMMISSION_RATE, "LOT_SIZE": LOT_SIZE,
-    "MIN_HISTORY_DAYS": MIN_HISTORY_DAYS, "LIQUIDITY_LOOKBACK_DAYS": LIQUIDITY_LOOKBACK_DAYS,
-    "MIN_AVERAGE_TURNOVER": MIN_AVERAGE_TURNOVER, "SELECTION_RATIO": SELECTION_RATIO,
-    "MAX_SELECTION_COUNT": MAX_SELECTION_COUNT, "MIN_FACTOR_COVERAGE": MIN_FACTOR_COVERAGE,
+    "STYLE_MONITOR_DB_PATH": str(STYLE_MONITOR_DB_PATH),
+    "INITIAL_DATE": INITIAL_DATE.isoformat(),
+    "INITIAL_CASH": INITIAL_CASH,
+    "COMMISSION_RATE": COMMISSION_RATE,
+    "LOT_SIZE": LOT_SIZE,
+    "MIN_HISTORY_DAYS": MIN_HISTORY_DAYS,
+    "LIQUIDITY_LOOKBACK_DAYS": LIQUIDITY_LOOKBACK_DAYS,
+    "MIN_AVERAGE_TURNOVER": MIN_AVERAGE_TURNOVER,
+    "SELECTION_RATIO": SELECTION_RATIO,
+    "MAX_SELECTION_COUNT": MAX_SELECTION_COUNT,
+    "MIN_FACTOR_COVERAGE": MIN_FACTOR_COVERAGE,
 }
 
 
 def build_config_hash(model: StyleModelDefinition) -> str:
-    """Return a deterministic SHA-256 hash of model and all business constants."""
     payload = {"model": asdict(model), "constants": _BUSINESS_CONSTANTS}
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _period_key(value: date, frequency: str) -> tuple[int, ...]:
+def _period_key(value: date, frequency: RebalanceFrequency) -> tuple[int, ...]:
     if frequency == "weekly":
         iso = value.isocalendar()
         return (iso.year, iso.week)
@@ -84,11 +98,13 @@ def _period_key(value: date, frequency: str) -> tuple[int, ...]:
 
 def is_rebalance_day(
     trade_date: date,
-    last_rebalance_date: Optional[date],
-    frequency: str,
+    last_rebalance_date: date | None,
+    frequency: RebalanceFrequency,
     calendar: Iterable[date],
 ) -> bool:
-    """Determine rebalance from actual trading dates, independent of weekdays/month starts."""
+    """Return whether *trade_date* is the first available date of a new period."""
+    # Validate the frequency even on the first run, where no prior date exists.
+    _period_key(trade_date, frequency)
     trading_days = set(calendar)
     if trade_date not in trading_days:
         return False

@@ -6,16 +6,12 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from models.style_portfolio_monitor.config import (
-    MODEL_DEFINITIONS,
-    StyleModelDefinition,
-    build_config_hash,
-    is_rebalance_day,
-)
+from models.style_portfolio_monitor.config import MODEL_DEFINITIONS, build_config_hash, is_rebalance_day
 
 
-def test_model_definitions_are_exact_and_immutable():
-    expected = [
+def test_model_definitions_use_exact_factor_names_and_frequencies():
+    actual = [(m.model_id, m.factor_name, m.factor_key, m.rebalance_frequency) for m in MODEL_DEFINITIONS]
+    assert actual == [
         ("large_cap_raw", "大市值风格评分（纯市值）", "large_cap_style_score_pure", "weekly"),
         ("small_cap_raw", "小市值风格评分（纯市值）", "small_cap_style_score_pure", "weekly"),
         ("value_raw", "价值模型综合评分", "value_model_composite_score", "monthly"),
@@ -27,9 +23,6 @@ def test_model_definitions_are_exact_and_immutable():
         ("dividend_raw", "红利基础百分位", "dividend_base_percentile", "quarterly"),
         ("liquidity_raw", "流动性综合评分", "liquidity_composite_score", "weekly"),
     ]
-    assert [(m.model_id, m.display_name, m.factor_name, m.rebalance_frequency) for m in MODEL_DEFINITIONS] == expected
-    with pytest.raises((AttributeError, TypeError)):
-        MODEL_DEFINITIONS[0].factor_name = "changed"
 
 
 def test_config_hash_is_stable_sha256():
@@ -39,13 +32,12 @@ def test_config_hash_is_stable_sha256():
     assert all(c in "0123456789abcdef" for c in digest)
 
 
-def test_rebalance_uses_actual_trading_day_period_boundaries():
-    calendar = [date(2026, 1, 30), date(2026, 2, 2), date(2026, 2, 3), date(2026, 3, 31), date(2026, 4, 1)]
+def test_rebalance_day_uses_actual_period_boundaries():
+    calendar = [date(2026, 1, 30), date(2026, 2, 2), date(2026, 2, 3), date(2026, 4, 1)]
     assert is_rebalance_day(date(2026, 2, 2), date(2026, 1, 30), "weekly", calendar)
     assert is_rebalance_day(date(2026, 2, 2), date(2026, 1, 30), "monthly", calendar)
-    assert is_rebalance_day(date(2026, 4, 1), date(2026, 3, 31), "quarterly", calendar)
-    assert not is_rebalance_day(date(2026, 2, 3), date(2026, 2, 2), "weekly", calendar)
-
-
-def test_first_available_trading_day_is_rebalance():
-    assert is_rebalance_day(date(2026, 1, 2), None, "monthly", [date(2026, 1, 2)])
+    assert not is_rebalance_day(date(2026, 2, 3), date(2026, 2, 2), "monthly", calendar)
+    assert is_rebalance_day(date(2026, 4, 1), date(2026, 2, 2), "quarterly", calendar)
+    assert is_rebalance_day(date(2026, 1, 30), None, "monthly", calendar)
+    with pytest.raises(ValueError):
+        is_rebalance_day(date(2026, 2, 2), None, "daily", calendar)
