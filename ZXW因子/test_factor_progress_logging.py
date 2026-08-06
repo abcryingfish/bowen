@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 import ast
+import json
+import os
+import re
+import tempfile
+import time
 import unittest
+import uuid
+from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -15,6 +23,10 @@ FUNCTION_NAMES = {
     "_format_batch_finish_line",
     "_format_save_progress_line",
     "_build_factor_save_tasks",
+    "_factor_processed_date_path",
+    "_load_factor_processed_date",
+    "_write_factor_processed_date_atomic",
+    "_sanitize_factor_dir_name",
     "_save_single_factor_task",
 }
 
@@ -28,7 +40,16 @@ def _load_formatters() -> dict[str, object]:
     ]
     namespace = {
         "pd": pd,
+        "np": np,
         "Any": object,
+        "Path": Path,
+        "json": json,
+        "os": os,
+        "re": re,
+        "time": time,
+        "uuid": uuid,
+        "datetime": datetime,
+        "INVALID_FACTOR_PATH_CHARS": re.compile(r'[\\/:*?"<>|]'),
         "_month_start_range": lambda _start, _end: [],
         "perf_counter": iter([100.0, 100.75]).__next__,
     }
@@ -159,6 +180,76 @@ class FactorProgressLoggingTests(unittest.TestCase):
         )
 
         self.assertEqual(tasks, [])
+
+    def test_sparse_all_null_date_advances_processed_date(self) -> None:
+        functions = _load_formatters()
+        date = pd.Timestamp("2026-08-03")
+        functions["_month_start_range"] = lambda _start, _end: [date.replace(day=1)]
+        functions["_factor_month_to_long_polars"] = lambda *_args, **_kwargs: None
+        functions["_write_factor_month_incremental_part"] = lambda **_kwargs: self.fail(
+            "全空稀疏因子不应写 parquet"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            functions["_save_single_factor_task"](
+                {
+                    "factor_name": "测试稀疏因子",
+                    "factor_df": pd.DataFrame(
+                        {"000001.SZ": [np.nan]},
+                        index=[date],
+                    ),
+                    "base_dir": tmp_dir,
+                    "start_dt": date,
+                    "end_dt": date,
+                    "drop_null_values": True,
+                }
+            )
+
+            self.assertEqual(
+                functions["_load_factor_processed_date"](
+                    tmp_dir, "测试稀疏因子"
+                ),
+                date,
+            )
+
+    def test_sparse_write_failure_does_not_advance_processed_date(self) -> None:
+        functions = _load_formatters()
+        date = pd.Timestamp("2026-08-03")
+
+        class NonEmptyFrame:
+            @staticmethod
+            def is_empty() -> bool:
+                return False
+
+        functions["_month_start_range"] = lambda _start, _end: [date.replace(day=1)]
+        functions["_factor_month_to_long_polars"] = (
+            lambda *_args, **_kwargs: NonEmptyFrame()
+        )
+        functions["_write_factor_month_incremental_part"] = (
+            lambda **_kwargs: (_ for _ in ()).throw(OSError("模拟写入失败"))
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with self.assertRaisesRegex(OSError, "模拟写入失败"):
+                functions["_save_single_factor_task"](
+                    {
+                        "factor_name": "测试失败因子",
+                        "factor_df": pd.DataFrame(
+                            {"000001.SZ": [1.0]},
+                            index=[date],
+                        ),
+                        "base_dir": tmp_dir,
+                        "start_dt": date,
+                        "end_dt": date,
+                        "drop_null_values": True,
+                    }
+                )
+
+            self.assertIsNone(
+                functions["_load_factor_processed_date"](
+                    tmp_dir, "测试失败因子"
+                )
+            )
 
 
 if __name__ == "__main__":

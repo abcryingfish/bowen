@@ -52,12 +52,24 @@ from 均线因子 import get_factor_lookback_config as get_moving_average_lookba
 from 放量下跌因子 import get_factor_lookback_config as get_volume_drop_lookback_config
 from 通达信强底信号 import get_factor_lookback_config as get_tdx_bottom_alert_lookback_config
 from 板块动量策略常用因子 import get_factor_lookback_config as get_momentum_common_lookback_config
+from 股票动量风格评分 import get_factor_lookback_config as get_stock_momentum_style_lookback_config
 from 低波因子 import get_factor_lookback_config as get_low_volatility_lookback_config
+from 股票低波风格评分 import get_factor_lookback_config as get_stock_low_volatility_style_lookback_config
 from 流动性因子 import get_factor_lookback_config as get_liquidity_lookback_config
+from 股票流动性综合评分 import get_factor_lookback_config as get_stock_liquidity_composite_lookback_config
 from 股票市场数据因子 import get_factor_lookback_config as get_stock_market_data_lookback_config
+from 股票纯市值风格评分 import get_factor_lookback_config as get_stock_size_style_pure_lookback_config
 from 股票基本面原始因子 import get_factor_lookback_config as get_stock_fundamental_raw_lookback_config
+from 股票价值标准化因子 import get_factor_lookback_config as get_stock_value_normalized_lookback_config
+from 股票价值模型综合评分 import get_factor_lookback_config as get_stock_value_model_lookback_config
+from 股票价值模型行业标准化评分 import get_factor_lookback_config as get_stock_value_model_industry_normalized_lookback_config
+from 股票价值模型多板块标准化评分 import get_factor_lookback_config as get_stock_value_model_multi_board_normalized_lookback_config
 from 股票成长原始因子 import get_factor_lookback_config as get_stock_growth_raw_lookback_config
+from 股票成长标准化因子 import get_factor_lookback_config as get_stock_growth_normalized_lookback_config
+from 股票成长行业标准化因子 import get_factor_lookback_config as get_stock_growth_industry_normalized_lookback_config
+from 股票成长多板块标准化因子 import get_factor_lookback_config as get_stock_growth_multi_board_normalized_lookback_config
 from 股票红利原始因子 import get_factor_lookback_config as get_stock_dividend_raw_lookback_config
+from 股票红利标准化因子 import get_factor_lookback_config as get_stock_dividend_normalized_lookback_config
 from MACD因子 import build_d_class_factor_bundle
 from KDJ因子 import build_kdj_factor_bundle
 from 抄底因子 import build_bottom_fishing_factor_bundle
@@ -78,12 +90,65 @@ from 均线因子 import build_moving_average_factor_bundle
 from 放量下跌因子 import build_volume_drop_factor_bundle
 from 通达信强底信号 import build_tdx_bottom_alert_bundle
 from 板块动量策略常用因子 import build_industry_factor_bundle, build_momentum_factor_bundle
+from 股票动量风格评分 import (
+    FACTOR_NAME_MAP as MOMENTUM_STYLE_FACTOR_NAME_MAP,
+    build_stock_momentum_style_bundle,
+)
 from 低波因子 import build_low_volatility_factor_bundle
+from 股票低波风格评分 import (
+    FACTOR_NAME_MAP as LOW_VOLATILITY_STYLE_FACTOR_NAME_MAP,
+    build_stock_low_volatility_style_bundle,
+)
 from 流动性因子 import build_liquidity_factor_bundle
+from 股票流动性综合评分 import (
+    FACTOR_NAME_MAP as LIQUIDITY_COMPOSITE_FACTOR_NAME_MAP,
+    build_stock_liquidity_composite_bundle,
+)
 from 股票市场数据因子 import build_stock_market_data_factor_bundle
+from 股票纯市值风格评分 import (
+    FACTOR_NAME_MAP as SIZE_STYLE_PURE_FACTOR_NAME_MAP,
+    build_stock_size_style_pure_bundle,
+)
 from 股票基本面原始因子 import build_stock_fundamental_raw_factor_bundle
+from 股票价值标准化因子 import (
+    DERIVED_FACTOR_NAME_MAP as VALUE_NORMALIZED_FACTOR_NAME_MAP,
+    build_stock_value_normalized_factor_bundle,
+)
+from 股票价值模型综合评分 import (
+    FACTOR_NAME_MAP as VALUE_MODEL_FACTOR_NAME_MAP,
+    MODEL_START_DATE as VALUE_MODEL_START_DATE,
+    build_stock_value_model_composite_score_bundle,
+)
+from 股票价值模型行业标准化评分 import (
+    FACTOR_NAME_MAP as VALUE_MODEL_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP,
+    MODEL_START_DATE as VALUE_MODEL_INDUSTRY_NORMALIZED_START_DATE,
+    build_stock_value_model_industry_normalized_score_bundle,
+)
+from 股票价值模型多板块标准化评分 import (
+    FACTOR_NAME_MAP as VALUE_MODEL_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP,
+    MODEL_START_DATE as VALUE_MODEL_MULTI_BOARD_NORMALIZED_START_DATE,
+    build_stock_value_model_multi_board_normalized_score_bundle,
+)
 from 股票成长原始因子 import build_stock_growth_raw_factor_bundle
+from 股票成长标准化因子 import (
+    DERIVED_FACTOR_NAME_MAP as GROWTH_NORMALIZED_FACTOR_NAME_MAP,
+    build_stock_growth_normalized_factor_bundle,
+)
+from 股票成长行业标准化因子 import (
+    FACTOR_NAME_MAP as GROWTH_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP,
+    MODEL_START_DATE as GROWTH_INDUSTRY_NORMALIZED_START_DATE,
+    build_stock_growth_industry_normalized_factor_bundle,
+)
+from 股票成长多板块标准化因子 import (
+    FACTOR_NAME_MAP as GROWTH_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP,
+    MODEL_START_DATE as GROWTH_MULTI_BOARD_NORMALIZED_START_DATE,
+    build_stock_growth_multi_board_normalized_factor_bundle,
+)
 from 股票红利原始因子 import build_stock_dividend_raw_factor_bundle
+from 股票红利标准化因子 import (
+    DERIVED_FACTOR_NAME_MAP as DIVIDEND_NORMALIZED_FACTOR_NAME_MAP,
+    build_stock_dividend_normalized_factor_bundle,
+)
 from 纯技术面因子_bundle import (
     get_factor_lookback_config as get_pure_technical_lookback_config,
     iter_pure_technical_factor_bundles,
@@ -128,12 +193,24 @@ SELECTED_BUNDLES = [
     "volume_drop",
     "tdx_bottom_alert",
     "momentum_common",
+    "stock_momentum_style",
     "low_volatility",
+    "stock_low_volatility_style_score",
     "liquidity",
+    "stock_liquidity_composite",
     "stock_market_data",
+    "stock_size_style_pure",
     "stock_fundamental_raw",
+    "stock_value_normalized",
+    "stock_value_model",
+    "stock_value_model_industry_normalized",
+    "stock_value_model_multi_board_normalized",
     "stock_growth_raw",
+    "stock_growth_normalized",
+    "stock_growth_industry_normalized",
+    "stock_growth_multi_board_normalized",
     "stock_dividend_raw",
+    "stock_dividend_normalized",
     "pure_technical",
 ]
 
@@ -163,12 +240,24 @@ BUNDLE_LOOKBACK_LOADERS = {
     "volume_drop": get_volume_drop_lookback_config,
     "tdx_bottom_alert": get_tdx_bottom_alert_lookback_config,
     "momentum_common": get_momentum_common_lookback_config,
+    "stock_momentum_style": get_stock_momentum_style_lookback_config,
     "low_volatility": get_low_volatility_lookback_config,
+    "stock_low_volatility_style_score": get_stock_low_volatility_style_lookback_config,
     "liquidity": get_liquidity_lookback_config,
+    "stock_liquidity_composite": get_stock_liquidity_composite_lookback_config,
     "stock_market_data": get_stock_market_data_lookback_config,
+    "stock_size_style_pure": get_stock_size_style_pure_lookback_config,
     "stock_fundamental_raw": get_stock_fundamental_raw_lookback_config,
+    "stock_value_normalized": get_stock_value_normalized_lookback_config,
+    "stock_value_model": get_stock_value_model_lookback_config,
+    "stock_value_model_industry_normalized": get_stock_value_model_industry_normalized_lookback_config,
+    "stock_value_model_multi_board_normalized": get_stock_value_model_multi_board_normalized_lookback_config,
     "stock_growth_raw": get_stock_growth_raw_lookback_config,
+    "stock_growth_normalized": get_stock_growth_normalized_lookback_config,
+    "stock_growth_industry_normalized": get_stock_growth_industry_normalized_lookback_config,
+    "stock_growth_multi_board_normalized": get_stock_growth_multi_board_normalized_lookback_config,
     "stock_dividend_raw": get_stock_dividend_raw_lookback_config,
+    "stock_dividend_normalized": get_stock_dividend_normalized_lookback_config,
     "pure_technical": get_pure_technical_lookback_config,
 }
 
@@ -193,18 +282,44 @@ BUNDLE_MODULE_NAMES = {
     "volume_drop": "放量下跌因子",
     "tdx_bottom_alert": "通达信强底信号",
     "momentum_common": "板块动量策略常用因子",
+    "stock_momentum_style": "股票动量风格评分",
     "low_volatility": "低波因子",
+    "stock_low_volatility_style_score": "股票低波风格评分",
     "liquidity": "流动性因子",
+    "stock_liquidity_composite": "股票流动性综合评分",
     "stock_market_data": "股票市场数据因子",
+    "stock_size_style_pure": "股票纯市值风格评分",
     "stock_fundamental_raw": "股票基本面原始因子",
+    "stock_value_normalized": "股票价值标准化因子",
+    "stock_value_model": "股票价值模型综合评分",
+    "stock_value_model_industry_normalized": "股票价值模型行业标准化评分",
+    "stock_value_model_multi_board_normalized": "股票价值模型多板块标准化评分",
     "stock_growth_raw": "股票成长原始因子",
+    "stock_growth_normalized": "股票成长标准化因子",
+    "stock_growth_industry_normalized": "股票成长行业标准化因子",
+    "stock_growth_multi_board_normalized": "股票成长多板块标准化因子",
     "stock_dividend_raw": "股票红利原始因子",
+    "stock_dividend_normalized": "股票红利标准化因子",
     "pure_technical": "纯技术面因子_bundle",
 }
 
 AUTO_PLAN_FROM_FACTOR_LIBRARY = True
 FACTOR_LIBRARY_BASE_DIR = r"D:\database\signal_daily"
 CATALOG_CACHE_PATH = os.path.join(FACTOR_LIBRARY_BASE_DIR, "_meta", "bundle_factor_catalog_cache.json")
+POST_WRITE_DERIVED_BUNDLES = {
+    "stock_momentum_style",
+    "stock_low_volatility_style_score",
+    "stock_liquidity_composite",
+    "stock_size_style_pure",
+    "stock_value_normalized",
+    "stock_value_model",
+    "stock_value_model_industry_normalized",
+    "stock_value_model_multi_board_normalized",
+    "stock_growth_normalized",
+    "stock_growth_industry_normalized",
+    "stock_growth_multi_board_normalized",
+    "stock_dividend_normalized",
+}
 
 # 行业因子输出代码为 .THS 行业代码，不参与股票行情代码覆盖率检查。
 NON_STOCK_FACTOR_KEYS = {
@@ -292,6 +407,14 @@ STOCK_ONLY_FACTOR_KEYS = {
     "cash_dividend_cagr_3y",
     "cash_dividend_cut_count_5y",
 }
+STOCK_ONLY_FACTOR_KEYS.update(GROWTH_NORMALIZED_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(DIVIDEND_NORMALIZED_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(VALUE_NORMALIZED_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(VALUE_MODEL_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(SIZE_STYLE_PURE_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(MOMENTUM_STYLE_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(LOW_VOLATILITY_STYLE_FACTOR_NAME_MAP.values())
+STOCK_ONLY_FACTOR_KEYS.update(LIQUIDITY_COMPOSITE_FACTOR_NAME_MAP.values())
 SECTOR_OUTPUT_FACTOR_KEYS = THS_ONLY_FACTOR_KEYS | SECTOR_ONLY_MARKET_FACTOR_KEYS
 BATCH_WATERMARK_FILE = "factor_batch_watermark.json"
 
@@ -467,8 +590,14 @@ def _build_factor_scope_execution_plans(
         },
     }
     grouped_plans: dict[tuple[object, ...], dict[str, object]] = {}
+    post_write_bundles = globals().get(
+        "POST_WRITE_DERIVED_BUNDLES",
+        {"stock_growth_normalized", "stock_dividend_normalized"},
+    )
     for raw_bundle in selected_bundles:
         bundle = str(raw_bundle).strip().lower()
+        if bundle in post_write_bundles:
+            continue
         factor_map = bundle_factor_catalog.get(bundle, {})
         bundle_targets = {
             str(eng).strip()
@@ -599,12 +728,23 @@ def _group_execution_plans_for_compute(
 
 def _prepare_execution_market_long(source: pd.DataFrame) -> pd.DataFrame:
     """一次性标准化行情长表并建立代码、日期索引，供所有执行批次复用。"""
-    required_columns = ["time", "htsc_code", "open", "high", "low", "close", "volume"]
+    required_columns = [
+        "time",
+        "htsc_code",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+    ]
     missing_columns = set(required_columns) - set(source.columns)
     if missing_columns:
         raise KeyError(f"行情长表缺少列: {sorted(missing_columns)}")
 
     prepared = source.loc[:, required_columns].copy()
+    prepared["close_unadjusted"] = (
+        source["close_unadjusted"] if "close_unadjusted" in source.columns else source["close"]
+    )
     prepared["htsc_code"] = prepared["htsc_code"].astype(str).str.strip().str.upper()
     prepared["time"] = pd.to_datetime(prepared["time"], errors="coerce").dt.floor("D")
     prepared = prepared[
@@ -628,7 +768,7 @@ def _build_execution_plan_market_frames(
         return None
     if not isinstance(source.index, pd.MultiIndex) or list(source.index.names) != ["htsc_code", "time"]:
         raise ValueError("执行行情长表必须先通过 _prepare_execution_market_long 建立索引")
-    required_columns = {"open", "high", "low", "close", "volume"}
+    required_columns = {"open", "high", "low", "close", "close_unadjusted", "volume"}
     missing_columns = required_columns - set(source.columns)
     if missing_columns:
         raise KeyError(f"行情长表缺少列: {sorted(missing_columns)}")
@@ -648,14 +788,16 @@ def _build_execution_plan_market_frames(
     try:
         local = source.loc[
             pd.IndexSlice[available_codes, start_dt:end_dt],
-            ["open", "high", "low", "close", "volume"],
+            ["open", "high", "low", "close", "close_unadjusted", "volume"],
         ].reset_index()
     except KeyError:
         return None
     if local.empty:
         return None
     wide = (
-        local.set_index(["time", "htsc_code"])[["open", "high", "low", "close", "volume"]]
+        local.set_index(["time", "htsc_code"])[
+            ["open", "high", "low", "close", "close_unadjusted", "volume"]
+        ]
         .sort_index()
         .unstack("htsc_code")
     )
@@ -665,6 +807,7 @@ def _build_execution_plan_market_frames(
         "H": wide["high"].ffill().astype(float),
         "L": wide["low"].ffill().astype(float),
         "C": wide["close"].ffill().astype(float),
+        "C_UNADJUSTED": wide["close_unadjusted"].astype(float),
         "V": wide["volume"].fillna(0).astype(float),
         "valid_bar": valid_bar,
     }
@@ -771,7 +914,7 @@ def _compute_selected_bundles_for_planning(O, H, L, C, V, selected_bundles, T=No
     if "tdx_bottom_alert" in selected_bundle_set:
         bundle_outputs.append(build_tdx_bottom_alert_bundle(O=O, H=H, L=L, C=C, V=V, valid_bar=C.notna()))
     if "low_volatility" in selected_bundle_set:
-        bundle_outputs.append(build_low_volatility_factor_bundle(C=C, H=H, L=L))
+        bundle_outputs.append(build_low_volatility_factor_bundle(C=C, H=H, L=L, V=V))
 
     return bundle_outputs
 
@@ -916,6 +1059,65 @@ def _sanitize_factor_dir_name(factor_name: str) -> str:
     return re.sub(r'[\\/:*?"<>|]', "_", str(factor_name).strip()).rstrip(" .") or "未命名因子"
 
 
+def _factor_processed_date_path(base_dir: str, factor_name: str) -> Path:
+    safe_name = _sanitize_factor_dir_name(factor_name)
+    return Path(base_dir) / f"factor={safe_name}" / "_meta" / "processed_through.json"
+
+
+def _load_factor_processed_date(
+    base_dir: str,
+    factor_name: str,
+) -> pd.Timestamp | None:
+    path = _factor_processed_date_path(base_dir, factor_name)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"因子处理水位文件无效: {path}") from exc
+    raw_date = payload.get("last_processed_date")
+    try:
+        processed_date = pd.Timestamp(raw_date).floor("D")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"因子处理水位日期无效: {path}") from exc
+    if pd.isna(processed_date):
+        raise ValueError(f"因子处理水位日期无效: {path}")
+    return processed_date
+
+
+def _write_factor_processed_date_atomic(
+    base_dir: str,
+    factor_name: str,
+    processed_date: pd.Timestamp,
+) -> Path:
+    path = _factor_processed_date_path(base_dir, factor_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    target_date = pd.Timestamp(processed_date).floor("D")
+    if pd.isna(target_date):
+        raise ValueError("因子处理水位日期无效")
+    existing_date = _load_factor_processed_date(base_dir, factor_name)
+    if existing_date is not None:
+        target_date = max(existing_date, target_date)
+    payload = {
+        "last_processed_date": target_date.strftime("%Y-%m-%d"),
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    temp_path = path.with_name(
+        f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+    )
+    try:
+        with temp_path.open("w", encoding="utf-8", newline="\n") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+    return path
+
+
 def _collect_latest_factor_partition_paths(
     base_dir: str,
     factor_names: set[str] | None = None,
@@ -928,50 +1130,71 @@ def _collect_latest_factor_partition_paths(
 
     latest_paths: list[str] = []
     for factor_dir in factor_dirs:
-        latest_key: tuple[int, int] | None = None
         latest_files: list[Path] = []
+        month_dirs: list[tuple[int, int, Path]] = []
         for month_dir in factor_dir.glob("year=*/month=*"):
             try:
                 year = int(month_dir.parent.name.split("=", 1)[1])
                 month = int(month_dir.name.split("=", 1)[1])
             except (IndexError, ValueError):
                 continue
+            month_dirs.append((year, month, month_dir))
+        for _, _, month_dir in sorted(month_dirs, reverse=True):
             merged_path = month_dir / "merged.parquet"
-            if merged_path.is_file() and (latest_key is None or (year, month) > latest_key):
-                latest_key = (year, month)
-                latest_files = [merged_path]
+            part_paths = [
+                path
+                for path in sorted(month_dir.glob("part_*.parquet"))
+                if re.fullmatch(
+                    r"part_\d+_\d+_[0-9a-f]+\.parquet",
+                    path.name,
+                    flags=re.IGNORECASE,
+                )
+            ]
+            if merged_path.is_file():
+                latest_files = [merged_path, *part_paths]
+            elif part_paths:
+                latest_files = part_paths
+            if latest_files:
+                break
         latest_paths.extend(str(path) for path in latest_files)
     return latest_paths
 
 
 def _load_factor_last_date_map(base_dir: str) -> dict[str, pd.Timestamp]:
-    """一次扫描读取所有 factor 的最新落盘日期，空值记录同样算已处理。"""
+    """读取 parquet 日期与稀疏因子处理日期，并取每个因子的较大值。"""
     paths = _collect_latest_factor_partition_paths(base_dir)
-    if not paths:
-        return {}
-    placeholders = ", ".join(["?"] * len(paths))
-    sql = f"""
-    SELECT
-        CAST(factor AS VARCHAR) AS factor_partition,
-        MAX(CAST(time AS DATE)) AS max_dt
-    FROM read_parquet([{placeholders}], hive_partitioning=1, union_by_name=true)
-    GROUP BY 1
-    """
-    try:
-        df_map = con.execute(sql, paths).df()
-    except Exception:
-        return {}
-
-    if df_map.empty:
-        return {}
-
     out: dict[str, pd.Timestamp] = {}
-    for _, row in df_map.iterrows():
-        factor_partition = str(row.get("factor_partition", "")).strip()
-        max_dt = row.get("max_dt")
-        if not factor_partition or pd.isna(max_dt):
+    if paths:
+        placeholders = ", ".join(["?"] * len(paths))
+        sql = f"""
+        SELECT
+            CAST(factor AS VARCHAR) AS factor_partition,
+            MAX(CAST(time AS DATE)) AS max_dt
+        FROM read_parquet([{placeholders}], hive_partitioning=1, union_by_name=true)
+        GROUP BY 1
+        """
+        try:
+            df_map = con.execute(sql, paths).df()
+        except Exception:
+            df_map = pd.DataFrame()
+        for _, row in df_map.iterrows():
+            factor_partition = str(row.get("factor_partition", "")).strip()
+            max_dt = row.get("max_dt")
+            if not factor_partition or pd.isna(max_dt):
+                continue
+            out[factor_partition] = pd.Timestamp(max_dt).floor("D")
+
+    base_path = Path(base_dir)
+    factor_dirs = sorted(base_path.glob("factor=*")) if base_path.exists() else []
+    for factor_dir in factor_dirs:
+        factor_name = factor_dir.name.split("=", 1)[-1]
+        processed_date = _load_factor_processed_date(base_dir, factor_name)
+        if processed_date is None:
             continue
-        out[factor_partition] = pd.Timestamp(max_dt).floor("D")
+        current = out.get(factor_name)
+        out[factor_name] = (
+            max(current, processed_date) if current is not None else processed_date
+        )
     return out
 
 
@@ -985,22 +1208,23 @@ def _get_factor_last_date(
     if factor_last_dt_map and key in factor_last_dt_map:
         return pd.Timestamp(factor_last_dt_map[key]).floor("D")
 
+    parquet_date: pd.Timestamp | None = None
     paths = _collect_latest_factor_partition_paths(base_dir, {safe_name})
-    if not paths:
-        return None
-    placeholders = ", ".join(["?"] * len(paths))
-    try:
-        q = f"""
-        SELECT MAX(CAST(time AS DATE)) AS max_dt
-        FROM read_parquet([{placeholders}], hive_partitioning=1, union_by_name=true)
-        """
-        df_max = con.execute(q, paths).df()
-    except Exception:
-        return None
-
-    if df_max.empty or pd.isna(df_max.iloc[0, 0]):
-        return None
-    return pd.Timestamp(df_max.iloc[0, 0]).floor("D")
+    if paths:
+        placeholders = ", ".join(["?"] * len(paths))
+        try:
+            q = f"""
+            SELECT MAX(CAST(time AS DATE)) AS max_dt
+            FROM read_parquet([{placeholders}], hive_partitioning=1, union_by_name=true)
+            """
+            df_max = con.execute(q, paths).df()
+        except Exception:
+            df_max = pd.DataFrame()
+        if not df_max.empty and not pd.isna(df_max.iloc[0, 0]):
+            parquet_date = pd.Timestamp(df_max.iloc[0, 0]).floor("D")
+    processed_date = _load_factor_processed_date(base_dir, safe_name)
+    candidates = [date for date in (parquet_date, processed_date) if date is not None]
+    return max(candidates) if candidates else None
 
 
 def _resolve_non_stock_fallback_target_codes(
@@ -1364,7 +1588,15 @@ if _fallback_target_codes and not PREQUERY_TARGET_CODES:
     PREQUERY_TARGET_CODES = _fallback_target_codes
     print(f"[WARN] 本次自动回补限定为非股票日线标的: {len(PREQUERY_TARGET_CODES)} 只")
 
-_bundles_for_query = PREQUERY_SELECTED_BUNDLES if PREQUERY_SELECTED_BUNDLES else [str(x).strip().lower() for x in SELECTED_BUNDLES]
+_bundles_for_query = [
+    bundle
+    for bundle in (
+        PREQUERY_SELECTED_BUNDLES
+        if PREQUERY_SELECTED_BUNDLES
+        else [str(x).strip().lower() for x in SELECTED_BUNDLES]
+    )
+    if bundle not in POST_WRITE_DERIVED_BUNDLES
+]
 _factors_for_query = sorted(PREQUERY_TARGET_FACTOR_KEYS) if PREQUERY_TARGET_FACTOR_KEYS else TARGET_FACTORS
 _effective_start_dt = pd.Timestamp(PREQUERY_EFFECTIVE_START_DATE).floor("D")
 
@@ -1507,7 +1739,8 @@ SELECT d.* REPLACE (
     d.high * COALESCE(a.adj_factor, 1.0) AS high,
     d.low * COALESCE(a.adj_factor, 1.0) AS low,
     d.close * COALESCE(a.adj_factor, 1.0) AS close
-)
+),
+    d.close AS close_unadjusted
 FROM d
 LEFT JOIN a
   ON UPPER(TRIM(CAST(d.htsc_code AS VARCHAR))) = a.htsc_code
@@ -1574,7 +1807,12 @@ if _raw_targets:
 else:
     _ordered_codes = _distinct_codes_in_window()
 
-_skip_market_load = AUTO_PLAN_FROM_FACTOR_LIBRARY and len(globals().get("PREQUERY_SELECTED_BUNDLES", [])) == 0
+_market_compute_bundles = [
+    bundle
+    for bundle in globals().get("PREQUERY_SELECTED_BUNDLES", [])
+    if bundle not in POST_WRITE_DERIVED_BUNDLES
+]
+_skip_market_load = AUTO_PLAN_FROM_FACTOR_LIBRARY and len(_market_compute_bundles) == 0
 
 if _skip_market_load:
     print("预加载计划显示无需补写，跳过市场数据读取。")
@@ -1598,6 +1836,8 @@ else:
     print(f"单次查询完成，记录数={len(df_multi)}")
 
 df_multi["time"] = pd.to_datetime(df_multi["time"]).dt.floor("D")
+if "close_unadjusted" not in df_multi.columns:
+    df_multi["close_unadjusted"] = df_multi["close"]
 
 
 
@@ -2024,7 +2264,7 @@ def _compute_selected_bundles_raw(O, H, L, C, V, selected_bundles, T=None, enabl
     if "momentum_common" in selected_bundle_set:
         _add("momentum_common", build_momentum_factor_bundle(C=C))
     if "low_volatility" in selected_bundle_set:
-        _add("low_volatility", build_low_volatility_factor_bundle(C=C, H=H, L=L))
+        _add("low_volatility", build_low_volatility_factor_bundle(C=C, H=H, L=L, V=V))
 
     if "total_buy_signal" in selected_bundle_set:
         _add("total_buy_signal", build_total_buy_signal_bundle(O=O, H=H, L=L, C=C, V=V, precomputed_factors=shared_factor_dfs))
@@ -2066,6 +2306,7 @@ def compute_selected_bundles(
     enable_bottom_cache=True,
     valid_bar=None,
     target_factor_keys=None,
+    unadjusted_close=None,
 ):
     if valid_bar is None:
         valid_bar = globals().get("VALID_BAR", C.notna())
@@ -2155,7 +2396,6 @@ def compute_selected_bundles(
         )
 
     if "low_volatility" in requested_bundles:
-        selected_bundle_set.add("low_volatility")
         known_stock_codes = {
             str(code).strip().upper()
             for code in globals().get("_stock_source_code_set", set())
@@ -2167,13 +2407,24 @@ def compute_selected_bundles(
             if str(code).strip().upper() in known_stock_codes
         }
         stock_columns = [code for code in C.columns if str(code).strip().upper() in batch_stock_codes]
-        bundle_outputs.append(
-            build_low_volatility_factor_bundle(
-                C=C.loc[:, stock_columns],
-                H=H.loc[:, stock_columns],
-                L=L.loc[:, stock_columns],
-            )
+        stock_valid_bar = (
+            valid_bar.loc[:, stock_columns].astype(bool)
+            & V.loc[:, stock_columns].gt(0.0)
         )
+        low_vol_selected, low_vol_outputs = compute_bundles_with_valid_bar(
+            _compute_selected_bundles_raw,
+            O=O.loc[:, stock_columns],
+            H=H.loc[:, stock_columns],
+            L=L.loc[:, stock_columns],
+            C=C.loc[:, stock_columns],
+            V=V.loc[:, stock_columns],
+            selected_bundles=["low_volatility"],
+            T=None,
+            valid_bar=stock_valid_bar,
+            enable_bottom_cache=False,
+        )
+        selected_bundle_set.update(low_vol_selected)
+        bundle_outputs.extend(low_vol_outputs)
 
     if "stock_fundamental_raw" in requested_bundles:
         selected_bundle_set.add("stock_fundamental_raw")
@@ -2230,6 +2481,7 @@ def compute_selected_bundles(
         bundle_outputs.append(
             build_stock_dividend_raw_factor_bundle(
                 C=C,
+                unadjusted_close=unadjusted_close,
                 stock_codes=batch_stock_codes,
             )
         )
@@ -2360,6 +2612,9 @@ def _bundle_targets(bundle_key: str) -> set[str]:
 compute_bundles = []
 for _bundle in selected_bundles_for_compute:
     _bundle = str(_bundle).strip().lower()
+    if _bundle in POST_WRITE_DERIVED_BUNDLES:
+        factor_log("bundle.defer", bundle=_bundle, reason="post_write_derived", sec=0.0)
+        continue
     _mapping = bundle_factor_catalog.get(_bundle, {})
     if active_target_keys and _mapping and not _bundle_targets(_bundle):
         factor_log("bundle.skip", bundle=_bundle, reason="no_target_intersection", sec=0.0)
@@ -2446,6 +2701,7 @@ if compute_bundles:
         _local_H = _market_frames["H"]
         _local_L = _market_frames["L"]
         _local_C = _market_frames["C"]
+        _local_C_unadjusted = _market_frames["C_UNADJUSTED"]
         _local_V = _market_frames["V"]
         _local_valid_bar = _market_frames["valid_bar"]
         _turnover_bundles = {"chip_structure", "total_buy_signal", "tdx_bottom_alert"}
@@ -2479,6 +2735,7 @@ if compute_bundles:
             enable_bottom_cache=False,
             valid_bar=_local_valid_bar,
             target_factor_keys=_targets,
+            unadjusted_close=_local_C_unadjusted,
         )
 
         _batch_generated_keys: set[str] = set()
@@ -2516,7 +2773,7 @@ if compute_bundles:
                 elapsed_seconds=_task_sec,
             )
         )
-        del _outputs, _market_frames, _local_O, _local_H, _local_L, _local_C, _local_V, _local_valid_bar, _local_T
+        del _outputs, _market_frames, _local_O, _local_H, _local_L, _local_C, _local_C_unadjusted, _local_V, _local_valid_bar, _local_T
         gc.collect()
 
     _sec = perf_counter() - _all_start
@@ -3086,6 +3343,7 @@ def _factor_month_to_long_polars(
     factor_df: pd.DataFrame,
     month_start: pd.Timestamp,
     month_end: pd.Timestamp,
+    drop_null_values: bool = False,
 ) -> pl.DataFrame | None:
     idx = pd.to_datetime(factor_df.index).floor("D")
     keep_mask = (idx >= month_start) & (idx <= month_end)
@@ -3103,6 +3361,10 @@ def _factor_month_to_long_polars(
         .melt(id_vars="time", var_name="htsc_code", value_name="value")
         .drop_duplicates(subset=["time", "htsc_code"], keep="last")
     )
+    if drop_null_values:
+        numeric_values = pd.to_numeric(long_df["value"], errors="coerce")
+        long_df = long_df.loc[np.isfinite(numeric_values)].copy()
+        long_df["value"] = numeric_values.loc[long_df.index]
     if long_df.empty:
         return None
 
@@ -3164,6 +3426,7 @@ def _build_factor_save_tasks(
     end_dt: pd.Timestamp,
     existing_last_dt: pd.Timestamp | None,
     existing_codes: set[str] | None = None,
+    drop_null_values: bool = False,
 ) -> list[dict[str, Any]]:
     if not isinstance(factor_df, pd.DataFrame) or factor_df.empty:
         return []
@@ -3183,6 +3446,7 @@ def _build_factor_save_tasks(
             "base_dir": base_dir,
             "start_dt": pd.Timestamp(task_start).floor("D"),
             "end_dt": pd.Timestamp(task_end).floor("D"),
+            "drop_null_values": bool(drop_null_values),
         }
 
     if existing_last_dt is None:
@@ -3206,10 +3470,23 @@ def _save_single_factor_task(
 
     written_months = 0
     written_rows = 0
+    processed_date: pd.Timestamp | None = None
+    if bool(task.get("drop_null_values", False)) and isinstance(factor_df, pd.DataFrame):
+        input_dates = pd.DatetimeIndex(
+            pd.to_datetime(factor_df.index, errors="coerce")
+        ).floor("D")
+        in_range = input_dates[(input_dates >= start_dt) & (input_dates <= end_dt)]
+        if len(in_range) > 0:
+            processed_date = pd.Timestamp(in_range.max()).floor("D")
     for month_start in _month_start_range(start_dt, end_dt):
         month_end = min(month_start + pd.offsets.MonthEnd(0), end_dt)
         month_start_clipped = max(month_start, start_dt)
-        new_df = _factor_month_to_long_polars(factor_df, month_start_clipped, month_end)
+        new_df = _factor_month_to_long_polars(
+            factor_df,
+            month_start_clipped,
+            month_end,
+            drop_null_values=bool(task.get("drop_null_values", False)),
+        )
         if new_df is None or new_df.is_empty():
             continue
         part_path, part_rows = _write_factor_month_incremental_part(
@@ -3226,6 +3503,12 @@ def _save_single_factor_task(
         written_months += 1
         written_rows += int(part_rows)
 
+    if processed_date is not None:
+        _write_factor_processed_date_atomic(
+            base_dir=base_dir,
+            factor_name=factor_name,
+            processed_date=processed_date,
+        )
     elapsed_seconds = perf_counter() - task_started_at
     return factor_name, written_months, written_rows, elapsed_seconds, start_dt, end_dt
 
@@ -3239,6 +3522,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
     max_workers: int = MAX_SAVE_WORKERS,
     factor_time_ranges: dict[str, tuple[pd.Timestamp, pd.Timestamp]] | None = None,
     factor_last_dt_map: dict[str, pd.Timestamp] | None = None,
+    drop_null_factor_keys: set[str] | None = None,
 ) -> None:
     if not factor_dfs_dict:
         print("没有可保存的因子数据。")
@@ -3257,6 +3541,12 @@ def save_factor_dfs_to_factor_partitioned_parquet(
     if not factor_items:
         print("factor_name_map 中没有匹配 factor_dfs 的因子。")
         return
+
+    sparse_factor_keys = {
+        str(factor_key).strip()
+        for factor_key in (drop_null_factor_keys or set())
+        if str(factor_key).strip()
+    }
 
     safe_names: dict[str, str] = {}
     for ch_name, _, _ in factor_items:
@@ -3298,6 +3588,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
                 start_dt=task_start_dt,
                 end_dt=task_end_dt,
                 existing_last_dt=storage_item.get("last_dt"),
+                drop_null_values=str(eng_name) in sparse_factor_keys,
             )
         )
 
@@ -3421,6 +3712,1054 @@ save_factor_dfs_to_factor_partitioned_parquet(
     factor_time_ranges=_planned_ranges if _planned_ranges else None,
     factor_last_dt_map=globals().get("_factor_last_dt_map"),
 )
+
+
+def _run_stock_size_style_pure_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    score_keys = set(SIZE_STYLE_PURE_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("纯市值风格评分派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(score_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("纯市值风格评分派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in SIZE_STYLE_PURE_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 纯市值风格评分，"
+        f"区间={run_start.date()} ~ {run_end.date()}，因子={len(selected_name_map)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        # 不传股票子集，始终使用当月完整沪深股票横截面排名。
+        chunk_result = build_stock_size_style_pure_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 纯市值风格评分 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_size_style_pure_result = _run_stock_size_style_pure_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _size_style_pure_result is not None:
+    factor_dfs.update(_size_style_pure_result["factor_dfs"])
+    factor_name_map.update(_size_style_pure_result["factor_name_map"])
+
+
+def _run_stock_momentum_style_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    score_keys = set(MOMENTUM_STYLE_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("股票动量风格评分派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(score_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("股票动量风格评分派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in MOMENTUM_STYLE_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 股票动量风格评分，"
+        f"区间={run_start.date()} ~ {run_end.date()}，因子={len(selected_name_map)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_momentum_style_bundle(
+            signal_base_dir=base_dir,
+            market_base_dir=BASE_PATH,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 股票动量风格评分 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_momentum_style_result = _run_stock_momentum_style_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _momentum_style_result is not None:
+    factor_dfs.update(_momentum_style_result["factor_dfs"])
+    factor_name_map.update(_momentum_style_result["factor_name_map"])
+
+
+def _run_stock_liquidity_composite_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    score_keys = set(LIQUIDITY_COMPOSITE_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("股票流动性综合评分派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(score_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("股票流动性综合评分派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in LIQUIDITY_COMPOSITE_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 股票流动性综合评分，"
+        f"区间={run_start.date()} ~ {run_end.date()}，因子={len(selected_name_map)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_liquidity_composite_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 股票流动性综合评分 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_liquidity_composite_result = _run_stock_liquidity_composite_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _liquidity_composite_result is not None:
+    factor_dfs.update(_liquidity_composite_result["factor_dfs"])
+    factor_name_map.update(_liquidity_composite_result["factor_name_map"])
+
+
+def _run_stock_low_volatility_style_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    score_keys = set(LOW_VOLATILITY_STYLE_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("股票低波风格评分派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(score_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("股票低波风格评分派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in LOW_VOLATILITY_STYLE_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 股票低波风格评分，"
+        f"区间={run_start.date()} ~ {run_end.date()}，因子={len(selected_name_map)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        # 不传股票子集，始终使用当月完整沪深股票横截面排名。
+        chunk_result = build_stock_low_volatility_style_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 股票低波风格评分 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_low_volatility_style_result = _run_stock_low_volatility_style_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _low_volatility_style_result is not None:
+    factor_dfs.update(_low_volatility_style_result["factor_dfs"])
+    factor_name_map.update(_low_volatility_style_result["factor_name_map"])
+
+
+def _run_stock_value_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    normalized_keys = set(VALUE_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("价值标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(normalized_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("价值标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in VALUE_NORMALIZED_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 价值去极值与标准化因子，"
+        f"区间={run_start.date()} ~ {run_end.date()}，因子={len(selected_name_map)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        # 标准化入口不接收股票子集，始终使用当月完整 A 股横截面。
+        chunk_result = build_stock_value_normalized_factor_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 价值标准化 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_value_normalized_result = _run_stock_value_normalized_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _value_normalized_result is not None:
+    factor_dfs.update(_value_normalized_result["factor_dfs"])
+    factor_name_map.update(_value_normalized_result["factor_name_map"])
+
+
+def _run_stock_value_model_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    model_keys = set(VALUE_MODEL_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("价值模型综合评分派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(model_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("价值模型综合评分派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            max(pd.Timestamp(row["plan_start"]).floor("D"), VALUE_MODEL_START_DATE),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    factor_ranges = {
+        key: date_range
+        for key, date_range in factor_ranges.items()
+        if date_range[0] <= date_range[1]
+    }
+    if not factor_ranges:
+        print("价值模型综合评分派生阶段跳过：目标区间早于 2015-01-01。")
+        return None
+
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in VALUE_MODEL_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 价值模型综合评分，"
+        f"区间={run_start.date()} ~ {run_end.date()}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_value_model_composite_score_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_result["factor_dfs"],
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_result["factor_dfs"],
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 价值模型综合评分 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_value_model_result = _run_stock_value_model_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _value_model_result is not None:
+    factor_dfs.update(_value_model_result["factor_dfs"])
+    factor_name_map.update(_value_model_result["factor_name_map"])
+
+
+def _run_stock_growth_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    stock_codes: set[str],
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    normalized_keys = set(GROWTH_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("成长标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(normalized_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("成长标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in GROWTH_NORMALIZED_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 成长标准化因子，区间={run_start.date()} ~ {run_end.date()}，"
+        f"因子={len(selected_name_map)}，股票={len(stock_codes)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_growth_normalized_factor_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+            stock_codes=stock_codes,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 成长标准化 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_growth_normalized_result = _run_stock_growth_normalized_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    stock_codes=set(_stock_source_code_set),
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _growth_normalized_result is not None:
+    factor_dfs.update(_growth_normalized_result["factor_dfs"])
+    factor_name_map.update(_growth_normalized_result["factor_name_map"])
+
+
+def _run_stock_growth_industry_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    factor_keys = set(GROWTH_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("成长行业标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(factor_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("成长行业标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            max(
+                pd.Timestamp(row["plan_start"]).floor("D"),
+                GROWTH_INDUSTRY_NORMALIZED_START_DATE,
+            ),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    factor_ranges = {
+        key: value for key, value in factor_ranges.items() if value[0] <= value[1]
+    }
+    if not factor_ranges:
+        print("成长行业标准化派生阶段跳过：目标区间早于首个 881 快照。")
+        return None
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        name: key
+        for name, key in GROWTH_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP.items()
+        if key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 成长风格综合评分(行业标准化)，"
+        f"区间={run_start.date()} ~ {run_end.date()}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_growth_industry_normalized_factor_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(
+            f"[派生完成] 成长风格综合评分(行业标准化) "
+            f"{chunk_start.date()} ~ {chunk_end.date()}"
+        )
+    return last_result
+
+
+_growth_industry_normalized_result = _run_stock_growth_industry_normalized_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _growth_industry_normalized_result is not None:
+    factor_dfs.update(_growth_industry_normalized_result["factor_dfs"])
+    factor_name_map.update(_growth_industry_normalized_result["factor_name_map"])
+
+
+def _run_stock_value_model_industry_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    factor_keys = set(VALUE_MODEL_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("价值行业标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(factor_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("价值行业标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            max(
+                pd.Timestamp(row["plan_start"]).floor("D"),
+                VALUE_MODEL_INDUSTRY_NORMALIZED_START_DATE,
+            ),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    factor_ranges = {
+        key: value for key, value in factor_ranges.items() if value[0] <= value[1]
+    }
+    if not factor_ranges:
+        print("价值行业标准化派生阶段跳过：目标区间早于首个 881 快照。")
+        return None
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        name: key
+        for name, key in VALUE_MODEL_INDUSTRY_NORMALIZED_FACTOR_NAME_MAP.items()
+        if key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 价值模型综合评分(行业标准化)，"
+        f"区间={run_start.date()} ~ {run_end.date()}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_value_model_industry_normalized_score_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(
+            f"[派生完成] 价值模型综合评分(行业标准化) "
+            f"{chunk_start.date()} ~ {chunk_end.date()}"
+        )
+    return last_result
+
+
+_value_model_industry_normalized_result = (
+    _run_stock_value_model_industry_normalized_post_write(
+        base_dir=OUTPUT_BASE_DIR,
+        plan_df=factor_plan_df,
+        factor_last_dt_map=globals().get("_factor_last_dt_map"),
+    )
+)
+if _value_model_industry_normalized_result is not None:
+    factor_dfs.update(_value_model_industry_normalized_result["factor_dfs"])
+    factor_name_map.update(_value_model_industry_normalized_result["factor_name_map"])
+
+
+def _run_stock_growth_multi_board_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    factor_keys = set(GROWTH_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("成长多板块标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(factor_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("成长多板块标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            max(
+                pd.Timestamp(row["plan_start"]).floor("D"),
+                GROWTH_MULTI_BOARD_NORMALIZED_START_DATE,
+            ),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    factor_ranges = {
+        key: value for key, value in factor_ranges.items() if value[0] <= value[1]
+    }
+    if not factor_ranges:
+        print("成长多板块标准化派生阶段跳过：目标区间早于首个板块快照。")
+        return None
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        name: key
+        for name, key in GROWTH_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP.items()
+        if key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 成长风格综合评分(多板块标准化)，"
+        f"区间={run_start.date()} ~ {run_end.date()}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_growth_multi_board_normalized_factor_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(
+            f"[派生完成] 成长风格综合评分(多板块标准化) "
+            f"{chunk_start.date()} ~ {chunk_end.date()}"
+        )
+    return last_result
+
+
+_growth_multi_board_normalized_result = (
+    _run_stock_growth_multi_board_normalized_post_write(
+        base_dir=OUTPUT_BASE_DIR,
+        plan_df=factor_plan_df,
+        factor_last_dt_map=globals().get("_factor_last_dt_map"),
+    )
+)
+if _growth_multi_board_normalized_result is not None:
+    factor_dfs.update(_growth_multi_board_normalized_result["factor_dfs"])
+    factor_name_map.update(_growth_multi_board_normalized_result["factor_name_map"])
+
+
+def _run_stock_value_model_multi_board_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    factor_keys = set(VALUE_MODEL_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("价值多板块标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(factor_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("价值多板块标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            max(
+                pd.Timestamp(row["plan_start"]).floor("D"),
+                VALUE_MODEL_MULTI_BOARD_NORMALIZED_START_DATE,
+            ),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    factor_ranges = {
+        key: value for key, value in factor_ranges.items() if value[0] <= value[1]
+    }
+    if not factor_ranges:
+        print("价值多板块标准化派生阶段跳过：目标区间早于首个板块快照。")
+        return None
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        name: key
+        for name, key in VALUE_MODEL_MULTI_BOARD_NORMALIZED_FACTOR_NAME_MAP.items()
+        if key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 价值模型综合评分(多板块标准化)，"
+        f"区间={run_start.date()} ~ {run_end.date()}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_value_model_multi_board_normalized_score_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+            drop_null_factor_keys=set(chunk_factor_dfs),
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(
+            f"[派生完成] 价值模型综合评分(多板块标准化) "
+            f"{chunk_start.date()} ~ {chunk_end.date()}"
+        )
+    return last_result
+
+
+_value_model_multi_board_normalized_result = (
+    _run_stock_value_model_multi_board_normalized_post_write(
+        base_dir=OUTPUT_BASE_DIR,
+        plan_df=factor_plan_df,
+        factor_last_dt_map=globals().get("_factor_last_dt_map"),
+    )
+)
+if _value_model_multi_board_normalized_result is not None:
+    factor_dfs.update(_value_model_multi_board_normalized_result["factor_dfs"])
+    factor_name_map.update(_value_model_multi_board_normalized_result["factor_name_map"])
+
+
+def _run_stock_dividend_normalized_post_write(
+    *,
+    base_dir: str,
+    plan_df: pd.DataFrame,
+    stock_codes: set[str],
+    factor_last_dt_map: dict[str, pd.Timestamp] | None,
+) -> dict[str, object] | None:
+    normalized_keys = set(DIVIDEND_NORMALIZED_FACTOR_NAME_MAP.values())
+    if not isinstance(plan_df, pd.DataFrame) or plan_df.empty:
+        print("红利标准化派生阶段跳过：没有因子缺失计划。")
+        return None
+    needed = plan_df[
+        plan_df["factor_en"].astype(str).isin(normalized_keys)
+        & plan_df["status"].isin(["missing", "stale"])
+        & plan_df["plan_start"].notna()
+        & plan_df["plan_end"].notna()
+    ].copy()
+    if needed.empty:
+        print("红利标准化派生阶段跳过：相关因子已是最新。")
+        return None
+
+    factor_ranges = {
+        str(row["factor_en"]): (
+            pd.Timestamp(row["plan_start"]).floor("D"),
+            pd.Timestamp(row["plan_end"]).floor("D"),
+        )
+        for _, row in needed.iterrows()
+    }
+    run_start = min(start for start, _ in factor_ranges.values())
+    run_end = max(end for _, end in factor_ranges.values())
+    selected_name_map = {
+        ch_name: factor_key
+        for ch_name, factor_key in DIVIDEND_NORMALIZED_FACTOR_NAME_MAP.items()
+        if factor_key in factor_ranges
+    }
+    print(
+        f"\n[派生阶段] 红利标准化因子，区间={run_start.date()} ~ {run_end.date()}，"
+        f"因子={len(selected_name_map)}，股票={len(stock_codes)}"
+    )
+
+    last_result: dict[str, object] | None = None
+    for month_start in _month_start_range(run_start, run_end):
+        chunk_start = max(run_start, month_start)
+        chunk_end = min(run_end, month_start + pd.offsets.MonthEnd(0))
+        chunk_result = build_stock_dividend_normalized_factor_bundle(
+            base_dir=base_dir,
+            start_date=chunk_start,
+            end_date=chunk_end,
+            stock_codes=stock_codes,
+        )
+        chunk_factor_dfs = {
+            key: frame
+            for key, frame in chunk_result["factor_dfs"].items()
+            if key in factor_ranges
+        }
+        save_factor_dfs_to_factor_partitioned_parquet(
+            chunk_factor_dfs,
+            selected_name_map,
+            base_dir,
+            str(chunk_start.date()),
+            str(chunk_end.date()),
+            factor_time_ranges=factor_ranges,
+            factor_last_dt_map=factor_last_dt_map,
+        )
+        last_result = {
+            "bundle_id": chunk_result["bundle_id"],
+            "factor_dfs": chunk_factor_dfs,
+            "factor_name_map": selected_name_map,
+        }
+        print(f"[派生完成] 红利标准化 {chunk_start.date()} ~ {chunk_end.date()}")
+    return last_result
+
+
+_dividend_normalized_result = _run_stock_dividend_normalized_post_write(
+    base_dir=OUTPUT_BASE_DIR,
+    plan_df=factor_plan_df,
+    stock_codes=set(_stock_source_code_set),
+    factor_last_dt_map=globals().get("_factor_last_dt_map"),
+)
+if _dividend_normalized_result is not None:
+    factor_dfs.update(_dividend_normalized_result["factor_dfs"])
+    factor_name_map.update(_dividend_normalized_result["factor_name_map"])
 
 
 # %% cell 增量信号保存.py 逻辑
@@ -3616,7 +4955,8 @@ def _finalize_factor_batch(
     selected_compact_func = compact_func or compact_signal_daily_parts
     selected_watermark_writer = watermark_writer or _write_batch_watermark_atomic
     if has_factor_updates:
-        selected_compact_func(base_dir=base_dir)
+        for factor_name in factor_name_map_dict:
+            selected_compact_func(base_dir=base_dir, factor=factor_name)
 
     complete_date = target_dt
     if managed_factor_name_map is not None:

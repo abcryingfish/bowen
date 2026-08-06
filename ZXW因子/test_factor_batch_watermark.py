@@ -233,11 +233,11 @@ def test_parallel_compaction_raises_after_any_month_fails(tmp_path: Path) -> Non
 
 def test_finalize_writes_complete_watermark_after_compaction(tmp_path: Path) -> None:
     functions = _load_functions()
-    calls: list[str] = []
+    calls: list[object] = []
     written_payload: dict | None = None
 
-    def compact(**_kwargs):
-        calls.append("compact")
+    def compact(**kwargs):
+        calls.append(("compact", kwargs))
 
     def write(_base_dir, payload):
         nonlocal written_payload
@@ -247,8 +247,11 @@ def test_finalize_writes_complete_watermark_after_compaction(tmp_path: Path) -> 
 
     functions["_finalize_factor_batch"](
         base_dir=str(tmp_path),
-        factor_dfs_dict={"dif": pd.DataFrame({"000001.SZ": [1.0]}, index=[pd.Timestamp("2026-07-29")])},
-        factor_name_map_dict={"DIF": "dif"},
+        factor_dfs_dict={
+            "dif": pd.DataFrame({"000001.SZ": [1.0]}, index=[pd.Timestamp("2026-07-29")]),
+            "dea": pd.DataFrame({"000001.SZ": [2.0]}, index=[pd.Timestamp("2026-07-29")]),
+        },
+        factor_name_map_dict={"DIF": "dif", "DEA": "dea"},
         target_date=pd.Timestamp("2026-07-29"),
         all_market_codes={"000001.SZ"},
         ths_codes=set(),
@@ -257,11 +260,15 @@ def test_finalize_writes_complete_watermark_after_compaction(tmp_path: Path) -> 
         watermark_writer=write,
     )
 
-    assert calls == ["compact", "write"]
+    assert calls == [
+        ("compact", {"base_dir": str(tmp_path), "factor": "DIF"}),
+        ("compact", {"base_dir": str(tmp_path), "factor": "DEA"}),
+        "write",
+    ]
     assert written_payload is not None
     assert written_payload["status"] == "complete"
     assert written_payload["last_complete_date"] == "2026-07-29"
-    assert written_payload["factor_count"] == 1
+    assert written_payload["factor_count"] == 2
 
 
 def test_finalize_uses_common_persisted_date_for_partial_update(tmp_path: Path) -> None:

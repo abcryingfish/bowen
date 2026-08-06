@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 import re
 from pathlib import Path
@@ -13,6 +14,8 @@ import pandas as pd
 SCRIPT_PATH = Path(__file__).with_name("ZXW策略技术因子生成.py")
 PLANNER_FUNCTIONS = {
     "_sanitize_factor_dir_name",
+    "_factor_processed_date_path",
+    "_load_factor_processed_date",
     "_collect_latest_factor_partition_paths",
     "_load_factor_last_date_map",
     "_get_factor_last_date",
@@ -42,6 +45,7 @@ def _load_planner_functions():
     module = ast.Module(body=selected, type_ignores=[])
     namespace = {
         "os": os,
+        "json": json,
         "re": re,
         "Path": Path,
         "pd": pd,
@@ -133,6 +137,25 @@ def test_factor_watermark_scan_only_reads_each_factors_latest_month(tmp_path) ->
     assert len(paths) == 1
     assert "month=07" in paths[0].replace("\\", "/")
     assert paths[0].endswith("merged.parquet")
+
+
+def test_latest_partition_scan_falls_back_to_part_files(tmp_path: Path) -> None:
+    month_dir = tmp_path / "factor=测试因子" / "year=2026" / "month=08"
+    month_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "time": pd.to_datetime(["2026-08-03"]),
+            "htsc_code": ["000001.SZ"],
+            "value": [1.0],
+        }
+    ).to_parquet(month_dir / "part_1785980000000_12345_abcdef1234567890.parquet", index=False)
+
+    paths = _load_planner_functions()["_collect_latest_factor_partition_paths"](
+        str(tmp_path)
+    )
+
+    assert len(paths) == 1
+    assert paths[0].endswith("part_1785980000000_12345_abcdef1234567890.parquet")
 
 
 def test_auto_plan_uses_latest_row_dates_including_null_values(tmp_path) -> None:
