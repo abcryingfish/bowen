@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-MODULE_PATH = Path(__file__).resolve().parent / "工具" / "形态蜡烛信号生成.py"
+MODULE_PATH = Path(__file__).resolve().parent / "工具" / "形态蜡烛信号生成_合并保存.py"
 
 
 def load_module():

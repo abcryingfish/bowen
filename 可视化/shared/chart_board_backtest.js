@@ -165,6 +165,9 @@
         function shouldUseBacktestPositionSnapshotPanel(codeValue = currentCode) {
             return POSITION_SNAPSHOT_CODES.has(normalizeCodeValue(codeValue));
         }
+        function isThsMonthlyThreshold() {
+            return String(backtestRules.adoptModel || "").trim() === "ths_monthly_threshold";
+        }
         function shouldShowTraverseRuleThresholds() {
             return paramTraverseSwitchOn && String(backtestRules.adoptModel || "").trim() === "configurable_signal_rules";
         }
@@ -201,6 +204,119 @@
             backtestRules.sell.forEach(ensureTraverseFieldsOnRule);
         }
 
+        function ensureBacktestRuleFilterFields(rule) {
+            rule.mode = rule.mode === "cross_section_percentile" ? "cross_section_percentile" : "value";
+            if (rule.mode === "value") {
+                const allowedOperators = new Set(["between", "gt", "gte", "lt", "lte", "eq", "ne"]);
+                rule.operator = allowedOperators.has(rule.operator) ? rule.operator : "gte";
+                if (rule.operator === "between") {
+                    const fallback = Number.isFinite(Number(rule.threshold)) ? Number(rule.threshold) : 1;
+                    if (!Number.isFinite(Number(rule.min))) {
+                        rule.min = fallback;
+                    }
+                    if (!Number.isFinite(Number(rule.max))) {
+                        rule.max = fallback;
+                    }
+                } else if (!Number.isFinite(Number(rule.value))) {
+                    rule.value = Number.isFinite(Number(rule.threshold)) ? Number(rule.threshold) : 1;
+                }
+                return;
+            }
+            const allowedDirections = new Set(["top", "bottom", "range"]);
+            rule.direction = allowedDirections.has(rule.direction) ? rule.direction : "top";
+            rule.rankUnit = rule.rankUnit === "rank" ? "rank" : "percentile";
+            if (rule.direction === "range") {
+                if (rule.rankUnit === "rank") {
+                    if (!Number.isFinite(Number(rule.minRank))) {
+                        rule.minRank = 1;
+                    }
+                    if (!Number.isFinite(Number(rule.maxRank))) {
+                        rule.maxRank = 10;
+                    }
+                } else {
+                    if (!Number.isFinite(Number(rule.minPercentile))) {
+                        rule.minPercentile = 20;
+                    }
+                    if (!Number.isFinite(Number(rule.maxPercentile))) {
+                        rule.maxPercentile = 40;
+                    }
+                }
+            } else if (rule.rankUnit === "rank") {
+                if (!Number.isFinite(Number(rule.rankCount))) {
+                    rule.rankCount = 10;
+                }
+            } else if (!Number.isFinite(Number(rule.percentile))) {
+                rule.percentile = 5;
+            }
+        }
+
+        function renderBacktestRuleFilterControls(rule) {
+            ensureBacktestRuleFilterFields(rule);
+            const mode = rule.mode;
+            const modeSelect = `
+                <label class="backtest-rule-control-label" title="筛选类型">
+                    <span>类型</span>
+                    <select class="field backtest-rule-filter-mode" aria-label="筛选类型">
+                        <option value="value"${mode === "value" ? " selected" : ""}>因子值</option>
+                        <option value="cross_section_percentile"${mode === "cross_section_percentile" ? " selected" : ""}>横截面排名</option>
+                    </select>
+                </label>`;
+            if (mode === "cross_section_percentile") {
+                const direction = rule.direction;
+                const rankUnit = rule.rankUnit;
+                const rankInputs = rankUnit === "rank"
+                    ? (direction === "range"
+                        ? `
+                            <label class="backtest-rule-control-label"><span>第</span><input class="field backtest-rule-rank-count-min" type="number" min="1" step="1" value="${escapeHtml(String(rule.minRank))}"><span>名</span></label>
+                            <label class="backtest-rule-control-label"><span>到</span><input class="field backtest-rule-rank-count-max" type="number" min="1" step="1" value="${escapeHtml(String(rule.maxRank))}"><span>名</span></label>`
+                        : `<label class="backtest-rule-control-label"><input class="field backtest-rule-rank-count" type="number" min="1" step="1" value="${escapeHtml(String(rule.rankCount))}"><span>名</span></label>`)
+                    : (direction === "range"
+                        ? `
+                            <label class="backtest-rule-control-label"><span>从</span><input class="field backtest-rule-rank-min" type="number" min="0" max="100" step="0.1" value="${escapeHtml(String(rule.minPercentile))}"><span>%</span></label>
+                            <label class="backtest-rule-control-label"><span>到</span><input class="field backtest-rule-rank-max" type="number" min="0" max="100" step="0.1" value="${escapeHtml(String(rule.maxPercentile))}"><span>%</span></label>`
+                        : `<label class="backtest-rule-control-label"><input class="field backtest-rule-rank-percentile" type="number" min="0.1" max="100" step="0.1" value="${escapeHtml(String(rule.percentile))}"><span>%</span></label>`);
+                return `
+                    ${modeSelect}
+                    <label class="backtest-rule-control-label">
+                        <span>单位</span>
+                        <select class="field backtest-rule-rank-unit" aria-label="横截面排名单位">
+                            <option value="percentile"${rankUnit === "percentile" ? " selected" : ""}>百分比</option>
+                            <option value="rank"${rankUnit === "rank" ? " selected" : ""}>名次</option>
+                        </select>
+                    </label>
+                    <label class="backtest-rule-control-label">
+                        <span>范围</span>
+                        <select class="field backtest-rule-rank-direction" aria-label="横截面排名范围">
+                            <option value="top"${direction === "top" ? " selected" : ""}>${rankUnit === "rank" ? "前 N 名" : "前 N%"}</option>
+                            <option value="bottom"${direction === "bottom" ? " selected" : ""}>${rankUnit === "rank" ? "后 N 名" : "后 N%"}</option>
+                            <option value="range"${direction === "range" ? " selected" : ""}>${rankUnit === "rank" ? "位于名次区间" : "位于分位区间"}</option>
+                        </select>
+                    </label>
+                    ${rankInputs}`;
+            }
+            const operator = rule.operator;
+            const valueInputs = operator === "between"
+                ? `
+                    <label class="backtest-rule-control-label"><span>下限</span><input class="field backtest-rule-value-min" type="number" step="any" value="${escapeHtml(String(rule.min))}"></label>
+                    <label class="backtest-rule-control-label"><span>上限</span><input class="field backtest-rule-value-max" type="number" step="any" value="${escapeHtml(String(rule.max))}"></label>`
+                : `<label class="backtest-rule-control-label"><span>值</span><input class="field backtest-rule-threshold backtest-rule-value" type="number" step="any" value="${escapeHtml(String(rule.value))}"></label>`;
+            return `
+                ${modeSelect}
+                <label class="backtest-rule-control-label">
+                    <span>比较</span>
+                    <select class="field backtest-rule-value-operator" aria-label="因子值比较方式">
+                        <option value="between"${operator === "between" ? " selected" : ""}>区间</option>
+                        <option value="gt"${operator === "gt" ? " selected" : ""}>大于</option>
+                        <option value="gte"${operator === "gte" ? " selected" : ""}>大于等于</option>
+                        <option value="lt"${operator === "lt" ? " selected" : ""}>小于</option>
+                        <option value="lte"${operator === "lte" ? " selected" : ""}>小于等于</option>
+                        <option value="eq"${operator === "eq" ? " selected" : ""}>等于</option>
+                        <option value="ne"${operator === "ne" ? " selected" : ""}>不等于</option>
+                    </select>
+                </label>
+                ${valueInputs}`;
+        }
+
         function renderBacktestRuleBox(side) {
             const isBuy = side === "buy";
             const title = isBuy ? "买入因子" : "卖出因子";
@@ -225,10 +341,11 @@
                     </div>
                 `;
                     }
+                    ensureBacktestRuleFilterFields(rule);
                     return `
                     <div class="backtest-rule-item" data-backtest-rule-side="${side}" data-backtest-rule-index="${index}">
                         <div class="backtest-rule-name" title="${escapeHtml(rule.factor)}">${escapeHtml(rule.factor)}</div>
-                        <input class="field backtest-rule-threshold" type="number" step="0.0001" value="${escapeHtml(String(rule.threshold))}" title="触发阈值：因子值 >= 阈值">
+                        <div class="backtest-rule-filter-controls">${renderBacktestRuleFilterControls(rule)}</div>
                         <button class="field btn backtest-rule-remove" type="button" title="删除因子">×</button>
                     </div>
                 `;
@@ -236,7 +353,7 @@
                 : `<div class="backtest-rule-empty">${title}</div>`;
             return `
                 <div class="backtest-rule-box">
-                    <div class="backtest-rule-drop-zone${rules.length ? "" : " empty"}" data-backtest-rule-side="${side}" title="拖入后按因子值 >= 阈值触发">
+                    <div class="backtest-rule-drop-zone${rules.length ? "" : " empty"}" data-backtest-rule-side="${side}" title="拖入因子后可选择因子值条件或当前股票池每日横截面排名">
                         ${itemsHtml}
                     </div>
                 </div>
@@ -268,6 +385,9 @@
         }
 
         function renderBacktestLeftColumnHtml() {
+            if (isThsMonthlyThreshold()) {
+                return `<div class="center-bottom-box">${renderBacktestRuleBox("buy")}</div>`;
+            }
             return `
                 <div class="center-bottom-box">${renderBacktestRuleBox("buy")}</div>
                 <div class="center-bottom-box">${renderBacktestRuleBox("sell")}</div>
@@ -317,7 +437,7 @@
         function renderCenterBottomBacktestControls(summaryPath = "") {
             const titleAttr = summaryPath ? ` title="数据来源：${escapeHtml(summaryPath)}"` : "";
             const buyOperatorVisible = backtestRules.buy.length >= 2 ? " visible" : "";
-            const sellOperatorVisible = backtestRules.sell.length >= 2 ? " visible" : "";
+            const sellOperatorVisible = !isThsMonthlyThreshold() && backtestRules.sell.length >= 2 ? " visible" : "";
             const fromYearValue = escapeHtml(String(backtestRules.fromYear || ""));
             const fromMonthValue = escapeHtml(String(backtestRules.fromMonth || ""));
             const fromDayValue = escapeHtml(String(backtestRules.fromDay || ""));
@@ -390,7 +510,10 @@
                 buyOperatorEl.closest(".backtest-operator-group")?.classList.toggle("visible", backtestRules.buy.length >= 2);
             }
             if (sellOperatorEl) {
-                sellOperatorEl.closest(".backtest-operator-group")?.classList.toggle("visible", backtestRules.sell.length >= 2);
+                sellOperatorEl.closest(".backtest-operator-group")?.classList.toggle(
+                    "visible",
+                    !isThsMonthlyThreshold() && backtestRules.sell.length >= 2
+                );
             }
             refreshOptunaControlsVisibility();
         }
@@ -405,7 +528,7 @@
                 logUiHint(`${normalizedName} 已在${side === "sell" ? "卖出" : "买入"}因子中`);
                 return;
             }
-            target.push({ factor: normalizedName, threshold: 1 });
+            target.push({ factor: normalizedName, threshold: 1, mode: "value", operator: "gte", value: 1 });
             if (shouldShowTraverseRuleThresholds()) {
                 const last = target[target.length - 1];
                 ensureTraverseFieldsOnRule(last);
@@ -423,7 +546,7 @@
                     continue;
                 }
                 existing.add(factorName);
-                target.push({ factor: factorName, threshold: 1 });
+                target.push({ factor: factorName, threshold: 1, mode: "value", operator: "gte", value: 1 });
                 if (shouldShowTraverseRuleThresholds()) {
                     ensureTraverseFieldsOnRule(target[target.length - 1]);
                 }
@@ -465,6 +588,10 @@
 
         function buildOptunaTemplateRules(rules, label) {
             return rules.map((rule) => {
+                ensureBacktestRuleFilterFields(rule);
+                if (rule.mode !== "value" || rule.operator !== "gte") {
+                    throw new Error(`${label}因子 ${rule.factor}：参数遍历仅支持“因子值 大于等于”模式`);
+                }
                 ensureTraverseFieldsOnRule(rule);
                 const threshold = Number(rule.threshold);
                 if (!Number.isFinite(threshold)) {
@@ -500,6 +627,13 @@
                 throw new Error("请先输入至少一个回测标的");
             }
             const adopt_model = backtestRules.adoptModel ? String(backtestRules.adoptModel).trim() : "";
+            const isThsModel = adopt_model === "ths_monthly_threshold";
+            if (isThsModel) {
+                const invalidCodes = codes.filter((code) => !code.endsWith(".THS"));
+                if (invalidCodes.length) {
+                    throw new Error(`THS板块月度模型仅支持 .THS 代码：${invalidCodes.join(", ")}`);
+                }
+            }
             const isFactorCheck =
                 adopt_model === "zxw_factor_check_only"
                 || adopt_model === "zxw_factor_check_profit_threshold_dual_assumption"
@@ -516,6 +650,10 @@
                 if (!backtestRules.sell.length) {
                     throw new Error("因子检验模型请至少拖入一个卖出因子");
                 }
+            } else if (isThsModel) {
+                if (!backtestRules.buy.length) {
+                    throw new Error("THS板块月度模型请至少拖入一个筛选因子");
+                }
             } else {
                 if (!backtestRules.buy.length) {
                     throw new Error("请至少拖入一个买入因子");
@@ -525,11 +663,101 @@
                 }
             }
             const normalizeRules = (rules, label) => rules.map((rule) => {
-                const threshold = Number(rule.threshold);
-                if (!Number.isFinite(threshold)) {
-                    throw new Error(`${label}因子 ${rule.factor} 的阈值不是有效数字`);
+                ensureBacktestRuleFilterFields(rule);
+                if (rule.mode === "cross_section_percentile") {
+                    if (rule.rankUnit === "rank") {
+                        if (rule.direction === "range") {
+                            const minRank = Number(rule.minRank);
+                            const maxRank = Number(rule.maxRank);
+                            if (
+                                !Number.isInteger(minRank)
+                                || !Number.isInteger(maxRank)
+                                || minRank <= 0
+                                || minRank > maxRank
+                            ) {
+                                throw new Error(`${label}因子 ${rule.factor}：名次区间须满足 1 <= 起始名次 <= 结束名次`);
+                            }
+                            return {
+                                factor: rule.factor,
+                                mode: "cross_section_percentile",
+                                rank_unit: "rank",
+                                direction: "range",
+                                min_rank: minRank,
+                                max_rank: maxRank,
+                                scope: "selected_stock_pool",
+                                frequency: "daily",
+                            };
+                        }
+                        const rank = Number(rule.rankCount);
+                        if (!Number.isInteger(rank) || rank <= 0) {
+                            throw new Error(`${label}因子 ${rule.factor}：排名名次须为大于 0 的整数`);
+                        }
+                        return {
+                            factor: rule.factor,
+                            mode: "cross_section_percentile",
+                            rank_unit: "rank",
+                            direction: rule.direction,
+                            rank,
+                            scope: "selected_stock_pool",
+                            frequency: "daily",
+                        };
+                    }
+                    if (rule.direction === "range") {
+                        const minPercentile = Number(rule.minPercentile);
+                        const maxPercentile = Number(rule.maxPercentile);
+                        if (
+                            !Number.isFinite(minPercentile)
+                            || !Number.isFinite(maxPercentile)
+                            || minPercentile < 0
+                            || maxPercentile > 100
+                            || minPercentile >= maxPercentile
+                        ) {
+                            throw new Error(`${label}因子 ${rule.factor}：分位区间须满足 0% <= 下限 < 上限 <= 100%`);
+                        }
+                        return {
+                            factor: rule.factor,
+                            mode: "cross_section_percentile",
+                            rank_unit: "percentile",
+                            direction: "range",
+                            min_percentile: minPercentile / 100,
+                            max_percentile: maxPercentile / 100,
+                            scope: "selected_stock_pool",
+                            frequency: "daily",
+                        };
+                    }
+                    const percentile = Number(rule.percentile);
+                    if (!Number.isFinite(percentile) || percentile <= 0 || percentile > 100) {
+                        throw new Error(`${label}因子 ${rule.factor}：排名比例须大于 0% 且不超过 100%`);
+                    }
+                    return {
+                        factor: rule.factor,
+                        mode: "cross_section_percentile",
+                        rank_unit: "percentile",
+                        direction: rule.direction,
+                        percentile: percentile / 100,
+                        scope: "selected_stock_pool",
+                        frequency: "daily",
+                    };
                 }
-                return { factor: rule.factor, threshold };
+                if (rule.operator === "between") {
+                    const min = Number(rule.min);
+                    const max = Number(rule.max);
+                    if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+                        throw new Error(`${label}因子 ${rule.factor}：区间须满足下限 <= 上限`);
+                    }
+                    return { factor: rule.factor, mode: "value", operator: "between", min, max };
+                }
+                const value = Number(rule.value);
+                if (!Number.isFinite(value)) {
+                    throw new Error(`${label}因子 ${rule.factor} 的筛选值不是有效数字`);
+                }
+                return {
+                    factor: rule.factor,
+                    mode: "value",
+                    operator: rule.operator,
+                    value,
+                    threshold: value,
+                };
             });
             const runNameInput = document.getElementById("center-backtest-run-name");
             backtestRules.runName = runNameInput ? String(runNameInput.value || "").trim() : String(backtestRules.runName || "").trim();
@@ -541,7 +769,7 @@
                 buy_operator: backtestRules.buyOperator,
                 sell_operator: backtestRules.sellOperator,
                 buy_rules: normalizeRules(backtestRules.buy, "买入"),
-                sell_rules: normalizeRules(backtestRules.sell, "卖出"),
+                sell_rules: isThsMonthlyThreshold() ? [] : normalizeRules(backtestRules.sell, "卖出"),
             };
             if (adopt_model) {
                 payload.adopt_model = adopt_model;
@@ -576,6 +804,59 @@
                 }
             }
             return payload;
+        }
+
+        function updateBacktestRuleFromControl(control) {
+            const item = control.closest(".backtest-rule-item");
+            const side = item ? String(item.getAttribute("data-backtest-rule-side") || "") : "";
+            const index = item ? Number(item.getAttribute("data-backtest-rule-index")) : -1;
+            const target = side === "sell" ? backtestRules.sell : backtestRules.buy;
+            if (index < 0 || index >= target.length) {
+                return;
+            }
+            const rule = target[index];
+            if (control.classList.contains("backtest-rule-filter-mode")) {
+                rule.mode = control.value === "cross_section_percentile" ? "cross_section_percentile" : "value";
+                ensureBacktestRuleFilterFields(rule);
+                renderBacktestRulePanels();
+            } else if (control.classList.contains("backtest-rule-value-operator")) {
+                rule.operator = control.value;
+                ensureBacktestRuleFilterFields(rule);
+                renderBacktestRulePanels();
+            } else if (control.classList.contains("backtest-rule-rank-direction")) {
+                rule.direction = control.value;
+                ensureBacktestRuleFilterFields(rule);
+                renderBacktestRulePanels();
+            } else if (control.classList.contains("backtest-rule-rank-unit")) {
+                rule.rankUnit = control.value === "rank" ? "rank" : "percentile";
+                ensureBacktestRuleFilterFields(rule);
+                renderBacktestRulePanels();
+            } else if (control.classList.contains("backtest-rule-value")) {
+                rule.value = control.value;
+                rule.threshold = control.value;
+            } else if (control.classList.contains("backtest-rule-value-min")) {
+                rule.min = control.value;
+            } else if (control.classList.contains("backtest-rule-value-max")) {
+                rule.max = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-percentile")) {
+                rule.percentile = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-min")) {
+                rule.minPercentile = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-max")) {
+                rule.maxPercentile = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-count")) {
+                rule.rankCount = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-count-min")) {
+                rule.minRank = control.value;
+            } else if (control.classList.contains("backtest-rule-rank-count-max")) {
+                rule.maxRank = control.value;
+            } else if (control.classList.contains("backtest-rule-threshold-lo")) {
+                rule.threshold_lo = control.value;
+            } else if (control.classList.contains("backtest-rule-threshold-hi")) {
+                rule.threshold_hi = control.value;
+            } else if (control.classList.contains("backtest-rule-threshold-step")) {
+                rule.threshold_step = control.value;
+            }
         }
 
         function bindBacktestRulePanels() {
@@ -647,27 +928,24 @@
                     if (!(el instanceof Element)) {
                         return;
                     }
-                    const input = el.closest(
-                        ".backtest-rule-threshold, .backtest-rule-threshold-lo, .backtest-rule-threshold-hi, .backtest-rule-threshold-step",
+                    const control = el.closest(
+                        ".backtest-rule-value, .backtest-rule-value-min, .backtest-rule-value-max, .backtest-rule-rank-percentile, .backtest-rule-rank-min, .backtest-rule-rank-max, .backtest-rule-rank-count, .backtest-rule-rank-count-min, .backtest-rule-rank-count-max, .backtest-rule-threshold-lo, .backtest-rule-threshold-hi, .backtest-rule-threshold-step",
                     );
-                    if (!input) {
+                    if (!control) {
                         return;
                     }
-                    const item = input.closest(".backtest-rule-item");
-                    const side = item ? String(item.getAttribute("data-backtest-rule-side") || "") : "";
-                    const index = item ? Number(item.getAttribute("data-backtest-rule-index")) : -1;
-                    const target = side === "sell" ? backtestRules.sell : backtestRules.buy;
-                    if (index < 0 || index >= target.length) {
+                    updateBacktestRuleFromControl(control);
+                });
+                zone.addEventListener("change", (event) => {
+                    const el = event.target;
+                    if (!(el instanceof Element)) {
                         return;
                     }
-                    if (input.classList.contains("backtest-rule-threshold")) {
-                        target[index].threshold = input.value;
-                    } else if (input.classList.contains("backtest-rule-threshold-lo")) {
-                        target[index].threshold_lo = input.value;
-                    } else if (input.classList.contains("backtest-rule-threshold-hi")) {
-                        target[index].threshold_hi = input.value;
-                    } else if (input.classList.contains("backtest-rule-threshold-step")) {
-                        target[index].threshold_step = input.value;
+                    const control = el.closest(
+                        ".backtest-rule-filter-mode, .backtest-rule-value-operator, .backtest-rule-rank-direction, .backtest-rule-rank-unit",
+                    );
+                    if (control) {
+                        updateBacktestRuleFromControl(control);
                     }
                 });
             });

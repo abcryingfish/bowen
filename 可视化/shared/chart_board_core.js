@@ -519,35 +519,7 @@ const MORPH_SIGNAL_LABELS = Object.freeze({
     channel: "通道",
     trend: "趋势线",
 });
-const MORPH_PATTERN_NAME_ZH = Object.freeze({
-    harami_bullish: "看涨孕线",
-    harami_bearish: "看跌孕线",
-    morning_star_doji: "十字晨星",
-    hammer: "锤子线",
-    hanging_man: "上吊线",
-    engulfing_bullish: "看涨吞没",
-    engulfing_bearish: "看跌吞没",
-    dark_cloud_cover: "乌云盖顶",
-    piercing: "刺透形态",
-    morning_star: "启明星",
-    evening_star: "黄昏星",
-    evening_star_doji: "十字暮星",
-    abandoned_baby_bullish: "看涨弃婴",
-    abandoned_baby_bearish: "看跌弃婴",
-    harami_doji_bullish: "看涨十字孕线",
-    harami_doji_bearish: "看跌十字孕线",
-    tweezers_top: "平头顶部",
-    tweezers_bottom: "平头底部",
-    belt_hold_bullish: "看涨捉腰带线",
-    belt_hold_bearish: "看跌捉腰带线",
-    counterattack_bullish: "看涨反击线",
-    counterattack_bearish: "看跌反击线",
-    two_crows: "两只乌鸦",
-    three_black_crows: "三只乌鸦",
-    three_white_soldiers: "红三兵",
-    rising_three_methods: "上升三法",
-    falling_three_methods: "下降三法"
-});
+const morphPatternDisplayNames = new Map();
 const morphSignalPointsByKey = new Map();
 const extraMorphSignalSeriesByKey = new Map();
 const morphPatternPointsByName = new Map();

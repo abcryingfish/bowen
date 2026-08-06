@@ -18,10 +18,13 @@ timeout /t 1 /nobreak >nul
 echo.
 echo [web] Starting static web server. Keep this window open.
 echo Local page: http://127.0.0.1:%WEB_PORT%/量化因子/index.html
+echo Model validity page: http://127.0.0.1:%WEB_PORT%/模型有效性/index.html
 if defined LAN_IP (
     echo LAN page: http://!LAN_IP!:%WEB_PORT%/量化因子/index.html
+    echo LAN model validity page: http://!LAN_IP!:%WEB_PORT%/模型有效性/index.html
 ) else (
     echo LAN page: http://your-ip:%WEB_PORT%/量化因子/index.html
+    echo LAN model validity page: http://your-ip:%WEB_PORT%/模型有效性/index.html
 )
 echo.
 

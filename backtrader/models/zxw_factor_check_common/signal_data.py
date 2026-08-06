@@ -62,11 +62,13 @@ def merge_strong_buy_signal(
     merged = out.merge(factor_df, on=["time", "htsc_code"], how="left")
     for rule in rules:
         if rule.column not in merged.columns:
-            merged[rule.column] = 0.0
-        merged[rule.column] = pd.to_numeric(merged[rule.column], errors="coerce").fillna(0.0)
+            merged[rule.column] = pd.NA
+        merged[rule.column] = pd.to_numeric(merged[rule.column], errors="coerce")
 
     hit = _combine_rule_columns(merged, rules, operator)
     merged[STRONG_BUY_LINE] = hit.astype(float).to_numpy()
+    for rule in rules:
+        merged[rule.column] = merged[rule.column].fillna(0.0)
     # 宽表 feed 已注册 total_buy_signal 线，写入同值避免改 zxw_view_results_full
     merged["total_buy_signal"] = merged[STRONG_BUY_LINE]
     return merged
@@ -131,11 +133,13 @@ def merge_strong_sell_signal(
     merged = out.merge(factor_df, on=["time", "htsc_code"], how="left")
     for rule in rules:
         if rule.column not in merged.columns:
-            merged[rule.column] = 0.0
-        merged[rule.column] = pd.to_numeric(merged[rule.column], errors="coerce").fillna(0.0)
+            merged[rule.column] = pd.NA
+        merged[rule.column] = pd.to_numeric(merged[rule.column], errors="coerce")
 
     hit = _combine_rule_columns(merged, rules, operator)
     merged[STRONG_SELL_LINE] = hit.astype(float).to_numpy()
+    for rule in rules:
+        merged[rule.column] = merged[rule.column].fillna(0.0)
     return merged
 
 

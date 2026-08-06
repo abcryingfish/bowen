@@ -8,6 +8,8 @@
         { id: "results", file: "../%E7%BB%93%E6%9E%9C%E5%B1%95%E7%A4%BA/index.html", label: "\u6210\u679c\u5c55\u793a" },
         { id: "portfolio", file: "../%E7%BB%84%E5%90%88%E7%BB%93%E6%9E%9C/index.html", label: "\u7ec4\u5408\u7ed3\u679c" },
         { id: "live", file: "../%E5%AE%9E%E7%9B%98%E9%9D%A2/index.html", label: "\u5b9e\u76d8\u9762" },
+        { id: "multi-dimensional-analysis", file: "../%E5%A4%9A%E7%BB%B4%E5%BA%A6%E5%88%86%E6%9E%90/index.html", label: "\u591a\u7ef4\u5ea6\u5206\u6790" },
+        { id: "model-validity", file: "../%E6%A8%A1%E5%9E%8B%E6%9C%89%E6%95%88%E6%80%A7/index.html", label: "\u6a21\u578b\u6709\u6548\u6027" },
     ];
 
     const PARAM_KEYS = ["api", "api_base", "code"];

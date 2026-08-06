@@ -14,7 +14,7 @@
 | Default path | Written by | Notes |
 |--------------|------------|-------|
 | `D:\database\stock_basic_data_daily` | `获得股票日频数据.py` | 日 K OHLCV；`time` + `htsc_code` |
-| `D:\database\qmt_turnover_data` | `获得股票日频换手率.py` | QMT 日 K `volume` + `qmt_company_data/table=Capital` 的 `circulating_capital` 计算换手率 |
+| `D:\database\qmt_turnover_data` | `获得股票日频换手率.py` | QMT 日 K + Capital 计算换手率、总市值、流通市值和自由流通市值；股本按 `max(report_date, announce_date)` 生效 |
 | `D:\database\qmt_company_data\table=factor_fundamental_valuation` | `获得市值数据.py` | `get_stock_valuation` 估值字段；与 market_equity 同属财报父目录 |
 | `D:\database\stock_adj_daily_raw` | `qmt获得股票日频复权因子.py` | QMT 原始除权除息事件，按 `event_date` 年月分区 |
 | `D:\database\stock_adj_daily` | `qmt获得股票日频复权因子.py` | 处理后的复权分段 `adj_factor_segments.parquet` + 每日展开宽表 `wide_xdy` |
@@ -50,7 +50,7 @@
 | Path | API / source | Purpose |
 |------|----------------|---------|
 | `获得股票日频数据.py` | `get_all_stocks_info` + batch daily K | All-market daily OHLCV → `stock_basic_data_daily`; exports universe CSV with pinyin. |
-| `获得股票日频换手率.py` | local QMT daily K + Capital | 本地计算 `turnover_rate = volume / circulating_capital * 100` → `qmt_turnover_data`. |
+| `获得股票日频换手率.py` | local QMT daily K + Capital | 本地计算 `turnover_rate = volume / circulating_capital * 100`、`total_market_val = close * total_capital`、`floating_market_val = close * circulating_capital`、`free_float_market_val = close * freeFloatCapital` → `qmt_turnover_data`；股本按 `max(report_date, announce_date)` 生效；`freeFloatCapital <= 0` 或大于流通股本时按缺失处理，并沿用上一条有效值。 |
 | `qmt公司数据获取.py` | QMT company data + daily close | Per-stock incremental valuation only → `qmt_company_data/table=factor_fundamental_valuation`. Saves: `htsc_code`, `exchange`, `time`, `pe`, `pettm`, `pb`, `pc`, `pcttm`, `ps`, `psttm`, `floating_market_val`, `total_market_val`. **Does not** save `avg_vol_per_deal`, `avg_value_per_deal`, price/name fields. |
 | `qmt获得股票日频复权因子.py` | QMT `get_divid_factors` | Raw events → `stock_adj_daily_raw`; segments → `stock_adj_daily\adj_factor_segments.parquet`; daily wide table → `stock_adj_daily\wide_xdy`. |
 | `获得股票分钟级数据.py` | `signal_daily` pool + `stock_basic_data_daily` years + `get_kline` | Serial 1 stock × 1 year; default `--max-year 2025`; → `stock_basic_data_mins`. |
@@ -94,7 +94,7 @@ $py = c:\Users\Administrator\Desktop\python_venv\.venv\Scripts\python.exe
 & $py 工具/增量信号保存.py --base-dir D:\database\signal_daily --factor <FACTOR> --year <Y> --month <M>
 ```
 
-Common flags (liquidity / valuation / daily OHLC): `--default-start 2010-01-01`, `--end` (default today), `--listing-state 上市交易`, `--sleep-sec`.
+Common flags (liquidity / valuation / daily OHLC): `--default-start 2010-01-01`, `--end` (default today), `--listing-state 上市交易`, `--sleep-sec`. `获得股票日频换手率.py` 统一历史口径时可显式使用 `--replace-existing-partitions`，日常增量不要启用。
 
 ## Task routing
 

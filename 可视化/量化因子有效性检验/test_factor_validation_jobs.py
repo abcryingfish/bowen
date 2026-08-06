@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 import sys
 import tempfile
@@ -120,6 +121,47 @@ class PriceAdjustModeTests(unittest.TestCase):
         return path
 
 
+class OrdinaryFactorLabelTests(unittest.TestCase):
+    def test_list_factors_maps_reference_page_labels_and_keeps_unknown_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            signal_base = base / "signal_daily"
+            morph_base = base / "morph"
+            (signal_base / "factor=mac_total").mkdir(parents=True)
+            (signal_base / "factor=ADX_golden_cross").mkdir(parents=True)
+            (signal_base / "factor=unknown_factor").mkdir(parents=True)
+            meta_dir = signal_base / "_meta"
+            meta_dir.mkdir()
+            (meta_dir / "pure_technical_factor_catalog_cache.json").write_text(
+                json.dumps(
+                    {
+                        "factor_labels": {
+                            "ADX_golden_cross": "ADX_金叉",
+                            "missing_factor": "不应加载",
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            morph_base.mkdir()
+
+            original_signal = service.SIGNAL_DAILY_BASE_PATH
+            original_morph = service.MORPH_CANDLESTICK_BASE_PATH
+            service.SIGNAL_DAILY_BASE_PATH = signal_base
+            service.MORPH_CANDLESTICK_BASE_PATH = morph_base
+            try:
+                payload = service.list_factor_validation_factors()
+            finally:
+                service.SIGNAL_DAILY_BASE_PATH = original_signal
+                service.MORPH_CANDLESTICK_BASE_PATH = original_morph
+
+        self.assertEqual(payload["factor_labels"]["mac_total"], "MAC总")
+        self.assertEqual(payload["factor_labels"]["ADX_golden_cross"], "ADX_金叉")
+        self.assertEqual(payload["factor_labels"]["unknown_factor"], "unknown_factor")
+        self.assertNotIn("missing_factor", payload["factor_labels"])
+
+
 class MorphFactorTests(unittest.TestCase):
     def test_parse_morph_factor_name_keeps_level_and_pattern(self) -> None:
         self.assertEqual(
@@ -186,6 +228,42 @@ class MorphFactorTests(unittest.TestCase):
 
         morph_group = next(group for group in payload["groups"] if group["group_id"] == "morph")
         self.assertEqual(morph_group["children"], ["morph/level1/吞没形态", "morph/level2/刺透形态"])
+
+    def test_list_factors_exposes_chinese_morph_labels_and_legacy_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            (base / "morph_candlestick_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "patterns": {
+                            "engulfing_bullish": {
+                                "level": "level1",
+                                "display_name": "看涨吞没",
+                            },
+                            "legacy_pattern": {"level": "level2"},
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            original_base = service.MORPH_CANDLESTICK_BASE_PATH
+            original_signal = service.SIGNAL_DAILY_BASE_PATH
+            service.MORPH_CANDLESTICK_BASE_PATH = base
+            service.SIGNAL_DAILY_BASE_PATH = base / "ordinary"
+            try:
+                payload = service.list_factor_validation_factors()
+            finally:
+                service.MORPH_CANDLESTICK_BASE_PATH = original_base
+                service.SIGNAL_DAILY_BASE_PATH = original_signal
+
+        self.assertEqual(
+            payload["factor_labels"],
+            {
+                "morph/level1/engulfing_bullish": "一级形态 / 看涨吞没",
+                "morph/level2/legacy_pattern": "二级形态 / legacy_pattern",
+            },
+        )
 
     def test_list_morph_factors_uses_event_names_and_levels_when_events_exist(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -112,6 +112,9 @@
     }
 
     function initEdgeFloatHud(options) {
+        if (global.__edgeFloatHudInitialized) {
+            return;
+        }
         const pageId = (options && options.pageId) || "chart";
         const cluster = document.getElementById("edge-float-cluster");
         const hud = document.getElementById("edge-float-hud");
@@ -122,6 +125,7 @@
         if (!isClusterVisible(cluster)) {
             return;
         }
+        global.__edgeFloatHudInitialized = true;
 
         const navigateFn =
             options && typeof options.onNavigate === "function"
@@ -435,5 +439,23 @@
         isClusterVisible,
     };
     global.initEdgeFloatHud = initEdgeFloatHud;
-})(window);
 
+    function autoInitEdgeFloatHud() {
+        if (global.__edgeFloatHudInitialized) {
+            return;
+        }
+        const pageId = String(global.PAGE_VIEW || "").trim();
+        if (!pageId || !global.document || !global.document.getElementById("edge-float-hud")) {
+            return;
+        }
+        initEdgeFloatHud({ pageId, onNavigate: global.edgeFloatNavigateToPage });
+    }
+
+    if (global.document) {
+        if (global.document.readyState === "loading") {
+            global.document.addEventListener("DOMContentLoaded", autoInitEdgeFloatHud, { once: true });
+        } else {
+            global.setTimeout(autoInitEdgeFloatHud, 0);
+        }
+    }
+})(window);

@@ -726,7 +726,8 @@ html.portfolio-ykrs-curve-picker .portfolio-chart-legend.is-visible {
 
 .backtest-rule-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 72px 22px;
+    grid-template-columns: minmax(0, 1fr) 22px;
+    grid-template-rows: auto auto;
     align-items: center;
     gap: 5px;
     padding: 4px 0;
@@ -738,11 +739,66 @@ html.portfolio-ykrs-curve-picker .portfolio-chart-legend.is-visible {
 }
 
 .backtest-rule-name {
+    grid-column: 1;
+    grid-row: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--text);
     font-size: 11px;
+}
+
+.backtest-rule-item > .backtest-rule-remove {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.backtest-rule-filter-controls {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-width: 0;
+}
+
+.backtest-rule-control-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--muted);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.backtest-rule-filter-controls select,
+.backtest-rule-filter-controls input {
+    min-height: 22px;
+    padding: 2px 4px;
+    font-size: 11px;
+}
+
+.backtest-rule-filter-mode {
+    width: 92px;
+}
+
+.backtest-rule-value-operator,
+.backtest-rule-rank-direction,
+.backtest-rule-rank-unit {
+    width: 92px;
+}
+
+.backtest-rule-value,
+.backtest-rule-value-min,
+.backtest-rule-value-max,
+.backtest-rule-rank-percentile,
+.backtest-rule-rank-min,
+.backtest-rule-rank-max,
+.backtest-rule-rank-count,
+.backtest-rule-rank-count-min,
+.backtest-rule-rank-count-max {
+    width: 64px;
 }
 
 .backtest-rule-threshold {
@@ -758,6 +814,11 @@ html.portfolio-ykrs-curve-picker .portfolio-chart-legend.is-visible {
     grid-template-rows: auto auto;
     gap: 4px 6px;
     align-items: center;
+}
+
+.backtest-rule-item-traverse > .backtest-rule-remove {
+    grid-column: 2;
+    grid-row: 1;
 }
 
 .backtest-rule-item-traverse .backtest-rule-name {
@@ -1855,6 +1916,14 @@ html.portfolio-ykrs-curve-picker .portfolio-chart-legend.is-visible {
     border-bottom: 1px solid #2a3140;
     background: #1a1f2a;
     user-select: none;
+}
+
+.factor-group-header--directory {
+    cursor: pointer;
+}
+
+.factor-group-header--directory:hover {
+    background: #222836;
 }
 
 .factor-group-head-main {

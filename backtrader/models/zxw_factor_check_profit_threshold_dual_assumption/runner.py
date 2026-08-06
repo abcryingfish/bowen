@@ -11,7 +11,7 @@ import pandas as pd
 from settings import run_zxw_backtest
 
 from models.zxw_factor_check_common.init_alloc import compute_backscan_initial_weights
-from models.configurable_signal_rules.data import normalize_rules
+from models.configurable_signal_rules.data import factor_rule_to_payload, normalize_rules
 from models.zxw_factor_check_common.run_naming import build_full_run_name, strip_run_name_date_prefix
 from models.zxw_factor_check_common.signal_data import (
     merge_strong_buy_signal,
@@ -146,8 +146,8 @@ def run(
         create_cerebro_fn=zxw.create_cerebro,
     )
 
-    buy_rules_payload = [{"factor": r.factor, "threshold": r.threshold} for r in buy_template]
-    sell_rules_payload = [{"factor": r.factor, "threshold": r.threshold} for r in sell_template]
+    buy_rules_payload = [factor_rule_to_payload(r) for r in buy_template]
+    sell_rules_payload = [factor_rule_to_payload(r) for r in sell_template]
     config_payload: dict[str, Any] = {
         "codes": codes,
         "actual_codes": actual_codes,

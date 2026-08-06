@@ -672,15 +672,10 @@ class Pattern:
         
         three_crows = uptrend & three_bearish & falling_close
 
-        two_crows_signal = two_crows.astype(float) * self.signal_strength["two_crows"]
-        three_crows_signal = three_crows.astype(float) * self.signal_strength["three_crows"]
-
-        total_crows_signal = three_crows_signal.where(
-            three_crows_signal != 0,
-            two_crows_signal
-        )
-
-        return {"crows": total_crows_signal}
+        return {
+            "two_crows": two_crows.astype(float) * self.signal_strength["two_crows"],
+            "three_crows": three_crows.astype(float) * self.signal_strength["three_crows"],
+        }
 
     def three_white_soldiers_pattern(self, open_prices, high_prices, low_prices, close_prices):
         """白色三兵"""
@@ -1283,7 +1278,7 @@ class Pattern:
             'tweezers': (['tweezers_bottom'], ['tweezers_top']),
             'belt_hold': (['belt_hold_bullish'], ['belt_hold_bearish']),
             'counterattack': (['counterattack_bullish'], ['counterattack_bearish']),
-            'crows': ([], ['crows']),
+            'crows': ([], ['two_crows', 'three_crows']),
             'three_white_soldiers': (['three_white_soldiers'], []),
             'tower': (['tower_bottom'], ['tower_top']),
             'three_mountains': ([], ['three_mountains']),
@@ -1532,7 +1527,7 @@ class Pattern:
                 - Index: MultiIndex (Date, Contract)
                     - Date: int32格式（如 20240101）
                     - Contract: string格式
-                - Columns: 各个信号组合名称（如 'harami', 'engulfing', 'crows' 等）
+                - Columns: 各个具体子形态名称（如 'harami_bullish', 'engulfing_bearish' 等）
                 - Values: float格式，对应信号的强度值（保留正负和0）
         
         使用示例:
@@ -1556,8 +1551,8 @@ class Pattern:
             # 查询特定日期和合约的信号
             df.loc[(20240101, 'AAPL'), :]
             
-            # 查询特定信号的所有记录（非零）
-            df[df['harami'] != 0]['harami']
+            # 查询特定子形态的所有记录（非零）
+            df[df['harami_bullish'] != 0]['harami_bullish']
         """
         
         # 0. 如果 enabled_signals 是预设字符串 'Pattern'，使用预定义的信号组合
@@ -1624,36 +1619,25 @@ class Pattern:
         if enabled_signals is None:
             enabled_signals = list(signal_mapping.keys())
         
-        # 3. 根据 enabled_signals 计算信号，并将所有子信号合并为一个信号组合矩阵
-        # 策略：对于返回多个子信号的函数（如harami返回harami_bullish和harami_bearish），
-        #      我们将它们合并成一个矩阵（取所有子信号的和或优先非零值）
-        
-        combined_signal_matrices = {}
+        # 3. 根据 enabled_signals 计算信号，每个具体子形态保留为独立矩阵
+        individual_signal_matrices = {}
         
         for signal_name in enabled_signals:
             if signal_name not in signal_mapping:
                 print(f"警告: 未知的信号名称 '{signal_name}'，已忽略")
                 continue
             
-            # 调用计算函数，返回的是字典 {子信号名: 矩阵}
             result_dict = signal_mapping[signal_name]()
-            
-            # 将所有子信号矩阵合并为一个矩阵
-            # 合并策略：直接相加（因为子信号通常不会同时触发，且正负已经被区分）
-            combined_matrix = pd.DataFrame(0.0, index=close_prices.index, columns=close_prices.columns)
-            
             for sub_signal_name, sub_signal_matrix in result_dict.items():
                 if sub_signal_matrix is not None:
-                    combined_matrix = combined_matrix + sub_signal_matrix
-            
-            combined_signal_matrices[signal_name] = combined_matrix
+                    individual_signal_matrices[sub_signal_name] = sub_signal_matrix
         
         # 4. 将每个信号组合矩阵(Date × Contract)转换为Multi-index Series
         # 然后合并成一个DataFrame
         signal_series_list = []
         signal_names = []
         
-        for signal_name, signal_matrix in combined_signal_matrices.items():
+        for signal_name, signal_matrix in individual_signal_matrices.items():
             if signal_matrix is not None:
                 # 将矩阵stack成Multi-index Series
                 # stack()会自动创建MultiIndex (Date, Contract)

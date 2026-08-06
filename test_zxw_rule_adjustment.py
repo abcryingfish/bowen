@@ -9,7 +9,7 @@ BT_DIR = Path(__file__).parent / "backtrader"
 if str(BT_DIR) not in sys.path:
     sys.path.append(str(BT_DIR))
 
-from models.zxw_rule_backtest import zxw_view_results_full as zxw  # noqa: E402
+from models.zxw_data_pipeline import zxw_view_results_full as zxw  # noqa: E402
 
 
 def test_apply_ohlc_adj_to_price_df_uses_backward_ratio_wide_xdy(tmp_path):

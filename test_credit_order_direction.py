@@ -556,11 +556,15 @@ def test_trade_timer_wrapper_refreshes_once_and_releases_busy_flag():
     assert module.g.trade_loop_running is False
 
 
-def test_response_save_failure_keeps_previous_file(tmp_path):
+def test_response_save_failure_keeps_previous_file(tmp_path, monkeypatch):
     module = load_credit_module()
     response_path = tmp_path / 'response.txt'
     response_path.write_text('stable-old-response', encoding='gbk')
-    module.os.replace = lambda source, target: (_ for _ in ()).throw(OSError('replace failed'))
+    monkeypatch.setattr(
+        module.os,
+        'replace',
+        lambda source, target: (_ for _ in ()).throw(OSError('replace failed')),
+    )
     response = pd.DataFrame([{'stock_code': '600000.SH'}])
 
     assert module.save_tdx_signal_response(response, str(response_path)) is False

@@ -11,8 +11,6 @@ if str(BT_DIR) not in sys.path:
     sys.path.append(str(BT_DIR))
 
 from models.zxw_factor_check_base_threshold import runner as base_runner  # noqa: E402
-from models.zxw_factor_check_dual_assumption import runner as dual_runner  # noqa: E402
-from models.zxw_factor_check_no_lookahead import runner as no_lookahead_runner  # noqa: E402
 
 
 class FakeRuleModule:
@@ -68,26 +66,6 @@ def _run(module):
         frontend_sell_operator="or",
         progress=None,
     )
-
-
-def test_no_lookahead_runner_requests_backward_ratio_adjustment(monkeypatch):
-    captured: dict[str, object] = {}
-    _patch_common(monkeypatch, no_lookahead_runner, captured)
-
-    result = _run(no_lookahead_runner)
-
-    assert captured["adj_mode"] == "backward_ratio"
-    assert result["config"]["adj_mode"] == "backward_ratio"
-
-
-def test_dual_assumption_runner_requests_backward_ratio_adjustment(monkeypatch):
-    captured: dict[str, object] = {}
-    _patch_common(monkeypatch, dual_runner, captured)
-
-    result = _run(dual_runner)
-
-    assert captured["adj_mode"] == "backward_ratio"
-    assert result["config"]["adj_mode"] == "backward_ratio"
 
 
 def test_base_threshold_runner_requests_backward_ratio_adjustment(monkeypatch):

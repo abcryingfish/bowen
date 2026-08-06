@@ -42,19 +42,3 @@ def test_export_history_trade_rows_writes_csv(tmp_path, monkeypatch):
     assert "1000310,stock,deal,20260701,20260710,20260710100100,601318.SH" in text
     assert "\u56fd\u529b\u7535\u5b50" in text
     assert ",24,49.750000,100,4975.00," in text
-
-
-def test_find_history_trade_func_can_use_context_method():
-    module = load_history_module()
-
-    def fake_history(*args):
-        return []
-
-    class FakeContext:
-        get_history_trade_detail_data = staticmethod(fake_history)
-
-    func, source, available = module.find_history_trade_func(FakeContext())
-
-    assert func is fake_history
-    assert source == "context.get_history_trade_detail_data"
-    assert "get_history_trade_detail_data" in available

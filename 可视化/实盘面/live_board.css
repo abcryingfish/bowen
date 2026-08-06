@@ -19,6 +19,30 @@ body.page-live-board .live-shell {
     padding-top: 0;
 }
 
+body.page-live-board .live-model-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgba(38, 166, 154, 0.4);
+    border-radius: 4px;
+    color: #9fe8de;
+    background: rgba(38, 166, 154, 0.1);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+body.page-live-board .live-model-link:hover {
+    color: #d9fff9;
+    background: rgba(38, 166, 154, 0.22);
+}
+
 body.page-live-board .live-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));

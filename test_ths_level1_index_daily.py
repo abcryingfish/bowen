@@ -6,12 +6,14 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import polars as pl
+import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parent
-SCRIPT_PATH = ROOT / "工具" / "获得同花顺1级指数日频数据.py"
+SCRIPT_PATH = ROOT / "工具" / "获得同花顺板块和成分股.py"
 ENTRY_PATH = ROOT / "工具" / "全量数据更新_合并入口.py"
 
 
@@ -194,6 +196,179 @@ def test_purge_existing_ths_rows_preserves_other_indices(tmp_path: Path):
     assert remaining["htsc_code"].to_list() == ["000001.SH"]
 
 
+def test_pipeline_passes_local_extraction_directly_to_research(monkeypatch, tmp_path: Path):
+    module = load_module()
+    extracted = {
+        "level_rows": {
+            "同花顺软件一级": [
+                {"指数代码": "881121", "板块名称": "半导体", "软件级别": "同花顺软件一级"}
+            ],
+            "同花顺软件二级": [],
+        },
+        "constituent_rows": [
+            {
+                "指数代码": "881121",
+                "板块名称": "半导体",
+                "股票代码": "600000.SH",
+                "软件级别": "同花顺软件一级",
+            }
+        ],
+        "level1_indices": [
+            {
+                "security_id": "881121",
+                "htsc_code": "881121.THS",
+                "index_name": "半导体",
+                "index_prefix": "881",
+            }
+        ],
+        "snapshot_date": "2026-07-24",
+    }
+    calls: dict[str, object] = {}
+
+    monkeypatch.setattr(module, "extract_ths_sector_data", lambda **kwargs: extracted)
+    monkeypatch.setattr(
+        module,
+        "write_sector_exports",
+        lambda result, output_dir: calls.setdefault("export", result),
+    )
+    monkeypatch.setattr(
+        module,
+        "run_level1_daily_update",
+        lambda args, indices: calls.setdefault("daily_indices", indices),
+    )
+
+    def capture_research(*, sectors, members, **kwargs):
+        calls["research_sectors"] = sectors
+        calls["research_members"] = members
+        calls["constituent_snapshot_date"] = kwargs["constituent_snapshot_date"]
+
+    monkeypatch.setattr(module, "run_sector_research", capture_research)
+    args = SimpleNamespace(
+        ths_root=str(tmp_path / "ths"),
+        output_dir=str(tmp_path / "export"),
+        secondary_export=str(tmp_path / "Table.xlsx"),
+        history_workers=1,
+        sector_base_dir=str(tmp_path / "sector_information"),
+        audit_path=str(tmp_path / "audit.parquet"),
+        analysis_date="2026-07-24",
+    )
+
+    module.run_pipeline(args)
+
+    assert calls["export"] is extracted
+    assert calls["daily_indices"] is extracted["level1_indices"]
+    assert calls["research_members"]["股票代码"].tolist() == ["600000.SH"]
+    assert calls["research_sectors"]["指数代码"].tolist() == ["881121"]
+    assert calls["constituent_snapshot_date"] == "2026-07-24"
+
+
+def test_load_fundamental_features_accepts_null_then_float_parquet_schema(
+    monkeypatch,
+    tmp_path: Path,
+):
+    module = load_module()
+    first_dir = tmp_path / "year=2025" / "month=03"
+    second_dir = tmp_path / "year=2026" / "month=03"
+    first_dir.mkdir(parents=True)
+    second_dir.mkdir(parents=True)
+    common = {
+        "htsc_code": ["600000.SH"],
+        "income_report_date": [datetime(2024, 12, 31)],
+        "income_announce_date": [datetime(2025, 3, 28)],
+        "time": [datetime(2025, 3, 28)],
+        "roe": [8.0],
+        "net_roe": [8.5],
+    }
+    pl.DataFrame(
+        {
+            **common,
+            "revenue_ttm": pl.Series([None], dtype=pl.Null),
+            "net_profit_parent_ttm": pl.Series([None], dtype=pl.Null),
+        }
+    ).write_parquet(first_dir / "merged.parquet")
+    pl.DataFrame(
+        {
+            **{
+                **common,
+                "income_report_date": [datetime(2025, 12, 31)],
+                "income_announce_date": [datetime(2026, 3, 28)],
+                "time": [datetime(2026, 3, 28)],
+            },
+            "revenue_ttm": [100.0],
+            "net_profit_parent_ttm": [10.0],
+        }
+    ).write_parquet(second_dir / "merged.parquet")
+    monkeypatch.setattr(
+        module,
+        "VALUATION_GLOB",
+        str(tmp_path / "year=*" / "month=*" / "merged.parquet"),
+    )
+    members = pd.DataFrame(
+        [{"指数代码": "881121", "股票代码": "600000.SH"}]
+    )
+
+    result = module.load_fundamental_features(members, "2026-07-29")
+
+    assert result["sector_id"].tolist() == ["881121"]
+    assert result["fundamental_covered_members"].tolist() == [1]
+    assert result["median_net_margin_pct"].tolist() == [10.0]
+
+
+def test_partition_writer_overwrites_same_date_and_keeps_other_dates(tmp_path: Path):
+    module = load_module()
+    first = pd.DataFrame([{"value": 1}])
+    revised = pd.DataFrame([{"value": 2}])
+    next_day = pd.DataFrame([{"value": 3}])
+
+    module.write_partition(first, tmp_path, "constituent_snapshots_raw", "2026-07-24")
+    module.write_partition(revised, tmp_path, "constituent_snapshots_raw", "2026-07-24")
+    module.write_partition(next_day, tmp_path, "constituent_snapshots_raw", "2026-07-25")
+
+    day_one = pl.read_parquet(
+        tmp_path / "constituent_snapshots_raw" / "analysis_date=2026-07-24" / "part-000.parquet"
+    )
+    day_two = pl.read_parquet(
+        tmp_path / "constituent_snapshots_raw" / "analysis_date=2026-07-25" / "part-000.parquet"
+    )
+    assert day_one["value"].to_list() == [2]
+    assert day_two["value"].to_list() == [3]
+
+
+def test_sector_csv_export_overwrites_previous_result(tmp_path: Path):
+    module = load_module()
+
+    def result(code: str) -> dict[str, object]:
+        level_row = {
+            "软件级别": "同花顺软件一级",
+            "指数代码": code,
+            "板块名称": "测试板块",
+            "成分股数量": 1,
+            "history_fetch_status": "成功",
+        }
+        return {
+            "level_rows": {
+                "同花顺软件一级": [level_row],
+                "同花顺软件二级": [],
+            },
+            "constituent_rows": [
+                {
+                    "软件级别": "同花顺软件一级",
+                    "指数代码": code,
+                    "板块名称": "测试板块",
+                    "股票代码": "600000.SH",
+                }
+            ],
+        }
+
+    module.write_sector_exports(result("881001"), tmp_path)
+    module.write_sector_exports(result("881002"), tmp_path)
+
+    sectors = pd.read_csv(tmp_path / "同花顺软件一级板块.csv", dtype=str, encoding="utf-8-sig")
+    members = pd.read_csv(tmp_path / "同花顺软件板块成分股.csv", dtype=str, encoding="utf-8-sig")
+    assert sectors["指数代码"].tolist() == ["881002"]
+    assert members["指数代码"].tolist() == ["881002"]
+
+
 def test_combined_entry_exposes_ths_stage_and_argument_passthrough():
     completed = subprocess.run(
         [
@@ -213,5 +388,5 @@ def test_combined_entry_exposes_ths_stage_and_argument_passthrough():
     )
 
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert "获得同花顺1级指数日频数据.py" in completed.stdout
+    assert "获得同花顺板块和成分股.py" in completed.stdout
     assert "--end 2026-07-14" in completed.stdout

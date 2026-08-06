@@ -777,12 +777,25 @@ function getMorphPatternSeriesColor(name, patternNames = []) {
     return SIGNAL_SERIES_COLORS[idx % SIGNAL_SERIES_COLORS.length];
 }
 
+function applyMorphPatternDisplayNames(payload) {
+    const names = payload && payload.meta && typeof payload.meta.pattern_display_names === "object"
+        ? payload.meta.pattern_display_names
+        : {};
+    for (const [key, label] of Object.entries(names)) {
+        const signalName = String(key || "").trim();
+        const displayName = String(label || "").trim();
+        if (signalName && displayName) {
+            morphPatternDisplayNames.set(signalName, displayName);
+        }
+    }
+}
+
 function getMorphPatternDisplayName(signalName) {
     const key = String(signalName || "").trim();
     if (!key) {
         return "";
     }
-    return MORPH_PATTERN_NAME_ZH[key] || key;
+    return morphPatternDisplayNames.get(key) || key;
 }
 
 function redrawMorphPatternOverlayAtCachedTime() {
@@ -885,6 +898,7 @@ function mergeMorphEventsIntoByDay(incomingEvents) {
 }
 
 function applyMorphCandlestickPayload(payload, levelKey, options = {}) {
+    applyMorphPatternDisplayNames(payload);
     const merge = Boolean(options && options.merge);
     const patterns = payload && typeof payload.patterns === "object" ? payload.patterns : {};
     const events = Array.isArray(payload && payload.events) ? payload.events : [];

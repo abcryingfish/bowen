@@ -16,6 +16,14 @@ BundleResult = tuple[set[str], list[dict[str, Any]]]
 RawBundleCompute = Callable[..., BundleResult]
 
 
+def _factor_merge_policy(bundle: dict[str, Any], factor_name: str) -> dict[str, Any]:
+    policies = bundle.get("factor_merge_policies", {})
+    if not isinstance(policies, dict):
+        return {}
+    policy = policies.get(factor_name, {})
+    return policy if isinstance(policy, dict) else {}
+
+
 def normalize_valid_bar(
     valid_bar: pd.DataFrame,
     *,
@@ -99,12 +107,16 @@ def _merge_compacted_result(
     for bundle in bundles:
         factor_dfs: dict[str, pd.DataFrame] = {}
         for factor_name, frame in bundle.get("factor_dfs", {}).items():
+            policy = _factor_merge_policy(bundle, factor_name)
             aligned = frame.reindex(index=compact_index, columns=columns).astype(float)
             out_np = np.full((len(original_index), len(columns)), np.nan, dtype=np.float64)
             if real_row_idx.size:
                 aligned_np = aligned.to_numpy(dtype=np.float64, copy=False)
                 out_np[real_row_idx, col_idx] = aligned_np[compact_row_idx, col_idx]
-            factor_dfs[factor_name] = pd.DataFrame(out_np, index=original_index, columns=columns)
+            remapped = pd.DataFrame(out_np, index=original_index, columns=columns)
+            if bool(policy.get("preserve_columns", False)):
+                remapped = remapped.loc[:, frame.columns.intersection(columns, sort=False)]
+            factor_dfs[factor_name] = remapped
         remapped_bundles.append({**bundle, "factor_dfs": factor_dfs})
     return selected, remapped_bundles
 
@@ -167,7 +179,9 @@ def merge_bundle_outputs(
             cols=int(len(columns)),
         )
         factor_dfs: dict[str, pd.DataFrame] = {}
+        first_bundle = part_results[0][1][bundle_idx]
         for factor_name in factor_names:
+            policy = _factor_merge_policy(first_bundle, factor_name)
             pieces: list[pd.DataFrame] = []
             for _, bundles in part_results:
                 frame = bundles[bundle_idx].get("factor_dfs", {}).get(factor_name)
@@ -175,7 +189,14 @@ def merge_bundle_outputs(
                     continue
                 pieces.append(frame.reindex(index=index).astype(float, copy=False))
             if pieces:
-                factor_dfs[factor_name] = pd.concat(pieces, axis=1, copy=False).reindex(columns=columns).fillna(0.0)
+                merged = pd.concat(pieces, axis=1, copy=False)
+                if bool(policy.get("preserve_columns", False)):
+                    merged = merged.reindex(columns=columns[columns.isin(merged.columns)])
+                else:
+                    merged = merged.reindex(columns=columns)
+                if not bool(policy.get("preserve_nan", False)):
+                    merged = merged.fillna(0.0)
+                factor_dfs[factor_name] = merged
             else:
                 factor_dfs[factor_name] = pd.DataFrame(0.0, index=index, columns=columns)
         factor_log(

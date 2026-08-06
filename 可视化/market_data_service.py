@@ -72,7 +72,9 @@ from temp_today_market_cache import (
 MINUTE_BASE_PATH = r"D:\database\stock_basic_data_mins"
 DAILY_BASE_PATH = r"D:\database\stock_basic_data_daily"
 INDEX_DAILY_BASE_PATH = r"D:\database\index_data_daily"
+INDEX_MINUTE_BASE_PATH = r"D:\database\index_data_mins"
 INDEX_UNIVERSE_PATH = Path(INDEX_DAILY_BASE_PATH) / "_meta" / "ths_level1_universe.parquet"
+INDEX_MINUTE_UNIVERSE_PATH = Path(INDEX_MINUTE_BASE_PATH) / "_meta" / "ths_level1_universe.parquet"
 ETF_DAILY_BASE_PATH = r"D:\database\ETF_basic_data_daily"
 PORTFOLIO_MINUTE_BASE_PATH = r"D:\database\stock_portfolio_data_mins"
 PORTFOLIO_DAILY_BASE_PATH = r"D:\database\stock_portfolio_data_daily"
@@ -116,6 +118,7 @@ BACKTEST_SUMMARY_FILE_GLOB = "summary_*.json"
 BACKTEST_POSITION_FILE_GLOB = "position_log_*.parquet"
 BACKTEST_ORDER_FILE_GLOB = "order_log_*.*"
 FACTOR_CATALOG_PATH = Path(__file__).resolve().parents[1] / "因子分类" / "factor_catalog.json"
+PURE_TECHNICAL_CATALOG_CACHE_FILE = "pure_technical_factor_catalog_cache.json"
 SUPPORTED_INTERVALS = ("1min", "1day")
 TEMP_TODAY_MARKET_CACHE_PATH = os.environ.get("TEMP_TODAY_MARKET_CACHE_PATH", "")
 
@@ -230,6 +233,7 @@ _FACTOR_DISPLAY_TO_INTERNAL: dict[str, tuple[str, ...]] = {
     "K顶来幅": ("k_top_arrival_base",),
     "K线顶2": ("kline_top_2",),
     "K线顶": ("kline_top",),
+    "洪超迷你底": ("hong_ultra_mini_bottom",),
     "洪迷你底": ("hong_mini_bottom",),
     "洪小底": ("hong_small_bottom",),
     "洪大底": ("hong_major_bottom",),
@@ -369,9 +373,18 @@ def _resolve_factor_column_name(requested: str, available: set[str]) -> str | No
         return None
     if s in available:
         return s
+    # 因子目录名落盘前会将 Windows 不允许的路径字符统一替换为下划线；
+    # 配置文件仍可能保留原始展示名（例如 ``20/60日波动率比``），这里
+    # 必须使用同一规则归一化，否则该因子会被错误放入“未分类”。
+    normalized = _sanitize_factor_dir_name(s)
+    if normalized in available:
+        return normalized
     for alt in _FACTOR_DISPLAY_TO_INTERNAL.get(s, ()):
         if alt in available:
             return alt
+        normalized_alt = _sanitize_factor_dir_name(alt)
+        if normalized_alt in available:
+            return normalized_alt
     for _display, alts in _FACTOR_DISPLAY_TO_INTERNAL.items():
         if s in alts:
             if s in available:
@@ -431,6 +444,9 @@ _etf_universe_mtime: float = 0.0
 _index_universe_lock = Lock()
 _index_universe_cache: list[dict[str, str]] = []
 _index_universe_mtime: float = 0.0
+_ths_minute_universe_lock = Lock()
+_ths_minute_universe_cache: list[dict[str, str]] = []
+_ths_minute_universe_mtime: float = 0.0
 
 
 def _build_name_pinyin_aliases(name: str) -> tuple[str, ...]:
@@ -516,6 +532,18 @@ def get_base_path_by_interval(interval: str) -> str:
 def is_portfolio_curve_code(code: str) -> bool:
     """判断是否为组合净值曲线代码。"""
     return code is not None and code.upper() in PORTFOLIO_CURVE_CODES
+
+
+def is_ths_level1_code(code: str) -> bool:
+    """判断是否为同花顺软件一级板块代码。"""
+    parsed = str(code or "").strip().upper()
+    security_id = parsed.removesuffix(".THS")
+    return (
+        parsed.endswith(".THS")
+        and len(security_id) == 6
+        and security_id.isdigit()
+        and security_id.startswith(("881", "882", "885", "886"))
+    )
 
 
 def _refresh_index_market_code_cache() -> set[str]:
@@ -642,6 +670,11 @@ def get_base_path_by_code_and_interval(code: str, interval: str, run_tag: str | 
             if run_tag:
                 return get_portfolio_daily_base_path(run_tag)
             raise MarketDataValidationError("组合曲线查询须提供 run_tag")
+    if is_ths_level1_code(code):
+        if interval == "1min":
+            return INDEX_MINUTE_BASE_PATH
+        if interval == "1day":
+            return INDEX_DAILY_BASE_PATH
     if is_index_market_code(code):
         if interval != "1day":
             raise MarketDataValidationError("指数数据当前仅支持 interval=1day")
@@ -793,6 +826,7 @@ def build_partition_paths(base_path: str, from_ts: int, to_ts: int) -> list[str]
     normalized_base = os.path.normcase(os.path.abspath(base_path))
     minute_bases = {
         os.path.normcase(os.path.abspath(MINUTE_BASE_PATH)),
+        os.path.normcase(os.path.abspath(INDEX_MINUTE_BASE_PATH)),
         os.path.normcase(os.path.abspath(PORTFOLIO_MINUTE_BASE_PATH)),
     }
     if normalized_base in minute_bases:
@@ -2280,6 +2314,56 @@ def _load_index_universe_records(force_refresh: bool = False) -> list[dict[str, 
         return list(records)
 
 
+def _load_ths_minute_universe_records(force_refresh: bool = False) -> list[dict[str, str]]:
+    """加载分钟仓自己的同花顺软件一级板块清单。"""
+    global _ths_minute_universe_cache, _ths_minute_universe_mtime
+    path = Path(INDEX_MINUTE_UNIVERSE_PATH)
+    if not path.is_file():
+        return []
+
+    mtime = path.stat().st_mtime
+    with _ths_minute_universe_lock:
+        if not force_refresh and _ths_minute_universe_cache and mtime == _ths_minute_universe_mtime:
+            return list(_ths_minute_universe_cache)
+
+        conn = duckdb.connect(database=":memory:")
+        try:
+            rows = conn.execute(
+                """
+                SELECT
+                    UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS code,
+                    COALESCE(CAST(name AS VARCHAR), '') AS name,
+                    COALESCE(CAST(pinyin_initials AS VARCHAR), '') AS pinyin_initials,
+                    COALESCE(CAST(security_type AS VARCHAR), 'index') AS security_type
+                FROM read_parquet(?)
+                WHERE htsc_code IS NOT NULL
+                  AND TRIM(CAST(htsc_code AS VARCHAR)) <> ''
+                  AND COALESCE(TRY_CAST(is_active AS BOOLEAN), TRUE)
+                ORDER BY code
+                """,
+                [str(path)],
+            ).fetchall()
+        finally:
+            conn.close()
+
+        records: list[dict[str, str]] = []
+        for row in rows:
+            if not row or not row[0]:
+                continue
+            records.append(
+                {
+                    "code": str(row[0]).strip().upper(),
+                    "name": str(row[1] or "").strip(),
+                    "pinyin_initials": str(row[2] or "").strip().upper(),
+                    "security_type": str(row[3] or "index").strip().lower() or "index",
+                    "name_pinyin_aliases": _build_name_pinyin_aliases(row[1] or ""),
+                }
+            )
+        _ths_minute_universe_cache = records
+        _ths_minute_universe_mtime = mtime
+        return list(records)
+
+
 def _scan_all_codes_from_path(base_path: str) -> list[str]:
     merged_files = _list_all_merged_files(base_path)
     if not merged_files:
@@ -2655,7 +2739,27 @@ def _normalize_factor_catalog(raw_catalog: Any, available_factors: list[str]) ->
     return {"groups": groups, "core_factors": core_factors, "core_factor_labels": core_factor_labels}
 
 
-def _load_factor_catalog(available_factors: list[str], force_refresh: bool = False) -> dict[str, Any]:
+def _load_pure_technical_factor_metadata(base_path: str) -> dict[str, Any]:
+    path = Path(base_path) / "_meta" / PURE_TECHNICAL_CATALOG_CACHE_FILE
+    if not path.is_file():
+        return {"factor_labels": {}, "groups": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"factor_labels": {}, "groups": []}
+    labels = payload.get("factor_labels")
+    groups = payload.get("groups")
+    return {
+        "factor_labels": labels if isinstance(labels, dict) else {},
+        "groups": groups if isinstance(groups, list) else [],
+    }
+
+
+def _load_factor_catalog(
+    available_factors: list[str],
+    force_refresh: bool = False,
+    base_path: str = SIGNAL_DAILY_BASE_PATH,
+) -> dict[str, Any]:
     now_ts = time.time()
     with _factor_catalog_lock:
         need_refresh = (
@@ -2674,7 +2778,28 @@ def _load_factor_catalog(available_factors: list[str], force_refresh: bool = Fal
             _factor_catalog_cache["data"] = raw_catalog
             _factor_catalog_cache["loaded_at"] = now_ts
 
-        return _normalize_factor_catalog(_factor_catalog_cache.get("data"), available_factors)
+        raw_catalog = _factor_catalog_cache.get("data")
+
+    pure_metadata = _load_pure_technical_factor_metadata(base_path)
+    dynamic_groups = pure_metadata["groups"]
+    if isinstance(raw_catalog, dict) and isinstance(raw_catalog.get("groups"), list):
+        merged_raw_catalog = {
+            **raw_catalog,
+            "groups": [*raw_catalog["groups"], *dynamic_groups],
+        }
+    elif dynamic_groups:
+        merged_raw_catalog = {"groups": dynamic_groups}
+    else:
+        merged_raw_catalog = raw_catalog
+
+    normalized = _normalize_factor_catalog(merged_raw_catalog, available_factors)
+    available_set = set(available_factors)
+    normalized["factor_labels"] = {
+        str(factor_id): str(label)
+        for factor_id, label in pure_metadata["factor_labels"].items()
+        if str(factor_id) in available_set and str(label).strip()
+    }
+    return normalized
 
 
 def _normalize_limit(value: Any) -> int:
@@ -2717,20 +2842,25 @@ def search_market_codes(
     etf_records = _load_etf_universe_records()
     if etf_records:
         universe_records = list(universe_records) + list(etf_records)
-    if parsed_interval == "1day":
-        index_records = _load_index_universe_records()
+    if parsed_interval in {"1day", "1min"}:
+        index_records = (
+            _load_ths_minute_universe_records()
+            if parsed_interval == "1min"
+            else _load_index_universe_records()
+        )
         indexed_codes = {str(item.get("code") or "").upper() for item in index_records}
-        index_records = list(index_records) + [
-            {
-                "code": code,
-                "name": INDEX_CODE_LABELS.get(code, ""),
-                "pinyin_initials": "",
-                "name_pinyin_aliases": (),
-                "security_type": "index",
-            }
-            for code in sorted(get_index_market_code_set())
-            if code not in indexed_codes
-        ]
+        if parsed_interval == "1day":
+            index_records = list(index_records) + [
+                {
+                    "code": code,
+                    "name": INDEX_CODE_LABELS.get(code, ""),
+                    "pinyin_initials": "",
+                    "name_pinyin_aliases": (),
+                    "security_type": "index",
+                }
+                for code in sorted(get_index_market_code_set())
+                if code not in indexed_codes
+            ]
         universe_records = list(universe_records) + index_records
     matched_items: list[dict[str, str]] = []
     seen_codes: set[str] = set()
@@ -2867,8 +2997,13 @@ def list_signal_factors(
     if not factors:
         raise MarketDataNotFoundError("未找到可用因子字段")
 
-    catalog = _load_factor_catalog(factors, force_refresh=force_refresh)
+    catalog = _load_factor_catalog(
+        factors,
+        force_refresh=force_refresh,
+        base_path=resolved_base_path,
+    )
     factor_labels = _build_factor_display_label_map(factors)
+    factor_labels.update(catalog.get("factor_labels", {}))
     return {
         "factors": factors,
         "groups": catalog.get("groups", []),
@@ -3355,6 +3490,21 @@ def _morph_patterns_for_level(manifest: dict[str, Any], level: str) -> list[str]
     )
 
 
+def _morph_pattern_display_names(
+    manifest: dict[str, Any],
+    pattern_names: list[str],
+) -> dict[str, str]:
+    patterns = manifest.get("patterns") or {}
+    return {
+        name: str((patterns.get(name) or {}).get("display_name") or name)
+        for name in pattern_names
+    }
+
+
+def _morph_event_display_name(manifest: dict[str, Any], signal_name: str) -> str:
+    return _morph_pattern_display_names(manifest, [signal_name])[signal_name]
+
+
 def _build_events_partition_paths(source_base: str, from_ts: int, to_ts: int) -> list[str]:
     events_base = os.path.join(source_base, "events")
     if not os.path.exists(events_base):
@@ -3431,6 +3581,7 @@ def query_morph_candlestick_signals(
 
     manifest = _load_morph_candlestick_manifest(source_base)
     pattern_names = _morph_patterns_for_level(manifest, level_key)
+    pattern_display_names = _morph_pattern_display_names(manifest, pattern_names)
     if include_patterns and not pattern_names:
         raise MarketDataNotFoundError(f"manifest 中未找到 level={level_key} 的形态定义")
 
@@ -3490,6 +3641,7 @@ def query_morph_candlestick_signals(
                         "time": int(row[0]),
                         "start_time": int(row[1]) if row[1] is not None else int(row[0]),
                         "signal_name": str(row[2]),
+                        "display_name": _morph_event_display_name(manifest, str(row[2])),
                         "value": float(row[3]) if row[3] is not None else 0.0,
                         "direction": str(row[4] or ""),
                         "bar_span": int(row[5]) if row[5] is not None else 1,
@@ -3516,6 +3668,7 @@ def query_morph_candlestick_signals(
                     "base_path": resolved_base_path,
                     "source": MORPH_CANDLESTICK_SOURCE_DIR,
                     "fields": fields_key,
+                    "pattern_display_names": pattern_display_names,
                 },
             }
         raise MarketDataNotFoundError("目标时间范围内未找到对应形态信号")
@@ -3535,6 +3688,7 @@ def query_morph_candlestick_signals(
             "base_path": resolved_base_path,
             "source": MORPH_CANDLESTICK_SOURCE_DIR,
             "fields": fields_key if fields_key else "all",
+            "pattern_display_names": pattern_display_names,
         },
     }
 
@@ -3579,7 +3733,11 @@ def query_market_factor_snapshot(
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
     available_factors = _get_cached_factor_names(resolved_base_path)
-    catalog = _load_factor_catalog(available_factors, force_refresh=False)
+    catalog = _load_factor_catalog(
+        available_factors,
+        force_refresh=False,
+        base_path=resolved_base_path,
+    )
 
     selected_factors: list[str]
     if parsed_mode == "all":
@@ -3756,13 +3914,6 @@ def export_market_factor_rank_csv(
     if not partition_paths:
         raise MarketDataNotFoundError("目标时间范围内未找到对应因子分区")
 
-    all_codes = [
-        code for code in _get_factor_export_rank_codes()
-        if code and not str(code).upper().endswith(".YKRS")
-    ]
-    if not all_codes:
-        raise MarketDataNotFoundError("未找到可导出的标的代码")
-
     day_start = int(parsed_time // 86400) * 86400
     path_placeholders = ", ".join(["?"] * len(partition_paths))
     sql = f"""
@@ -3824,16 +3975,29 @@ def export_market_factor_rank_csv(
             parsed_value = None
         value_by_code[code] = parsed_value
 
-    ordered_codes = sorted(set(str(code).upper() for code in all_codes if str(code).strip()))
+    ordered_codes = sorted(value_by_code)
     export_date = datetime.utcfromtimestamp(day_start).strftime("%Y-%m-%d")
-    rows_for_csv: list[tuple[str, str, float | None]] = []
+    name_by_code: dict[str, str] = {}
+    for records in (
+        _load_stock_universe_records(),
+        _load_etf_universe_records(),
+        _load_index_universe_records(),
+    ):
+        for item in records:
+            code = str(item.get("code") or "").strip().upper()
+            if code and code not in name_by_code:
+                name_by_code[code] = str(item.get("name") or "").strip()
+
+    rows_for_csv: list[tuple[str, str, str, float | None]] = []
     for code in ordered_codes:
-        rows_for_csv.append((export_date, code, value_by_code.get(code)))
+        rows_for_csv.append(
+            (export_date, code, name_by_code.get(code, ""), value_by_code.get(code))
+        )
 
     rows_for_csv.sort(
         key=lambda item: (
-            item[2] is None,
-            -(item[2] if item[2] is not None else 0.0),
+            item[3] is None,
+            -(item[3] if item[3] is not None else 0.0),
             item[1],
         )
     )
@@ -3848,14 +4012,14 @@ def export_market_factor_rank_csv(
     try:
         with output_path.open("w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
-            writer.writerow(["时间", "标的代码", "因子值"])
+            writer.writerow(["时间", "标的代码", "标的名称", "因子值"])
             for row in rows_for_csv:
-                value = "" if row[2] is None else row[2]
-                writer.writerow([row[0], row[1], value])
+                value = "" if row[3] is None else row[3]
+                writer.writerow([row[0], row[1], row[2], value])
     except OSError as exc:
         raise MarketDataError(f"CSV 写入失败: {exc}") from exc
 
-    missing_count = sum(1 for item in rows_for_csv if item[2] is None)
+    missing_count = sum(1 for item in rows_for_csv if item[3] is None)
     return {
         "file_path": str(output_path),
         "meta": {

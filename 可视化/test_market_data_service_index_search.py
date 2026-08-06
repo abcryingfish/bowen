@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import market_data_service as service
 
 
@@ -51,3 +53,51 @@ def test_daily_code_search_includes_index_when_stock_universe_exists(monkeypatch
     assert service.search_market_codes(
         "YY", interval="1day", base_path=str(tmp_path)
     )["codes"] == ["881121.THS"]
+
+
+def test_minute_code_search_includes_ths_index_records(monkeypatch, tmp_path):
+    monkeypatch.setattr(service, "_load_stock_universe_records", lambda: [])
+    monkeypatch.setattr(service, "_load_etf_universe_records", lambda: [])
+    monkeypatch.setattr(
+        service,
+        "_load_ths_minute_universe_records",
+        lambda: [
+            {
+                "code": "881121.THS",
+                "name": "医药",
+                "pinyin_initials": "YY",
+                "name_pinyin_aliases": ("YIYAO",),
+                "security_type": "index",
+            },
+            {
+                "code": "000001.SH",
+                "name": "上证指数",
+                "pinyin_initials": "SZZS",
+                "name_pinyin_aliases": (),
+                "security_type": "index",
+            },
+        ],
+    )
+
+    result = service.search_market_codes(
+        "医药",
+        interval="1min",
+        base_path=str(tmp_path),
+    )
+
+    assert result["codes"] == ["881121.THS"]
+    assert result["items"][0]["security_type"] == "index"
+
+
+def test_ths_code_routes_to_index_minute_and_daily_paths(monkeypatch):
+    monkeypatch.setattr(
+        service,
+        "get_index_market_code_set",
+        lambda: {"000001.SH"},
+    )
+
+    assert service.get_base_path_by_code_and_interval("881101.THS", "1min") == service.INDEX_MINUTE_BASE_PATH
+    assert service.get_base_path_by_code_and_interval("881101.THS", "1day") == service.INDEX_DAILY_BASE_PATH
+
+    with pytest.raises(service.MarketDataValidationError, match="仅支持 interval=1day"):
+        service.get_base_path_by_code_and_interval("000001.SH", "1min")
