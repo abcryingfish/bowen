@@ -112,7 +112,7 @@ def rebalance_at_close(state: PortfolioState, target_shares: Mapping[str, int], 
         execute(code, "BUY", min(requested, affordable)) if affordable else None
 
     positions = {code: shares for code, shares in positions.items() if shares > 0}
-    pre_asset = float(state.cash) + sum(int(shares) * float(state.last_prices.get(code, prices.get(code, 0.0))) for code, shares in state.positions.items())
+    pre_asset = float(state.cash) + sum(int(shares) * float(prices.get(code, state.last_prices.get(code, 0.0))) for code, shares in state.positions.items())
     turnover = sum(item.trade_value for item in trades) / pre_asset if pre_asset > 0 else 0.0
     return RebalanceResult(PortfolioState(cash, positions, last_prices), trades, sum(item.commission for item in trades), turnover)
 

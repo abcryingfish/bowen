@@ -37,9 +37,10 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
         version = repo.ensure_model_version(definition, build_config_hash(definition))
         state = repo.get_run_state(version)
         start = (state.last_success_date + timedelta(days=1)) if state.last_success_date else source.first_usable_date(definition.factor_name, INITIAL_DATE, MIN_FACTOR_COVERAGE)
-        if start is None or start > upper:
+        model_upper = min(upper, latest_dates[definition.model_id]) if latest_dates[definition.model_id] else None
+        if start is None or model_upper is None or start > model_upper:
             continue
-        dates = source.available_market_dates(start, upper)
+        dates = source.available_market_dates(start, model_upper)
         model_meta[definition.model_id] = {"definition": definition, "version": version, "run_state": state, "dates": dates}
         tasks.extend((trade_date, definition.model_id) for trade_date in dates)
     tasks.sort(key=lambda item: (item[0], list(definitions).index(item[1])))
@@ -81,7 +82,7 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
                 if due:
                     codes = [item.code for item in selections[leg]]
                     prices = {str(row.htsc_code): float(row.close) for row in snapshot.itertuples() if str(row.htsc_code) in codes and float(row.close) > 0}
-                    target = build_target_shares(codes, prices, mark_to_market(state, state.last_prices).total_asset, 0.0003, LOT_SIZE)
+                    target = build_target_shares(codes, prices, mark_to_market(state, prices).total_asset, 0.0003, LOT_SIZE)
                     execution = rebalance_at_close(state, target, prices, 0.0003)
                     state = execution.state
                     rebalance_dates[model_id] = trade_date
@@ -89,6 +90,7 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
                     prices = source.close_prices(trade_date, list(state.positions))
                     execution = type("Execution", (), {"trades": [], "total_commission": 0.0, "turnover": 0.0})()
                 valuation = mark_to_market(state, prices)
+                state = PortfolioState(state.cash, dict(state.positions), {**state.last_prices, **valuation.prices})
                 previous_nav = navs.get((version, leg), 100.0)
                 current_nav = valuation.total_asset / INITIAL_CASH * 100.0
                 positions = [{"htsc_code": code, "score": next((item.score for item in selections[leg] if item.code == code), None), "rank": next((item.rank for item in selections[leg] if item.code == code), None), "target_weight": 1.0 / len(state.positions) if state.positions else 0.0, "actual_weight": shares * valuation.prices.get(code, 0.0) / valuation.total_asset if valuation.total_asset else 0.0, "shares": shares, "price": valuation.prices.get(code, 0.0), "market_value": shares * valuation.prices.get(code, 0.0), "stale_price": code in valuation.stale_codes} for code, shares in state.positions.items()]

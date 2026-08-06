@@ -59,3 +59,9 @@ def test_factor_coverage_uses_tradable_universe_before_score_filter(tmp_path):
     assert snapshot.attrs["tradable_count"] == 2
     assert snapshot.attrs["factor_valid_count"] == 1
     assert snapshot.attrs["factor_coverage"] == 0.5
+
+
+def test_close_prices_does_not_hide_missing_current_day_with_old_price(tmp_path):
+    market_root, signal_root = write_fixture_partitions(tmp_path)
+    source = StyleDataSource(market_root=market_root, signal_root=signal_root)
+    assert source.close_prices(date(2026, 1, 16), ["600000.SH"]) == {}

@@ -96,3 +96,12 @@ def test_restart_restores_previous_cash_and_positions_before_incrementing(tmp_pa
     run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
     second_cash = repo._connect().execute("SELECT cash FROM nav_daily WHERE model_version='growth_raw-v1' AND leg='high' ORDER BY trade_date DESC LIMIT 1").fetchone()[0]
     assert second_cash <= first_asset
+
+
+def test_each_model_is_capped_at_its_own_latest_common_date(tmp_path):
+    repo = ready_repository(tmp_path)
+    source = FakeSource(market_dates=[date(2026, 1, 29), date(2026, 1, 30)])
+    source.latest_common_date = lambda factor_name: date(2026, 1, 29)
+    result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo, through_date=date(2026, 1, 30))
+    assert result["processed_days"]["growth_raw"] == 1
+    assert result["latest_dates"]["growth_raw"] == "2026-01-29"

@@ -25,6 +25,7 @@ class StyleDataSource:
         self.signal_root = Path(signal_root)
         self._market_cache: OrderedDict[Path, pd.DataFrame] = OrderedDict()
         self._factor_cache: OrderedDict[tuple[str, Path], pd.DataFrame] = OrderedDict()
+        self._market_date_cache: dict[Path, set[date]] = {}
 
     @staticmethod
     def _normalize(frame: pd.DataFrame) -> pd.DataFrame:
@@ -118,11 +119,13 @@ class StyleDataSource:
         end = end or date.today()
         dates: set[date] = set()
         for path in self._market_files(start, end):
-            try:
-                values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna().dt.date
-            except Exception as exc:  # noqa: BLE001
-                raise StyleDataError(f"读取行情日期失败: {path}: {exc}") from exc
-            dates.update(item for item in values if start <= item <= end)
+            if path not in self._market_date_cache:
+                try:
+                    values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna().dt.date
+                except Exception as exc:  # noqa: BLE001
+                    raise StyleDataError(f"读取行情日期失败: {path}: {exc}") from exc
+                self._market_date_cache[path] = set(values)
+            dates.update(item for item in self._market_date_cache[path] if start <= item <= end)
         return sorted(dates)
 
     def latest_common_date(self, factor_name: str) -> date | None:
@@ -153,7 +156,7 @@ class StyleDataSource:
         return None
 
     def build_eligible_snapshot(self, trade_date: date, factor_name: str) -> pd.DataFrame:
-        market = self._load_market(trade_date - timedelta(days=240), trade_date)
+        market = self._load_market(trade_date - timedelta(days=210), trade_date)
         market = market[market["htsc_code"].map(lambda code: bool(_STOCK_CODE.fullmatch(code)))].copy()
         market = market[(market["close"] > 0) & (market["volume"] > 0)]
         if market.empty:
@@ -176,6 +179,6 @@ class StyleDataSource:
         return result.sort_values(["score", "htsc_code"], na_position="last").reset_index(drop=True)
 
     def close_prices(self, trade_date: date, codes: Sequence[str]) -> dict[str, float]:
-        frame = self._load_market(trade_date - timedelta(days=10), trade_date)
-        frame = frame[frame["htsc_code"].isin(list(codes))].sort_values("time").drop_duplicates("htsc_code", keep="last")
+        frame = self._load_market(trade_date, trade_date)
+        frame = frame[(frame["time"].dt.date == trade_date) & frame["htsc_code"].isin(list(codes))].drop_duplicates("htsc_code", keep="last")
         return {str(row.htsc_code): float(row.close) for row in frame.itertuples() if pd.notna(row.close) and float(row.close) > 0}

@@ -31,6 +31,8 @@ assert.match(page, /data-range="60d"/);
 assert.match(page, /data-range="ytd"/);
 assert.match(page, /data-range="all"/);
 assert.match(page, /id="style-detail-drawer"/);
+assert.match(page, /data-detail-leg="high"/);
+assert.match(page, /data-detail-leg="low"/);
 assert.match(pageJs, /\/api\/style-monitor\/summary/);
 assert.match(pageJs, /\/api\/style-monitor\/curves/);
 assert.match(pageJs, /\/api\/style-monitor\/update/);

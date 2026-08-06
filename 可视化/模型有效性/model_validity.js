@@ -6,7 +6,7 @@
     const ZOOM_STEPS = [1, 1.1, DEFAULT_ZOOM, 1.4, 1.5];
     const ZOOM_STORAGE_KEY = "model-validity.zoom";
     const COLORS = { high: "#26a69a", low: "#f59e0b", relative: "#6b9cff" };
-    const state = { range: "60d", summary: null, charts: new Map(), selectedModelId: null, updateJobId: null, detailTab: "positions" };
+    const state = { range: "60d", summary: null, charts: new Map(), selectedModelId: null, updateJobId: null, detailTab: "positions", detailLeg: "high" };
 
     function formatPercent(value) {
         return value == null || Number.isNaN(Number(value)) ? "--" : `${(Number(value) * 100).toFixed(2)}%`;
@@ -44,7 +44,7 @@
             title.textContent = horizon.toUpperCase();
             section.appendChild(title);
             const rows = state.summary?.rankings?.[horizon] || [];
-            rows.slice(0, 5).forEach((row, index) => {
+            rows.forEach((row, index) => {
                 const item = document.createElement("button");
                 item.type = "button";
                 item.className = "ranking-row";
@@ -101,7 +101,7 @@
     }
 
     async function renderPositions(modelId) {
-        const payload = await apiFetch(`/api/style-monitor/positions?model_id=${encodeURIComponent(modelId)}&leg=high`);
+        const payload = await apiFetch(`/api/style-monitor/positions?model_id=${encodeURIComponent(modelId)}&leg=${state.detailLeg}`);
         const content = document.getElementById("style-detail-content");
         content.textContent = "";
         const table = document.createElement("table");
@@ -112,7 +112,7 @@
     }
 
     async function renderTrades(modelId) {
-        const payload = await apiFetch(`/api/style-monitor/trades?model_id=${encodeURIComponent(modelId)}&leg=high&limit=200`);
+        const payload = await apiFetch(`/api/style-monitor/trades?model_id=${encodeURIComponent(modelId)}&leg=${state.detailLeg}&limit=200`);
         const content = document.getElementById("style-detail-content");
         content.textContent = "";
         const table = document.createElement("table");
@@ -169,6 +169,7 @@
         document.getElementById("style-monitor-update").addEventListener("click", startManualUpdate);
         document.getElementById("style-detail-close").addEventListener("click", () => document.getElementById("style-detail-drawer").setAttribute("aria-hidden", "true"));
         document.querySelectorAll("[data-detail-tab]").forEach((button) => button.addEventListener("click", async () => { document.querySelectorAll("[data-detail-tab]").forEach((item) => item.classList.remove("active")); button.classList.add("active"); state.detailTab = button.dataset.detailTab; if (state.selectedModelId) await openModelDetail(state.selectedModelId); }));
+        document.querySelectorAll("[data-detail-leg]").forEach((button) => button.addEventListener("click", async () => { document.querySelectorAll("[data-detail-leg]").forEach((item) => item.classList.remove("active")); button.classList.add("active"); state.detailLeg = button.dataset.detailLeg; if (state.selectedModelId) await openModelDetail(state.selectedModelId); }));
         loadSummary(); if (typeof window.initEdgeFloatHud === "function") window.initEdgeFloatHud({ pageId: "model-validity", onNavigate: window.edgeFloatNavigateToPage });
     }
     window.addEventListener("resize", () => state.charts.forEach(({ chart }) => chart.resize(0, 0)));
