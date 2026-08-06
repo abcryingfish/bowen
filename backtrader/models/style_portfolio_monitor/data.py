@@ -66,15 +66,39 @@ class StyleDataSource:
             return frame
         return frame.sort_values(["time", "htsc_code", "_file_order"]).drop_duplicates(["time", "htsc_code"], keep="last").drop(columns=["_file_order"], errors="ignore")
 
-    def _market_files(self) -> list[Path]:
-        return sorted(self.market_root.glob("year=*/month=*/merged.parquet")) + sorted(self.market_root.glob("year=*/month=*/part_*.parquet"))
+    @staticmethod
+    def _months(start: date, end: date):
+        current = date(start.year, start.month, 1)
+        final = date(end.year, end.month, 1)
+        while current <= final:
+            yield current.year, current.month
+            current = date(current.year + (current.month == 12), 1 if current.month == 12 else current.month + 1, 1)
 
-    def _factor_files(self, factor_name: str) -> list[Path]:
+    def _market_files(self, start: date, end: date) -> list[Path]:
+        files: list[Path] = []
+        for year, month in self._months(start, end):
+            directory = self.market_root / f"year={year}" / f"month={month:02d}"
+            merged = directory / "merged.parquet"
+            if merged.is_file():
+                files.append(merged)
+            files.extend(sorted(directory.glob("part_*.parquet")))
+        return files
+
+    def _factor_files(self, factor_name: str, start: date | None = None, end: date | None = None) -> list[Path]:
         directory = self.signal_root / f"factor={factor_name}"
-        return sorted(directory.glob("year=*/month=*/merged.parquet")) + sorted(directory.glob("year=*/month=*/part_*.parquet"))
+        if start is not None and end is not None:
+            files: list[Path] = []
+            for year, month in self._months(start, end):
+                month_dir = directory / f"year={year}" / f"month={month:02d}"
+                merged = month_dir / "merged.parquet"
+                if merged.is_file():
+                    files.append(merged)
+                files.extend(sorted(month_dir.glob("part_*.parquet")))
+            return files
+        return sorted([*directory.glob("year=*/month=*/merged.parquet"), *directory.glob("year=*/month=*/part_*.parquet")])
 
     def _load_market(self, start: date, end: date) -> pd.DataFrame:
-        frame = self._read_files(self._market_files(), ["time", "htsc_code", "close", "volume", "value"], self._market_cache)
+        frame = self._read_files(self._market_files(start, end), ["time", "htsc_code", "close", "volume", "value"], self._market_cache)
         if frame.empty:
             raise StyleDataError(f"行情目录没有数据: {self.market_root}")
         frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
@@ -83,7 +107,7 @@ class StyleDataSource:
         return frame[frame["time"].between(pd.Timestamp(start), pd.Timestamp(end))].copy()
 
     def _load_factor(self, factor_name: str, start: date, end: date) -> pd.DataFrame:
-        files = self._factor_files(factor_name)
+        files = self._factor_files(factor_name, start, end)
         if not files:
             raise StyleDataError(f"因子目录不存在或没有分区: {self.signal_root / f'factor={factor_name}'}")
         frame = self._read_files(files, ["time", "htsc_code", "value"], self._factor_cache, factor_name)
@@ -92,18 +116,36 @@ class StyleDataSource:
 
     def available_market_dates(self, start: date, end: date | None = None) -> list[date]:
         end = end or date.today()
-        frame = self._load_market(start, end)
-        return sorted(frame.loc[frame["htsc_code"].map(lambda code: bool(_STOCK_CODE.fullmatch(code))), "time"].dt.date.unique().tolist())
+        dates: set[date] = set()
+        for path in self._market_files(start, end):
+            try:
+                values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna().dt.date
+            except Exception as exc:  # noqa: BLE001
+                raise StyleDataError(f"读取行情日期失败: {path}: {exc}") from exc
+            dates.update(item for item in values if start <= item <= end)
+        return sorted(dates)
 
     def latest_common_date(self, factor_name: str) -> date | None:
-        dates = self.available_market_dates(date(1900, 1, 1))
-        factor = self._load_factor(factor_name, date(1900, 1, 1), date.today())
-        factor_dates = set(factor["time"].dt.date)
-        common = [item for item in dates if item in factor_dates]
-        return max(common) if common else None
+        def latest(files: list[Path]) -> date | None:
+            for path in reversed(files):
+                values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna()
+                if not values.empty:
+                    return values.max().date()
+            return None
+
+        market_latest = latest(self._market_files(date(1900, 1, 1), date.today()))
+        factor_latest = latest(self._factor_files(factor_name))
+        return min(market_latest, factor_latest) if market_latest and factor_latest else None
 
     def first_usable_date(self, factor_name: str, start: date, minimum_coverage: float = MIN_FACTOR_COVERAGE) -> date | None:
-        dates = self.available_market_dates(start)
+        all_factor_files = self._factor_files(factor_name)
+        if not all_factor_files:
+            raise StyleDataError(f"因子目录不存在或没有分区: {self.signal_root / f'factor={factor_name}'}")
+        first_values = pd.to_datetime(pd.read_parquet(all_factor_files[0], columns=["time"])["time"], errors="coerce").dropna()
+        if first_values.empty:
+            raise StyleDataError(f"因子首个分区没有有效日期: {all_factor_files[0]}")
+        factor_start = max(start, first_values.min().date())
+        dates = self.available_market_dates(factor_start)
         for trade_date in dates:
             snapshot = self.build_eligible_snapshot(trade_date, factor_name)
             if snapshot.attrs.get("factor_coverage", 0.0) >= minimum_coverage:
@@ -111,7 +153,7 @@ class StyleDataSource:
         return None
 
     def build_eligible_snapshot(self, trade_date: date, factor_name: str) -> pd.DataFrame:
-        market = self._load_market(trade_date - timedelta(days=550), trade_date)
+        market = self._load_market(trade_date - timedelta(days=240), trade_date)
         market = market[market["htsc_code"].map(lambda code: bool(_STOCK_CODE.fullmatch(code)))].copy()
         market = market[(market["close"] > 0) & (market["volume"] > 0)]
         if market.empty:
@@ -125,7 +167,7 @@ class StyleDataSource:
         stats["average_turnover_20d"] = recent_stats
         latest = market[market["time"].dt.date == trade_date].set_index("htsc_code")[["close"]]
         eligible = stats[(stats["history_days"] >= MIN_HISTORY_DAYS) & (stats["average_turnover_20d"] >= MIN_AVERAGE_TURNOVER)].join(latest, how="inner")
-        factor = self._load_factor(factor_name, trade_date - timedelta(days=550), trade_date)
+        factor = self._load_factor(factor_name, trade_date, trade_date)
         factor = factor[factor["time"].dt.date == trade_date].drop_duplicates("htsc_code", keep="last").set_index("htsc_code")[["score"]]
         tradable_count = len(eligible)
         result = eligible.join(factor, how="left").reset_index()

@@ -43,9 +43,16 @@ def query_summary(conn) -> dict[str, Any]:
             if not version or not item["latest_date"]:
                 values.append({"model_id": item["model_id"], "value": None})
                 continue
-            latest = conn.execute("SELECT trade_date,nav FROM nav_daily WHERE model_version=? AND leg='high' ORDER BY trade_date DESC LIMIT 1", [version]).fetchone()
-            prior = conn.execute("SELECT nav FROM nav_daily WHERE model_version=? AND leg='high' AND trade_date <= ? ORDER BY trade_date DESC LIMIT 1 OFFSET ?", [version, latest[0], days]).fetchone() if latest else None
-            values.append({"model_id": item["model_id"], "value": (float(latest[1]) / float(prior[0]) - 1 if prior and prior[0] else None)})
+            relative_rows = conn.execute("""
+                SELECT h.trade_date, h.nav / l.nav * 100 AS relative_nav
+                FROM nav_daily h JOIN nav_daily l
+                  ON h.model_version=l.model_version AND h.trade_date=l.trade_date
+                WHERE h.model_version=? AND h.leg='high' AND l.leg='low'
+                ORDER BY h.trade_date DESC LIMIT ?
+            """, [version, days + 1]).fetchall()
+            latest = relative_rows[0][1] if relative_rows else None
+            prior = relative_rows[days][1] if len(relative_rows) > days else None
+            values.append({"model_id": item["model_id"], "value": (float(latest) / float(prior) - 1 if latest is not None and prior else None)})
         rankings[horizon] = sorted(values, key=lambda row: (row["value"] is None, -(row["value"] or 0)))
     return {"as_of": max((item["latest_date"] for item in models if item["latest_date"]), default=None), "models": models, "rankings": rankings, "latest_update": None}
 
