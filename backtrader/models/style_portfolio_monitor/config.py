@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Iterable, Literal
 
 STYLE_MONITOR_DB_PATH = Path(r"D:\database\style_portfolio_monitor\style_monitor.duckdb")
-INITIAL_DATE = date(2015, 1, 1)
+INITIAL_DATE = date(2016, 1, 1)
 INITIAL_CASH = 10_000_000.0
 COMMISSION_RATE = 0.0003
+INDEX_EXECUTION_POLICY = "t_plus_1_open"
 LOT_SIZE = 100
 MIN_HISTORY_DAYS = 120
 LIQUIDITY_LOOKBACK_DAYS = 20
@@ -20,6 +21,15 @@ MIN_AVERAGE_TURNOVER = 20_000_000.0
 SELECTION_RATIO = 0.20
 MAX_SELECTION_COUNT = 200
 MIN_FACTOR_COVERAGE = 0.80
+
+# 保持既有 model_version 的配置哈希不变。以下现金账本参数不参与理论等权指数，
+# 因此不能再跟随遗留现金回测参数变化而生成重复版本。
+_LEGACY_CASH_LEDGER_HASH_VALUES = {
+    "INITIAL_CASH": 10_000_000.0,
+    "COMMISSION_RATE": 0.0003,
+    "INDEX_TRANSACTION_COST_RATE": 0.0003,
+    "LOT_SIZE": 100,
+}
 
 RebalanceFrequency = Literal["weekly", "monthly", "quarterly"]
 
@@ -52,6 +62,8 @@ MODEL_DEFINITIONS: tuple[StyleModelDefinition, ...] = (
     StyleModelDefinition("growth_raw", "成长原始版", "成长风格评分", "growth_style_score", "monthly"),
     StyleModelDefinition("growth_industry_neutral", "成长行业中性版", "成长风格综合评分(行业标准化)", "growth_style_composite_score_industry_normalized", "monthly"),
     StyleModelDefinition("momentum_raw", "动量原始版", "动量风格评分", "momentum_style_score", "weekly"),
+    StyleModelDefinition("momentum_5d_raw", "5日动量原始版", "股票5日动量", "stock_momentum_5d", "weekly"),
+    StyleModelDefinition("momentum_20d_raw", "20日动量原始版", "股票20日动量", "stock_momentum_20d", "weekly"),
     StyleModelDefinition("low_volatility_raw", "低波原始版", "低波风格评分", "low_volatility_style_score", "monthly"),
     StyleModelDefinition("dividend_raw", "红利原始版", "红利基础百分位", "dividend_base_percentile", "quarterly"),
     StyleModelDefinition("liquidity_raw", "流动性原始版", "流动性综合评分", "liquidity_composite_score", "weekly"),
@@ -60,15 +72,14 @@ MODEL_DEFINITIONS: tuple[StyleModelDefinition, ...] = (
 _BUSINESS_CONSTANTS = {
     "STYLE_MONITOR_DB_PATH": str(STYLE_MONITOR_DB_PATH),
     "INITIAL_DATE": INITIAL_DATE.isoformat(),
-    "INITIAL_CASH": INITIAL_CASH,
-    "COMMISSION_RATE": COMMISSION_RATE,
-    "LOT_SIZE": LOT_SIZE,
+    "INDEX_EXECUTION_POLICY": INDEX_EXECUTION_POLICY,
     "MIN_HISTORY_DAYS": MIN_HISTORY_DAYS,
     "LIQUIDITY_LOOKBACK_DAYS": LIQUIDITY_LOOKBACK_DAYS,
     "MIN_AVERAGE_TURNOVER": MIN_AVERAGE_TURNOVER,
     "SELECTION_RATIO": SELECTION_RATIO,
     "MAX_SELECTION_COUNT": MAX_SELECTION_COUNT,
     "MIN_FACTOR_COVERAGE": MIN_FACTOR_COVERAGE,
+    **_LEGACY_CASH_LEDGER_HASH_VALUES,
 }
 
 

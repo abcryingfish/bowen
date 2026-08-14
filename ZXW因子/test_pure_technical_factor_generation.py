@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import ast
 import re
 import sys
 import importlib
@@ -77,6 +78,50 @@ def test_catalog_contains_401_unique_safe_factor_ids(tmp_path: Path) -> None:
     assert all(days == 520 for days in lookback["factor_lookback_days"].values())
     assert lookback["full_history_factor_keys"] == sorted(
         name for name in factor_map.values() if name.startswith("AMA_")
+    )
+
+
+def test_main_generator_preserves_pure_technical_display_mapping() -> None:
+    source_path = Path(__file__).with_name("ZXW策略技术因子生成.py")
+    source = source_path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    mapper_node = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_factor_storage_name_map"
+    )
+    namespace: dict[str, object] = {}
+    exec(
+        compile(
+            ast.Module(body=[mapper_node], type_ignores=[]),
+            filename=str(source_path),
+            mode="exec",
+        ),
+        namespace,
+    )
+    mapper = namespace["_factor_storage_name_map"]
+
+    raw_map = {
+        "ADX_金叉": "ADX_golden_cross",
+        "RSI_超卖信号": "RSI_oversold_signal",
+    }
+    assert mapper("pure_technical", raw_map) == raw_map
+    assert mapper("macd", raw_map) == raw_map
+    compute_node = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "compute_selected_bundles"
+    )
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_factor_storage_name_map"
+        and node.args
+        and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == "pure_technical"
+        for node in ast.walk(compute_node)
     )
 
 
@@ -162,7 +207,7 @@ def test_valid_bar_mask_restores_invalid_rows_as_zero(price_matrices) -> None:
     assert all(frame.loc[invalid_day, "000001.SZ"] == 0.0 for frame in output["factor_dfs"].values())
 
 
-def test_market_loader_applies_backward_factor_and_uses_one_for_missing(tmp_path: Path) -> None:
+def test_market_loader_carries_last_backward_factor_for_missing_day(tmp_path: Path) -> None:
     runner = _load_runner()
     market_root = tmp_path / "market"
     duplicate_market_root = tmp_path / "duplicate_market"
@@ -176,8 +221,8 @@ def test_market_loader_applies_backward_factor_and_uses_one_for_missing(tmp_path
 
     market = pd.DataFrame(
         {
-            "time": pd.to_datetime(["2025-01-02", "2025-01-02"]),
-            "htsc_code": ["000001.SZ", "600000.SH"],
+            "time": pd.to_datetime(["2025-01-02", "2025-01-03"]),
+            "htsc_code": ["000001.SZ", "000001.SZ"],
             "open": [10.0, 20.0],
             "high": [11.0, 21.0],
             "low": [9.0, 19.0],
@@ -203,10 +248,10 @@ def test_market_loader_applies_backward_factor_and_uses_one_for_missing(tmp_path
         end_date="2025-01-31",
     )
 
-    loaded = loaded.set_index("htsc_code")
-    assert loaded.loc["000001.SZ", "close"] == pytest.approx(21.0)
-    assert loaded.loc["600000.SH", "close"] == pytest.approx(20.5)
-    assert stats == {"rows": 2, "matched_adj_rows": 1, "missing_adj_rows": 1}
+    loaded = loaded.set_index("time")
+    assert loaded.loc[pd.Timestamp("2025-01-02"), "close"] == pytest.approx(21.0)
+    assert loaded.loc[pd.Timestamp("2025-01-03"), "close"] == pytest.approx(41.0)
+    assert stats == {"rows": 2, "matched_adj_rows": 2, "missing_adj_rows": 0}
 
 
 def test_market_loader_falls_back_to_wide_xdy(tmp_path: Path) -> None:
@@ -242,6 +287,40 @@ def test_market_loader_falls_back_to_wide_xdy(tmp_path: Path) -> None:
 
     assert loaded["close"].iloc[0] == pytest.approx(21.0)
     assert stats == {"rows": 1, "matched_adj_rows": 1, "missing_adj_rows": 0}
+
+
+def test_wide_xdy_fallback_carries_previous_factor_across_date_gap(tmp_path: Path) -> None:
+    runner = _load_runner()
+    market = pd.DataFrame(
+        {
+            "time": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06"]),
+            "htsc_code": ["000001.SZ"] * 3,
+            "open": [10.0] * 3,
+            "high": [10.0] * 3,
+            "low": [10.0] * 3,
+            "close": [10.0] * 3,
+            "volume": [1000.0] * 3,
+        }
+    )
+    wide_dir = tmp_path / "wide_xdy" / "year=2025" / "month=01"
+    wide_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "htsc_code": ["000001.SZ"],
+            "2025/01/02": [2.0],
+            "2025/01/06": [2.0],
+        }
+    ).to_parquet(wide_dir / "merged.parquet", index=False)
+
+    adjusted, matched = runner._apply_wide_xdy_backward(
+        market,
+        tmp_path / "wide_xdy",
+        pd.Timestamp("2025-01-01"),
+        pd.Timestamp("2025-01-31"),
+    )
+
+    assert adjusted["close"].tolist() == pytest.approx([20.0, 20.0, 20.0])
+    assert matched == 3
 
 
 def test_incremental_plan_handles_tail_new_codes_and_full_history() -> None:
@@ -528,12 +607,14 @@ def test_two_indicator_end_to_end_incremental_run(
             "2",
             "--compact-workers",
             "1",
+            "--code-batch-size",
+            "1",
         ]
     )
     runner.run(args)
     assert 2 in observed_save_workers
-    assert market_load_count == 1
-    assert matrix_build_count == 1
+    assert market_load_count == 2
+    assert matrix_build_count == 2
     metadata_path = output_root / "_meta" / "pure_technical_factor_catalog_cache.json"
     assert metadata_path.is_file()
     metadata = __import__("json").loads(metadata_path.read_text(encoding="utf-8"))

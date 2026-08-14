@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 
+import models.style_portfolio_monitor.service as service_module
 from models.style_portfolio_monitor.config import MODEL_DEFINITIONS
 from models.style_portfolio_monitor.repository import StyleMonitorRepository
 from models.style_portfolio_monitor.service import StyleMonitorPaused, run_incremental_update
@@ -23,7 +24,7 @@ class FakeSource:
         return self.market_dates[-1]
 
     def first_usable_date(self, factor_name, start, minimum_coverage):
-        return self.factor_first_usable_date
+        return max(start, self.factor_first_usable_date)
 
     def build_eligible_snapshot(self, trade_date, factor_name):
         import pandas as pd
@@ -49,10 +50,28 @@ def ready_repository(tmp_path, last_success_date=None):
     return repo
 
 
-def test_first_run_starts_at_2015_or_factor_first_usable_date(tmp_path):
-    source = FakeSource(market_dates=[date(2015, 1, 5), date(2015, 1, 6)], factor_first_usable_date=date(2015, 1, 6))
-    result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=ready_repository(tmp_path), through_date=date(2015, 1, 6))
-    assert source.requested_dates["成长风格评分"][0] == date(2015, 1, 6)
+def test_default_update_uses_theoretical_equal_weight_runner(monkeypatch):
+    captured = {}
+
+    def fake_runner(**kwargs):
+        captured.update(kwargs)
+        return {"completed_models": ["growth_raw"]}
+
+    monkeypatch.setattr(service_module, "run_equal_weight_update", fake_runner)
+    result = run_incremental_update(model_ids=["growth_raw"], through_date=date(2026, 1, 30))
+
+    assert result == {"completed_models": ["growth_raw"]}
+    assert captured["model_ids"] == ["growth_raw"]
+    assert captured["through_date"] == date(2026, 1, 30)
+
+
+def test_first_run_starts_at_2016_or_factor_first_usable_date(tmp_path):
+    source = FakeSource(
+        market_dates=[date(2015, 12, 31), date(2016, 1, 4), date(2016, 1, 5)],
+        factor_first_usable_date=date(2015, 12, 31),
+    )
+    result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=ready_repository(tmp_path), through_date=date(2016, 1, 5))
+    assert source.requested_dates["成长风格评分"][0] == date(2016, 1, 4)
     assert result["completed_models"] == ["growth_raw"]
 
 
@@ -105,3 +124,67 @@ def test_each_model_is_capped_at_its_own_latest_common_date(tmp_path):
     result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo, through_date=date(2026, 1, 30))
     assert result["processed_days"]["growth_raw"] == 1
     assert result["latest_dates"]["growth_raw"] == "2026-01-29"
+
+
+def test_non_rebalance_day_keeps_last_selection_score_and_rank(tmp_path):
+    repo = ready_repository(tmp_path)
+    source = FakeSource(market_dates=[date(2026, 1, 29), date(2026, 1, 30)])
+
+    run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
+
+    conn = repo._connect()
+    try:
+        score, rank = conn.execute(
+            "SELECT score,rank FROM position_daily WHERE model_version='growth_raw-v1' AND leg='high' ORDER BY trade_date DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert score == 90.0
+    assert rank == 1
+
+
+def test_model_that_fails_after_a_successful_day_is_not_reported_completed(tmp_path, monkeypatch):
+    repo = ready_repository(tmp_path)
+    source = FakeSource(market_dates=[date(2026, 1, 29), date(2026, 1, 30)])
+    original_write = repo.write_model_day
+    write_count = 0
+
+    def fail_second_day(payload):
+        nonlocal write_count
+        write_count += 1
+        if write_count == 2:
+            raise RuntimeError("second-day failure")
+        original_write(payload)
+
+    monkeypatch.setattr(repo, "write_model_day", fail_second_day)
+    result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=repo)
+
+    assert result["completed_models"] == []
+    assert result["failed_models"][0]["model_id"] == "growth_raw"
+
+
+def test_non_rebalance_day_restores_last_target_weight(tmp_path):
+    repo = ready_repository(tmp_path)
+    run_incremental_update(
+        model_ids=["growth_raw"],
+        data_source=FakeSource(market_dates=[date(2026, 1, 29)]),
+        repository=repo,
+    )
+    conn = repo._connect()
+    conn.execute("UPDATE position_daily SET target_weight=0.75 WHERE model_version='growth_raw-v1'")
+    conn.close()
+
+    run_incremental_update(
+        model_ids=["growth_raw"],
+        data_source=FakeSource(market_dates=[date(2026, 1, 30)]),
+        repository=repo,
+    )
+
+    conn = repo._connect()
+    try:
+        target_weight = conn.execute(
+            "SELECT target_weight FROM position_daily WHERE model_version='growth_raw-v1' AND leg='high' ORDER BY trade_date DESC LIMIT 1"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert target_weight == 0.75

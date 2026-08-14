@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市场研究</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="./market_research.css">
+</head>
+
+<body class="page-market-research">
+    <header class="research-header">
+        <div class="brand">量化研究工作台</div>
+        <div class="research-title">
+            <span>MARKET RESEARCH</span>
+            <h1>市场研究</h1>
+        </div>
+        <div class="header-status"><strong id="latest-concentration">--</strong><span id="page-clock">--</span></div>
+    </header>
+
+    <main class="research-shell">
+        <section class="control-band" aria-label="市场研究筛选">
+            <nav class="market-switch" aria-label="市场分类">
+                <button type="button" class="active market-sh" data-market="sh" aria-pressed="true">沪</button>
+                <button type="button" class="market-sz" data-market="sz" aria-pressed="false">深</button>
+                <button type="button" class="market-star" data-market="star" aria-pressed="false">科创</button>
+                <button type="button" class="market-all" data-market="all-a" aria-pressed="false">全A</button>
+            </nav>
+            <div class="toolbar-row">
+                <div class="range-switch" role="group" aria-label="研究区间">
+                    <button type="button" data-range="20d">20日</button>
+                    <button type="button" data-range="60d" class="active">60日</button>
+                    <button type="button" data-range="ytd">年初至今</button>
+                </div>
+                <div class="custom-range" role="group" aria-label="自定义研究天数">
+                    <input id="custom-range-days" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="天数" aria-label="自定义研究天数">
+                    <button id="custom-range-apply" type="button">应用</button>
+                </div>
+                <button id="refresh-research" class="refresh-button" type="button" title="刷新市场研究数据" aria-label="刷新市场研究数据">↻</button>
+            </div>
+        </section>
+
+        <div id="research-state" class="page-state" role="status">正在读取市场集中度...</div>
+        <section class="research-charts" aria-label="市场集中度图表">
+            <article class="research-chart-panel">
+                <header class="chart-panel-head">
+                    <div><h2>成交额集中度</h2><span id="concentration-date">--</span></div>
+                    <div class="metric-strip"><strong id="concentration-value">--</strong><span id="concentration-meta">--</span></div>
+                </header>
+                <div id="concentration-chart" class="chart-mount"><div class="chart-placeholder">等待加载集中度</div></div>
+            </article>
+            <article class="research-chart-panel">
+                <header class="chart-panel-head">
+                    <div><h2>RSI14 相对比值</h2><span id="rsi-date">--</span></div>
+                    <div class="metric-strip"><strong id="rsi-value">--</strong><span id="rsi-meta">--</span></div>
+                </header>
+                <div id="rsi-chart" class="chart-mount"><div class="chart-placeholder">等待加载 RSI 比值</div></div>
+            </article>
+        </section>
+    </main>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600" aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <script>window.PAGE_VIEW = "market-research";</script>
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="./market_research.js"></script>
+</body>
+
+</html>

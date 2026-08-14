@@ -7,8 +7,8 @@ def test_smoke_script_is_read_only_by_default_and_requires_explicit_write_flag()
     assert args.model_ids == []
 
 
-def test_smoke_validation_requires_two_legs_and_balanced_accounting():
-    valid = {"legs": {"high": {"cash": 100, "market_value": 900, "total_asset": 1000}, "low": {"cash": 200, "market_value": 800, "total_asset": 1000}}}
+def test_smoke_validation_requires_successful_theoretical_index_output():
+    valid = {"completed_models": ["growth_raw"], "failed_models": [], "processed_days": {"growth_raw": 1}}
     assert validate_smoke_result(valid)["ok"] is True
-    valid["legs"]["high"]["cash"] = -1
+    valid["failed_models"] = [{"model_id": "growth_raw", "message": "失败"}]
     assert validate_smoke_result(valid)["ok"] is False

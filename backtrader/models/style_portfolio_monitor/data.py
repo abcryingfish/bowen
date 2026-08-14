@@ -130,10 +130,21 @@ class StyleDataSource:
 
     def latest_common_date(self, factor_name: str) -> date | None:
         def latest(files: list[Path]) -> date | None:
-            for path in reversed(files):
-                values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna()
-                if not values.empty:
-                    return values.max().date()
+            by_partition: dict[Path, list[Path]] = {}
+            for path in files:
+                by_partition.setdefault(path.parent, []).append(path)
+            for partition in sorted(by_partition, reverse=True):
+                latest_value = None
+                for path in by_partition[partition]:
+                    try:
+                        values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna()
+                    except Exception as exc:  # noqa: BLE001
+                        raise StyleDataError(f"读取最新日期失败: {path}: {exc}") from exc
+                    if not values.empty:
+                        candidate = values.max()
+                        latest_value = candidate if latest_value is None else max(latest_value, candidate)
+                if latest_value is not None:
+                    return latest_value.date()
             return None
 
         market_latest = latest(self._market_files(date(1900, 1, 1), date.today()))
@@ -144,10 +155,25 @@ class StyleDataSource:
         all_factor_files = self._factor_files(factor_name)
         if not all_factor_files:
             raise StyleDataError(f"因子目录不存在或没有分区: {self.signal_root / f'factor={factor_name}'}")
-        first_values = pd.to_datetime(pd.read_parquet(all_factor_files[0], columns=["time"])["time"], errors="coerce").dropna()
-        if first_values.empty:
-            raise StyleDataError(f"因子首个分区没有有效日期: {all_factor_files[0]}")
-        factor_start = max(start, first_values.min().date())
+        first_value = None
+        by_partition: dict[Path, list[Path]] = {}
+        for path in all_factor_files:
+            by_partition.setdefault(path.parent, []).append(path)
+        for partition in sorted(by_partition):
+            partition_values = []
+            for path in by_partition[partition]:
+                try:
+                    values = pd.to_datetime(pd.read_parquet(path, columns=["time"])["time"], errors="coerce").dropna()
+                except Exception as exc:  # noqa: BLE001
+                    raise StyleDataError(f"读取因子起始日期失败: {path}: {exc}") from exc
+                if not values.empty:
+                    partition_values.append(values.min())
+            if partition_values:
+                first_value = min(partition_values)
+                break
+        if first_value is None:
+            raise StyleDataError(f"因子所有分区均没有有效日期: {self.signal_root / f'factor={factor_name}'}")
+        factor_start = max(start, first_value.date())
         dates = self.available_market_dates(factor_start)
         for trade_date in dates:
             snapshot = self.build_eligible_snapshot(trade_date, factor_name)

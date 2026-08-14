@@ -20,15 +20,17 @@ def test_new_factor_groups_are_registered_in_utf8_catalog() -> None:
     assert "20日平均成交额" in groups["liquidity"]["children"]
 
 
-def test_return_based_low_volatility_lookbacks_include_price_warmup_bar() -> None:
+def test_low_volatility_lookbacks_convert_required_bars_to_calendar_days() -> None:
     lookbacks = get_factor_lookback_config()["factor_lookback_days"]
 
-    assert lookbacks["annual_vol_20d"] == 21
-    assert lookbacks["annual_vol_60d"] == 61
-    assert lookbacks["annual_vol_252d"] == 253
-    assert lookbacks["downside_vol_20d"] == 21
-    assert lookbacks["downside_vol_60d"] == 61
-    assert lookbacks["atr_volatility_14d"] == 15
+    assert lookbacks["annual_vol_20d"] == 32
+    assert lookbacks["annual_vol_60d"] == 92
+    assert lookbacks["annual_vol_252d"] == 380
+    assert lookbacks["downside_vol_20d"] == 32
+    assert lookbacks["downside_vol_60d"] == 92
+    assert lookbacks["max_drawdown_60d"] == 90
+    assert lookbacks["atr_volatility_14d"] == 23
+    assert lookbacks["volatility_ratio_20_60d"] == 92
 
 
 def test_low_volatility_bundle_matches_vectorized_formulas() -> None:

@@ -17,15 +17,22 @@ except Exception:  # pragma: no cover
 
 
 BUNDLE_ID = "low_volatility"
+
+
+def _calendar_lookback_days(required_bars: int) -> int:
+    """将交易日滚动窗口转换为保守的自然日回看长度。"""
+    return (int(required_bars) * 3 + 1) // 2
+
+
 FACTOR_LOOKBACK_DAYS = {
-    "annual_vol_20d": 21,
-    "annual_vol_60d": 61,
-    "annual_vol_252d": 253,
-    "downside_vol_20d": 21,
-    "downside_vol_60d": 61,
-    "max_drawdown_60d": 60,
-    "atr_volatility_14d": 15,
-    "volatility_ratio_20_60d": 61,
+    "annual_vol_20d": _calendar_lookback_days(21),
+    "annual_vol_60d": _calendar_lookback_days(61),
+    "annual_vol_252d": _calendar_lookback_days(253),
+    "downside_vol_20d": _calendar_lookback_days(21),
+    "downside_vol_60d": _calendar_lookback_days(61),
+    "max_drawdown_60d": _calendar_lookback_days(60),
+    "atr_volatility_14d": _calendar_lookback_days(15),
+    "volatility_ratio_20_60d": _calendar_lookback_days(61),
 }
 FACTOR_NAME_MAP = {
     "20日年化波动率": "annual_vol_20d",

@@ -65,3 +65,39 @@ def test_close_prices_does_not_hide_missing_current_day_with_old_price(tmp_path)
     market_root, signal_root = write_fixture_partitions(tmp_path)
     source = StyleDataSource(market_root=market_root, signal_root=signal_root)
     assert source.close_prices(date(2026, 1, 16), ["600000.SH"]) == {}
+
+
+def test_first_usable_date_skips_empty_earlier_factor_partition(tmp_path):
+    market_root, signal_root = write_fixture_partitions(tmp_path)
+    empty_dir = signal_root / "factor=成长风格评分" / "year=2025" / "month=07"
+    empty_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(columns=["time", "htsc_code", "value"]).to_parquet(empty_dir / "merged.parquet", index=False)
+    source = StyleDataSource(market_root=market_root, signal_root=signal_root)
+
+    assert source.first_usable_date("成长风格评分", date(2015, 1, 1)) == date(2026, 1, 15)
+
+
+def test_latest_common_date_uses_all_files_in_latest_partition(tmp_path):
+    market_root, signal_root = write_fixture_partitions(tmp_path)
+    latest = pd.Timestamp("2026-01-15")
+    correction = pd.DataFrame([{"time": latest - pd.Timedelta(days=1), "htsc_code": "600000.SH", "value": 75.0}])
+    directory = signal_root / "factor=成长风格评分" / "year=2026" / "month=01"
+    correction.to_parquet(directory / "part_z_old_correction.parquet", index=False)
+    source = StyleDataSource(market_root=market_root, signal_root=signal_root)
+
+    assert source.latest_common_date("成长风格评分") == latest.date()
+
+
+def test_first_usable_date_uses_earliest_date_across_first_nonempty_partition(tmp_path):
+    signal_root = tmp_path / "signal"
+    directory = signal_root / "factor=成长风格评分" / "year=2025" / "month=07"
+    directory.mkdir(parents=True)
+    pd.DataFrame(columns=["time", "htsc_code", "value"]).to_parquet(directory / "merged.parquet", index=False)
+    for filename, day in (("part_a.parquet", "2025-07-31"), ("part_z.parquet", "2025-07-01")):
+        pd.DataFrame([{"time": pd.Timestamp(day), "htsc_code": "600000.SH", "value": 50.0}]).to_parquet(directory / filename, index=False)
+    source = StyleDataSource(market_root=tmp_path / "market", signal_root=signal_root)
+    requested_starts = []
+    source.available_market_dates = lambda start, end=None: requested_starts.append(start) or []
+
+    assert source.first_usable_date("成长风格评分", date(2015, 1, 1)) is None
+    assert requested_starts == [date(2025, 7, 1)]

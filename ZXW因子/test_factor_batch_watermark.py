@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import polars as pl
 import pytest
 
 
@@ -19,7 +20,9 @@ FUNCTION_NAMES = {
     "_write_batch_watermark_atomic",
     "_sanitize_factor_dir_name",
     "_validate_factor_frames_for_batch",
+    "_signal_part_compact_month_partition_task",
     "compact_signal_daily_parts",
+    "_normalize_signal_part_schema",
     "_finalize_factor_batch",
 }
 
@@ -34,11 +37,13 @@ def _load_functions() -> dict:
     namespace = {
         "Path": Path,
         "pd": pd,
+        "pl": pl,
         "json": json,
         "os": os,
         "datetime": datetime,
         "BATCH_WATERMARK_FILE": "factor_batch_watermark.json",
         "INVALID_FACTOR_PATH_CHARS": re.compile(r'[\\/:*?"<>|]'),
+        "SIGNAL_PART_KEY_COLS": ["time", "htsc_code"],
     }
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(SCRIPT_PATH), "exec"), namespace)
     return namespace
@@ -231,6 +236,36 @@ def test_parallel_compaction_raises_after_any_month_fails(tmp_path: Path) -> Non
         functions["compact_signal_daily_parts"](base_dir=str(tmp_path), workers=2)
 
 
+def test_parallel_compaction_task_keeps_legacy_two_argument_call(tmp_path: Path) -> None:
+    functions = _load_functions()
+    captured: dict[str, object] = {}
+
+    def compact_month(month_dir, *, keep_parts, overwrite, replace_start, replace_end):
+        captured.update(
+            month_dir=month_dir,
+            keep_parts=keep_parts,
+            overwrite=overwrite,
+            replace_start=replace_start,
+            replace_end=replace_end,
+        )
+        return 1, 2
+
+    functions["_signal_part_compact_month_partition_task"].__globals__[
+        "_signal_part_compact_month_partition"
+    ] = compact_month
+
+    result = functions["_signal_part_compact_month_partition_task"](tmp_path, False)
+
+    assert result == (tmp_path, 1, 2)
+    assert captured == {
+        "month_dir": tmp_path,
+        "keep_parts": False,
+        "overwrite": False,
+        "replace_start": None,
+        "replace_end": None,
+    }
+
+
 def test_finalize_writes_complete_watermark_after_compaction(tmp_path: Path) -> None:
     functions = _load_functions()
     calls: list[object] = []
@@ -261,8 +296,8 @@ def test_finalize_writes_complete_watermark_after_compaction(tmp_path: Path) -> 
     )
 
     assert calls == [
-        ("compact", {"base_dir": str(tmp_path), "factor": "DIF"}),
-        ("compact", {"base_dir": str(tmp_path), "factor": "DEA"}),
+        ("compact", {"base_dir": str(tmp_path), "factor": "dif"}),
+        ("compact", {"base_dir": str(tmp_path), "factor": "dea"}),
         "write",
     ]
     assert written_payload is not None
@@ -297,8 +332,8 @@ def test_finalize_uses_common_persisted_date_for_partial_update(tmp_path: Path) 
         ths_only_factor_keys=set(),
         compact_func=lambda **_kwargs: None,
         factor_last_date_loader=lambda _base_dir: {
-            "DIF": pd.Timestamp("2026-07-29"),
-            "DEA": pd.Timestamp("2026-07-28"),
+            "dif": pd.Timestamp("2026-07-29"),
+            "dea": pd.Timestamp("2026-07-28"),
         },
         watermark_writer=write,
     )
@@ -333,7 +368,7 @@ def test_finalize_all_null_target_date_counts_as_persisted_progress(tmp_path: Pa
         ths_only_factor_keys=set(),
         compact_func=lambda **_kwargs: None,
         factor_last_date_loader=lambda _base_dir: {
-            "DIF": pd.Timestamp("2026-07-29"),
+            "dif": pd.Timestamp("2026-07-29"),
         },
         watermark_writer=write,
     )
@@ -451,3 +486,27 @@ def test_finalize_preserves_stale_watermark_when_plan_is_empty(tmp_path: Path) -
 
     assert calls == []
     assert path == tmp_path / "_meta" / "factor_batch_watermark.json"
+
+
+def test_signal_part_schema_normalization_puts_key_columns_first() -> None:
+    functions = _load_functions()
+    frame = pl.DataFrame(
+        {
+            "htsc_code": ["000001.SZ"],
+            "value": [1.0],
+            "time": [pd.Timestamp("2026-01-01")],
+        }
+    )
+
+    normalized = functions["_normalize_signal_part_schema"](frame)
+
+    assert normalized.columns == ["time", "htsc_code", "value"]
+    assert normalized["htsc_code"].to_list() == ["000001.SZ"]
+
+
+def test_generator_runs_style_monitor_after_final_watermark() -> None:
+    source = SCRIPT_PATH.read_text(encoding="utf-8-sig")
+    finalize_pos = source.index("_finalize_factor_batch(")
+    monitor_pos = source.index("style_portfolio_monitor.generator_hook")
+    assert monitor_pos > finalize_pos
+    assert "run_after_factor_generation" in source[monitor_pos:]

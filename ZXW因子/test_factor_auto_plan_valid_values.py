@@ -460,6 +460,25 @@ def test_fill_plan_does_not_compare_every_factor_with_global_code_count() -> Non
     assert result.loc["momentum_120d", "status"] == "up_to_date"
 
 
+def test_fill_plan_deduplicates_display_aliases_by_stable_factor_id() -> None:
+    planner = _load_planner_functions()
+    planner["_load_lookback_registry"] = lambda bundles: ({}, {"shared_id": 20})
+    planner["_get_factor_last_date"] = lambda **kwargs: pd.Timestamp("2026-07-24")
+
+    result = planner["build_factor_fill_plan"](
+        factor_dfs_dict={},
+        factor_name_map_dict={"展示名A": "shared_id", "展示名B": "shared_id"},
+        selected_bundles=["example"],
+        start_date="2010-01-01",
+        end_date="2026-07-29",
+        base_dir="unused",
+        buffer_days=20,
+        available_factor_keys={"shared_id"},
+    )
+
+    assert result["factor_en"].to_list() == ["shared_id"]
+
+
 def test_batch_watermark_unifies_existing_factor_tail_and_keeps_new_factor_full_history() -> None:
     planner = _load_planner_functions()
     planner["_load_lookback_registry"] = lambda bundles: (
@@ -476,7 +495,7 @@ def test_batch_watermark_unifies_existing_factor_tail_and_keeps_new_factor_full_
         base_dir="unused",
         buffer_days=20,
         available_factor_keys={"dif", "new_factor"},
-        factor_last_dt_map={"DIF": pd.Timestamp("2026-07-24")},
+        factor_last_dt_map={"dif": pd.Timestamp("2026-07-24")},
         batch_complete_date=pd.Timestamp("2026-07-24"),
     ).set_index("factor_en")
 
@@ -499,7 +518,7 @@ def test_batch_watermark_does_not_hide_factor_behind_watermark() -> None:
         base_dir="unused",
         buffer_days=20,
         available_factor_keys={"dif"},
-        factor_last_dt_map={"DIF": pd.Timestamp("2026-07-20")},
+        factor_last_dt_map={"dif": pd.Timestamp("2026-07-20")},
         batch_complete_date=pd.Timestamp("2026-07-24"),
     ).iloc[0]
 
@@ -560,7 +579,7 @@ def test_factor_last_date_is_authoritative_when_batch_watermark_lags() -> None:
         base_dir="unused",
         buffer_days=20,
         available_factor_keys={"dif"},
-        factor_last_dt_map={"DIF": pd.Timestamp("2026-07-29")},
+        factor_last_dt_map={"dif": pd.Timestamp("2026-07-29")},
         batch_complete_date=pd.Timestamp("2026-07-24"),
     ).iloc[0]
 
@@ -579,7 +598,7 @@ def test_factor_tail_executes_full_code_scope() -> None:
         base_dir="unused",
         buffer_days=20,
         available_factor_keys={"dif"},
-        factor_last_dt_map={"DIF": pd.Timestamp("2026-07-24")},
+        factor_last_dt_map={"dif": pd.Timestamp("2026-07-24")},
         batch_complete_date=pd.Timestamp("2026-07-24"),
     )
 

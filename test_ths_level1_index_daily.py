@@ -27,9 +27,11 @@ def load_module():
     return module
 
 
-def write_stockname_fixture(path: Path) -> None:
+def write_stockname_fixture(
+    path: Path,
+    groups=(("881", 90), ("882", 33), ("885", 293), ("886", 96)),
+) -> None:
     lines = []
-    groups = (("881", 90), ("882", 33), ("885", 293), ("886", 96))
     for prefix, count in groups:
         for number in range(count):
             lines.append(f"{prefix}{number:03d}=板块{prefix}_{number:03d}")
@@ -37,7 +39,7 @@ def write_stockname_fixture(path: Path) -> None:
     path.write_bytes(("\r\n".join(lines) + "\r\n").encode("gb18030"))
 
 
-def test_load_level1_indices_requires_exact_512_prefix_distribution(tmp_path: Path):
+def test_load_level1_indices_accepts_dynamic_prefix_distribution(tmp_path: Path):
     module = load_module()
     stockname = tmp_path / "stockname_48_0.txt"
     write_stockname_fixture(stockname)
@@ -50,6 +52,20 @@ def test_load_level1_indices_requires_exact_512_prefix_distribution(tmp_path: Pa
     for row in rows:
         counts[row["security_id"][:3]] = counts.get(row["security_id"][:3], 0) + 1
     assert counts == {"881": 90, "882": 33, "885": 293, "886": 96}
+
+
+def test_load_level1_indices_accepts_new_sector_without_count_update(tmp_path: Path):
+    module = load_module()
+    stockname = tmp_path / "stockname_48_0.txt"
+    write_stockname_fixture(
+        stockname,
+        groups=(("881", 90), ("882", 33), ("885", 293), ("886", 97)),
+    )
+
+    rows = module.load_level1_indices(stockname)
+
+    assert len(rows) == 513
+    assert rows[-1]["security_id"] == "886096"
 
 
 def test_write_level1_universe_saves_names_and_pinyin(tmp_path: Path):

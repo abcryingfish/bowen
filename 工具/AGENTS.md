@@ -22,6 +22,8 @@
 | `D:\database\index_data_daily` | `获得指数日频数据.py` | 默认 000001.SH / 399001.SZ |
 | `D:\database\index_data_daily` | `获得同花顺1级指数日频数据.py` | 同花顺软件一级512指数，代码后缀 `.THS`，15:30后允许写当天 |
 | `D:\database\signal_daily` | 因子 notebook + `增量信号保存.py` | `factor=*/year=*/month=*/` |
+| `D:\database\signal_daily\factor=*粉丝*` | `获得股票粉丝特征.py` | 东方财富每日粉丝特征四因子；股票池来自 `全市场股票代码/universe.parquet`；默认每 0.5 秒启动一只、8 线程并发 |
+| `D:\database\signal_daily\factor=*趋势*` | `获得股票历史趋势排名.py` | 东方财富 `chart2wrap` 历史趋势排名；保存 7 个数值因子，默认每 0.5 秒启动一只、8 线程并发 |
 
 ## Shared partition layout (most daily scripts)
 
@@ -56,6 +58,8 @@
 | `获得股票分钟级数据.py` | `signal_daily` pool + `stock_basic_data_daily` years + `get_kline` | Serial 1 stock × 1 year; default `--max-year 2025`; → `stock_basic_data_mins`. |
 | `获得指数日频数据.py` | `get_kline` (one index per call) | Default indices 000001.SH / 399001.SZ → `index_data_daily`. |
 | `获得同花顺1级指数日频数据.py` | 同花顺年度日线接口 + 客户端名称表 | 软件一级512指数 → `index_data_daily`；前缀881/882/885/886；按每只本地末日重叠增量。 |
+| `获得股票粉丝特征.py` | 东方财富股吧粉丝历史接口 | 本地股票池逐票抓取；只落新/老粉丝占比及其变化四项，按前端契约写入 `signal_daily/factor=*/year=*/month=*/merged.parquet`；`htsc_code + time` 去重。 |
+| `获得股票历史趋势排名.py` | 东方财富股吧历史趋势接口 | `chart2wrap` 对应 `rank/history/year/{SH|SZ}{CODE}.js?type=0`；按股票池增量抓取，失败首轮后重试一次。 |
 | `增量信号保存.py` | local `part_*.parquet` | Merge under `factor=*/year=*/month=*` → `merged.parquet`; dedupe `time + htsc_code`; **old value wins**. |
 | `export_index_lists_from_doc.py` | INSIGHT index doc markdown | Export Shanghai/SZ/Shenwan L3 index lists to CSV (no live pull). |
 | `各类数据检查.ipynb` | DuckDB | Sanity checks over daily / liquidity / index / signal / adj paths. |
@@ -91,6 +95,7 @@ $py = c:\Users\Administrator\Desktop\python_venv\.venv\Scripts\python.exe
 & $py 工具/获得股票分钟级数据.py --max-year 2025
 & $py 工具/获得指数日频数据.py --base-dir D:\database\index_data_daily
 & $py 工具/获得同花顺1级指数日频数据.py --base-dir D:\database\index_data_daily
+& $py 工具/获得股票粉丝特征.py --sleep-sec 0.5 --workers 8 --output-dir D:\database\signal_daily
 & $py 工具/增量信号保存.py --base-dir D:\database\signal_daily --factor <FACTOR> --year <Y> --month <M>
 ```
 

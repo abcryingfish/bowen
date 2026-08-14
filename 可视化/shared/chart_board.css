@@ -1731,6 +1731,44 @@ html.portfolio-ykrs-curve-picker .portfolio-chart-legend.is-visible {
     transform: rotate(45deg);
 }
 
+.morph-pattern-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+    padding-top: 2px;
+    color: #d1d4dc;
+}
+
+.morph-pattern-filter-label {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.morph-pattern-filter-select {
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 34px 8px 10px;
+    border: 1px solid #3a3f4a;
+    border-radius: 6px;
+    background: #171b24;
+    color: #d1d4dc;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.morph-pattern-filter-select:hover,
+.morph-pattern-filter-select:focus {
+    border-color: #6b9cff;
+    outline: none;
+}
+
+.morph-pattern-filter-select:disabled {
+    color: #737b8c;
+    cursor: default;
+    opacity: 0.75;
+}
+
 .position-snapshot-wrap {
     display: flex;
     flex-direction: column;

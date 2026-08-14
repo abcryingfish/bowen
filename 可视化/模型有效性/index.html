@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>模型有效性</title>
+    <title>个股风格模型有效性</title>
     <link rel="stylesheet" href="../shared/edge_float.css">
     <link rel="stylesheet" href="./model_validity.css">
 </head>
@@ -15,7 +15,7 @@
             <div class="brand">量化研究工作台</div>
             <div class="model-validity-title">
                 <span class="eyebrow">MODEL VALIDITY</span>
-                <h1>模型有效性</h1>
+                <h1>个股风格模型有效性</h1>
             </div>
             <div class="model-validity-header-actions">
                 <a class="model-live-link" href="../实盘面/index.html">实盘面</a>
@@ -33,15 +33,21 @@
         <main class="model-validity-shell">
             <section class="monitor-status" aria-label="页面状态">
                 <div><span class="status-kicker">THEORETICAL MONITOR</span><strong id="style-monitor-as-of">账本日期：--</strong><span id="style-monitor-message">只读账本</span></div>
-                <div class="monitor-actions"><span class="paper-note">理论监控：T 日收盘信号与 T 日收盘理论成交，不代表可实盘成交</span><button id="style-monitor-update" type="button" title="手动更新" aria-label="手动更新">↻</button></div>
+                <div class="monitor-actions"><span class="paper-note">理论监控：T 日收盘积分，T+1 日开盘按可交易价格生效；后复权无本金等权指数，不模拟手续费</span></div>
             </section>
             <section id="style-summary-rankings" class="summary-rankings" aria-label="风格强弱排名"></section>
             <section class="range-toolbar" aria-label="曲线范围">
-                <span class="toolbar-label">净值区间</span>
-                <div class="range-switch" role="group" aria-label="净值区间">
-                    <button type="button" data-range="20d">20D</button><button type="button" data-range="60d" class="active">60D</button><button type="button" data-range="ytd">YTD</button><button type="button" data-range="all">全部</button>
+                <span class="toolbar-label">指数区间</span>
+                <div class="range-switch" role="group" aria-label="指数区间">
+                    <button type="button" data-range="20d">20D</button><button type="button" data-range="60d" class="active">60D</button><button type="button" data-range="ytd">YTD</button>
+                    <label class="custom-range-field"><span>From</span><input id="style-range-start" type="date" aria-label="Custom range start date"></label>
+                    <label class="custom-range-field"><span>To</span><input id="style-range-end" type="date" aria-label="Custom range end date"></label>
+                    <label class="custom-range-field"><span>回看天数</span><input id="style-range-lookback" type="number" min="1" max="20000" step="1" inputmode="numeric" placeholder="天数" aria-label="回看天数"></label>
+                    <button type="button" id="style-range-apply" class="custom-range-apply">Apply</button>
+                    <label class="custom-range-field benchmark-field"><span>Benchmark</span><div class="benchmark-input-wrap"><input id="style-benchmark-code" type="text" value="000001.SH" autocomplete="off" spellcheck="false" placeholder="如 600000.SH" aria-label="基准代码"><ul id="style-benchmark-suggestions" class="benchmark-suggestions" aria-label="基准代码候选"></ul></div></label>
+                    <button type="button" id="style-benchmark-apply" class="custom-range-apply">Apply</button>
+                    <span id="style-benchmark-status" aria-live="polite"></span>
                 </div>
-                <span id="style-monitor-progress" class="monitor-progress" aria-live="polite"></span>
             </section>
             <div id="style-monitor-state" class="page-state" role="status">正在读取账本...</div>
             <section id="style-chart-grid" class="model-chart-grid" aria-label="风格组合曲线"></section>

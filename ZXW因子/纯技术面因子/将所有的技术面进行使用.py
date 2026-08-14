@@ -29,6 +29,11 @@ from 纯技术面因子_bundle import (  # noqa: E402
     get_factor_lookback_config,
     iter_pure_technical_factor_bundles,
 )
+from 纯技术面因子.AMA import (  # noqa: E402
+    ama_state_cache_covers,
+    commit_ama_state_cache,
+    discard_pending_ama_states,
+)
 
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -230,12 +235,13 @@ def _apply_wide_xdy_backward(
         backward = _backward_factor_series(xdy)
         row_index = list(index_labels)
         dates = output.loc[row_index, "time"]
-        factors = dates.map(backward)
-        factors = factors.mask(dates < backward.index.min(), 1.0)
-        factors = factors.mask(dates > backward.index.max(), float(backward.iloc[-1])).fillna(1.0)
+        locations = backward.index.searchsorted(pd.DatetimeIndex(dates), side="right") - 1
+        covered = locations >= 0
+        factors = np.ones(len(dates), dtype=float)
+        factors[covered] = backward.to_numpy(dtype=float)[locations[covered]]
         output.loc[row_index, ["open", "high", "low", "close"]] = (
             output.loc[row_index, ["open", "high", "low", "close"]].to_numpy(dtype=float)
-            * factors.to_numpy(dtype=float)[:, None]
+            * factors[:, None]
         )
         matched_rows += len(row_index)
     return output, matched_rows
@@ -254,7 +260,8 @@ def load_adjusted_market_data(
     start = _normalize_date(start_date)
     end = _normalize_date(end_date)
     market_paths = _market_paths(market_base_paths, start, end)
-    adj_paths = _partition_paths(adj_factor_base_path, start, end)
+    adj_start = start - pd.Timedelta(days=62)
+    adj_paths = _partition_paths(adj_factor_base_path, adj_start, end)
     base_sql = _raw_market_sql(market_paths, start, end, target_codes)
 
     if adj_paths:
@@ -267,41 +274,42 @@ WITH d AS (
         CAST(time AS DATE) AS time,
         MAX(TRY_CAST(adj_factor AS DOUBLE)) AS adj_factor
     FROM read_parquet({_sql_path_list(adj_paths)}, hive_partitioning=1, union_by_name=true)
-    WHERE CAST(time AS DATE) >= DATE '{start:%Y-%m-%d}'
+    WHERE CAST(time AS DATE) >= DATE '{adj_start:%Y-%m-%d}'
       AND CAST(time AS DATE) <= DATE '{end:%Y-%m-%d}'
     GROUP BY 1, 2
 )
 SELECT
     d.time,
     d.htsc_code,
-    d.open * COALESCE(a.adj_factor, 1.0) AS open,
-    d.high * COALESCE(a.adj_factor, 1.0) AS high,
-    d.low * COALESCE(a.adj_factor, 1.0) AS low,
-    d.close * COALESCE(a.adj_factor, 1.0) AS close,
+    d.open * a.adj_factor AS open,
+    d.high * a.adj_factor AS high,
+    d.low * a.adj_factor AS low,
+    d.close * a.adj_factor AS close,
     d.volume,
-    a.adj_factor IS NOT NULL AS adj_factor_matched
+    a.adj_factor AS _adj_factor
 FROM d
-LEFT JOIN a
+ASOF LEFT JOIN a
   ON d.htsc_code = a.htsc_code
- AND CAST(d.time AS DATE) = a.time
+ AND CAST(d.time AS DATE) >= a.time
 ORDER BY d.htsc_code, d.time
 """
         con = duckdb.connect(database=":memory:")
         try:
             frame = con.execute(sql).df()
+            factors = pd.to_numeric(frame.pop("_adj_factor"), errors="coerce")
+            if factors.isna().any() or (~np.isfinite(factors.to_numpy(dtype=float))).any() or factors.le(0).any():
+                raise ValueError("adj_factor_daily 无法覆盖全部行情行")
         except Exception as exc:
             if wide_xdy_base_path is None:
                 raise
             print(f"[WARN] adj_factor_daily 快路径失败，回退 wide_xdy: {exc}")
         else:
-            frame["adj_factor_matched"] = frame["adj_factor_matched"].fillna(False).astype(bool)
             frame["time"] = pd.to_datetime(frame["time"]).dt.normalize()
             frame = frame.drop_duplicates(["htsc_code", "time"], keep="last").reset_index(drop=True)
-            matched = int(frame.pop("adj_factor_matched").sum())
             return frame, {
                 "rows": len(frame),
-                "matched_adj_rows": matched,
-                "missing_adj_rows": len(frame) - matched,
+                "matched_adj_rows": len(frame),
+                "missing_adj_rows": 0,
             }
         finally:
             con.close()
@@ -370,15 +378,41 @@ def _factor_storage_paths(base_dir: str | Path, factor_name: str) -> list[Path]:
     return paths
 
 
+def _latest_factor_storage_paths(base_dir: str | Path, factor_name: str) -> list[Path]:
+    root = _factor_root(base_dir, factor_name)
+    month_dirs: list[tuple[int, int, Path]] = []
+    for month_dir in root.glob("year=*/month=*") if root.exists() else []:
+        try:
+            year = int(month_dir.parent.name.split("=", 1)[1])
+            month = int(month_dir.name.split("=", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        month_dirs.append((year, month, month_dir))
+    for _, _, month_dir in sorted(month_dirs, reverse=True):
+        merged_path = month_dir / "merged.parquet"
+        paths = ([merged_path] if merged_path.is_file() else []) + sorted(
+            month_dir.glob("part_*.parquet")
+        )
+        if paths:
+            return paths
+    return []
+
+
 def load_factor_storage_summary(
     base_dir: str | Path,
     factor_ids: Sequence[str],
+    *,
+    include_code_coverage: bool = True,
 ) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
     con = duckdb.connect(database=":memory:")
     try:
         for factor_id in factor_ids:
-            paths = _factor_storage_paths(base_dir, factor_id)
+            paths = (
+                _factor_storage_paths(base_dir, factor_id)
+                if include_code_coverage
+                else _latest_factor_storage_paths(base_dir, factor_id)
+            )
             if not paths:
                 continue
             sql = f"""
@@ -386,9 +420,13 @@ SELECT MAX(CAST(time AS DATE)) AS last_dt
 FROM read_parquet({_sql_path_list(paths)}, union_by_name=true)
 """
             last_dt = con.execute(sql).fetchone()[0]
-            code_rows = con.execute(
-                f"SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) FROM read_parquet({_sql_path_list(paths)}, union_by_name=true) WHERE htsc_code IS NOT NULL"
-            ).fetchall()
+            code_rows = (
+                con.execute(
+                    f"SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) FROM read_parquet({_sql_path_list(paths)}, union_by_name=true) WHERE htsc_code IS NOT NULL"
+                ).fetchall()
+                if include_code_coverage
+                else []
+            )
             result[str(factor_id)] = {
                 "last_dt": pd.Timestamp(last_dt).floor("D") if last_dt is not None else None,
                 "codes": {str(row[0]).upper() for row in code_rows if row[0]},
@@ -406,6 +444,7 @@ def build_incremental_plan(
     start_date: str | pd.Timestamp,
     end_date: str | pd.Timestamp,
     lookback_config: dict[str, object],
+    check_missing_codes: bool = True,
 ) -> pd.DataFrame:
     start = _normalize_date(start_date)
     end = _normalize_date(end_date)
@@ -421,7 +460,10 @@ def build_incremental_plan(
         last_dt_value = item.get("last_dt")
         last_dt = pd.Timestamp(last_dt_value).floor("D") if last_dt_value is not None else None
         existing_codes = {str(code).strip().upper() for code in item.get("codes", set())}
-        missing_codes = tuple(sorted(normalized_codes.difference(existing_codes)))
+        missing_codes = (
+            tuple(sorted(normalized_codes.difference(existing_codes)))
+            if check_missing_codes else ()
+        )
 
         if last_dt is None:
             status = "missing"
@@ -726,6 +768,54 @@ def _print_plan(plan: pd.DataFrame) -> None:
         print(pending[["indicator", "factor_id", "status", "compute_start", "save_start", "save_end", "reason"]].to_string(index=False))
 
 
+def _bootstrap_ama_state_once(
+    *,
+    market_bases: list[str],
+    adj_factor_base_path: str,
+    wide_xdy_base_path: str,
+    target_codes: list[str],
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    state_cache_path: Path,
+) -> None:
+    """一次读取 close，再按代码切片建立 AMA 状态，避免重复扫描 parquet。"""
+    from 纯技术面因子.AMA import build_ama_factor_matrices_with_state
+
+    market, adj_stats = load_adjusted_market_data(
+        market_base_paths=market_bases,
+        adj_factor_base_path=adj_factor_base_path,
+        wide_xdy_base_path=wide_xdy_base_path,
+        start_date=start_date,
+        end_date=end_date,
+        target_codes=target_codes,
+    )
+    print(f"AMA bootstrap 一次性行情读取完成: rows={len(market)}，复权={adj_stats}")
+    close = (
+        market.pivot_table(
+            index="time",
+            columns="htsc_code",
+            values="close",
+            aggfunc="last",
+        )
+        .sort_index()
+    )
+    del market
+    requested = [code for code in target_codes if code in close.columns]
+    batch_size = 200
+    total = (len(requested) + batch_size - 1) // batch_size
+    for batch_index, offset in enumerate(range(0, len(requested), batch_size), start=1):
+        batch_codes = requested[offset : offset + batch_size]
+        build_ama_factor_matrices_with_state(
+            close.loc[:, batch_codes],
+            state_cache_path=state_cache_path,
+            state_only=True,
+        )
+        commit_ama_state_cache(state_cache_path)
+        print(f"AMA bootstrap 状态批次完成: {batch_index}/{total}，代码={len(batch_codes)}")
+    del close
+    gc.collect()
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="后复权向量化生成纯技术面因子并增量写入 signal_daily")
     parser.add_argument("--start-date", default=DEFAULT_START_DATE)
@@ -741,8 +831,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--target-factors", nargs="*", default=None)
     parser.add_argument("--max-save-workers", type=int, default=4)
     parser.add_argument("--compact-workers", type=int, default=4)
+    parser.add_argument(
+        "--code-batch-size",
+        type=int,
+        default=0,
+        help="按代码分批加载行情；0 表示一次加载全部代码",
+    )
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--no-compact", action="store_true")
+    parser.add_argument(
+        "--skip-missing-code-check",
+        action="store_true",
+        help="日常尾部更新只比较最新日期，不扫描全历史代码覆盖",
+    )
+    parser.add_argument(
+        "--bootstrap-ama-state",
+        action="store_true",
+        help="即使 AMA 因子已是最新，也从完整历史建立一次耐久状态快照",
+    )
     return parser.parse_args(argv)
 
 
@@ -754,13 +860,14 @@ def run(args: argparse.Namespace) -> None:
     target_codes = _parse_tokens(args.target_codes, upper=True)
     selected_indicators = _parse_tokens(args.selected_indicators, upper=True)
     target_factors = set(_parse_tokens(args.target_factors))
-
-    if not args.plan_only:
-        compact_signal_daily_parts(output_base, workers=args.compact_workers)
+    bootstrap_ama_state = bool(getattr(args, "bootstrap_ama_state", False))
 
     cache_path = output_base / "_meta" / "pure_technical_factor_catalog_cache.json"
     catalog = get_factor_catalog(cache_path=cache_path)
     factor_ids = list(catalog["factor_name_map"].values())
+    if bootstrap_ama_state:
+        selected_indicators = ["AMA"]
+        target_factors = set()
     if selected_indicators:
         unknown = sorted(set(selected_indicators).difference(INDICATOR_NAMES))
         if unknown:
@@ -772,6 +879,13 @@ def run(args: argparse.Namespace) -> None:
             raise ValueError(f"未知或未选中的因子: {', '.join(unknown_factors)}")
         factor_ids = [name for name in factor_ids if name in target_factors]
 
+    if not args.plan_only and not bootstrap_ama_state:
+        compact_signal_daily_parts(
+            output_base,
+            factor_names=factor_ids,
+            workers=args.compact_workers,
+        )
+
     available_codes, market_last_dt = get_market_coverage(market_bases, start, requested_end, target_codes)
     if market_last_dt is None or not available_codes:
         raise ValueError("目标范围内没有可用市场数据")
@@ -779,17 +893,54 @@ def run(args: argparse.Namespace) -> None:
     if effective_end < requested_end:
         print(f"目标结束日无行情，实际按最新交易日执行: {effective_end.date()}")
 
-    storage_summary = load_factor_storage_summary(output_base, factor_ids)
+    storage_summary = load_factor_storage_summary(
+        output_base,
+        factor_ids,
+        include_code_coverage=not args.skip_missing_code_check,
+    )
+    ama_state_path = output_base / "_state" / "ama_latest_state.parquet"
+    lookback_config = get_factor_lookback_config()
+    if ama_state_cache_covers(ama_state_path, available_codes):
+        lookback_config = dict(lookback_config)
+        lookback_config["full_history_factor_keys"] = [
+            factor_id
+            for factor_id in lookback_config.get("full_history_factor_keys", [])
+            if not str(factor_id).startswith("AMA_")
+        ]
+        print(f"AMA 状态快照覆盖完整，启用尾部续算: {ama_state_path}")
+    else:
+        print(f"AMA 状态快照缺失或覆盖不完整，保留全历史 bootstrap: {ama_state_path}")
+
     plan = build_incremental_plan(
         factor_ids=factor_ids,
         storage_summary=storage_summary,
         available_codes=available_codes,
         start_date=start,
         end_date=effective_end,
-        lookback_config=get_factor_lookback_config(),
+        lookback_config=lookback_config,
+        check_missing_codes=not args.skip_missing_code_check,
     )
+    if bootstrap_ama_state:
+        ama_rows = plan["indicator"].eq("AMA")
+        plan.loc[ama_rows, "status"] = "stale"
+        plan.loc[ama_rows, "compute_start"] = start
+        plan.loc[ama_rows, "save_start"] = pd.NaT
+        plan.loc[ama_rows, "save_end"] = pd.NaT
+        plan.loc[ama_rows, "reason"] = "显式建立 AMA 状态快照"
     _print_plan(plan)
     if args.plan_only:
+        return
+
+    if bootstrap_ama_state:
+        _bootstrap_ama_state_once(
+            market_bases=market_bases,
+            adj_factor_base_path=args.adj_factor_base_path,
+            wide_xdy_base_path=args.wide_xdy_base_path,
+            target_codes=target_codes or sorted(available_codes),
+            start_date=start,
+            end_date=effective_end,
+            state_cache_path=ama_state_path,
+        )
         return
 
     pending = plan[plan["status"] != "up_to_date"].copy()
@@ -798,98 +949,129 @@ def run(args: argparse.Namespace) -> None:
         return
 
     shared_compute_start = pd.Timestamp(pending["compute_start"].min()).floor("D")
-    print(f"\n一次加载共享行情: {shared_compute_start.date()} ~ {effective_end.date()}")
-    market, adj_stats = load_adjusted_market_data(
-        market_base_paths=market_bases,
-        adj_factor_base_path=args.adj_factor_base_path,
-        wide_xdy_base_path=args.wide_xdy_base_path,
-        start_date=shared_compute_start,
-        end_date=effective_end,
-        target_codes=target_codes or None,
+    requested_codes = target_codes or sorted(available_codes)
+    batch_size = int(args.code_batch_size or 0)
+    if batch_size < 0:
+        raise ValueError("code_batch_size 不能小于 0")
+    if batch_size == 0:
+        code_batches = [requested_codes]
+    else:
+        code_batches = [
+            requested_codes[index:index + batch_size]
+            for index in range(0, len(requested_codes), batch_size)
+        ]
+    print(
+        f"\n分批加载共享行情: {shared_compute_start.date()} ~ {effective_end.date()}，"
+        f"代码={len(requested_codes)}，批次={len(code_batches)}，每批上限={batch_size or len(requested_codes)}"
     )
-    print(f"复权覆盖: {adj_stats}")
-    O_all, H_all, L_all, C_all, V_all, valid_bar_all = _build_price_matrices(market)
-    del market
-    gc.collect()
-
     completed_factors: set[str] = set()
-    for indicator in INDICATOR_NAMES:
-        indicator_plan = pending[pending["indicator"] == indicator]
-        if indicator_plan.empty:
-            continue
-        compute_start = pd.Timestamp(indicator_plan["compute_start"].min()).floor("D")
-        selected_factor_ids = indicator_plan["factor_id"].astype(str).tolist()
-        print(f"\n开始指标 {indicator}: 计算区间 {compute_start.date()} ~ {effective_end.date()}，因子={len(selected_factor_ids)}")
-
-        O = O_all.loc[compute_start:effective_end]
-        H = H_all.loc[compute_start:effective_end]
-        L = L_all.loc[compute_start:effective_end]
-        C = C_all.loc[compute_start:effective_end]
-        V = V_all.loc[compute_start:effective_end]
-        valid_bar = valid_bar_all.loc[compute_start:effective_end]
-        output = next(
-            iter_pure_technical_factor_bundles(
-                O=O,
-                H=H,
-                L=L,
-                C=C,
-                V=V,
-                valid_bar=valid_bar,
-                selected_indicators=[indicator],
-                selected_factors=selected_factor_ids,
-            )
+    pending_factor_ids = pending["factor_id"].astype(str).tolist()
+    for code_batch_index, code_batch in enumerate(code_batches, start=1):
+        print(
+            f"\n代码批次 [{code_batch_index}/{len(code_batches)}]: "
+            f"{len(code_batch)} 只，行情区间 {shared_compute_start.date()} ~ {effective_end.date()}"
         )
+        market, adj_stats = load_adjusted_market_data(
+            market_base_paths=market_bases,
+            adj_factor_base_path=args.adj_factor_base_path,
+            wide_xdy_base_path=args.wide_xdy_base_path,
+            start_date=shared_compute_start,
+            end_date=effective_end,
+            target_codes=code_batch,
+        )
+        print(f"复权覆盖: {adj_stats}")
+        O_all, H_all, L_all, C_all, V_all, valid_bar_all = _build_price_matrices(market)
+        del market
+        gc.collect()
 
-        plan_by_factor = indicator_plan.set_index("factor_id")
-        write_batches: list[
-            tuple[dict[str, pd.DataFrame], dict[str, tuple[pd.Timestamp, pd.Timestamp]]]
-        ] = [({}, {}), ({}, {})]
-        for factor_id, frame in output["factor_dfs"].items():
-            row = plan_by_factor.loc[factor_id]
-            last_dt = row["last_dt"]
-            missing_codes = list(row["missing_codes"])
-            factor_jobs: list[tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]] = []
-            if pd.isna(last_dt):
-                factor_jobs.append((frame, start, effective_end))
-            else:
-                last_dt = pd.Timestamp(last_dt).floor("D")
-                if missing_codes:
-                    missing_columns = [code for code in missing_codes if code in frame.columns]
-                    if missing_columns and start <= min(last_dt, effective_end):
-                        factor_jobs.append(
-                            (frame.loc[:, missing_columns], start, min(last_dt, effective_end))
-                        )
-                tail_start = last_dt + pd.Timedelta(days=1)
-                if tail_start <= effective_end:
-                    factor_jobs.append((frame, tail_start, effective_end))
-
-            for batch_index, (job_frame, save_start, save_end) in enumerate(factor_jobs):
-                factor_dfs, save_ranges = write_batches[batch_index]
-                factor_dfs[factor_id] = job_frame
-                save_ranges[factor_id] = (save_start, save_end)
-
-        for factor_dfs, save_ranges in write_batches:
-            completed_factors.update(
-                write_factor_parts(
-                    factor_dfs=factor_dfs,
-                    output_base_dir=output_base,
-                    save_ranges=save_ranges,
-                    max_workers=args.max_save_workers,
+        for indicator in INDICATOR_NAMES:
+            indicator_plan = pending[pending["indicator"] == indicator]
+            if indicator_plan.empty:
+                continue
+            compute_start = pd.Timestamp(indicator_plan["compute_start"].min()).floor("D")
+            selected_factor_ids = indicator_plan["factor_id"].astype(str).tolist()
+            print(
+                f"开始指标 {indicator}: 计算区间 {compute_start.date()} ~ "
+                f"{effective_end.date()}，因子={len(selected_factor_ids)}"
+            )
+            O = O_all.loc[compute_start:effective_end]
+            H = H_all.loc[compute_start:effective_end]
+            L = L_all.loc[compute_start:effective_end]
+            C = C_all.loc[compute_start:effective_end]
+            V = V_all.loc[compute_start:effective_end]
+            valid_bar = valid_bar_all.loc[compute_start:effective_end]
+            output = next(
+                iter_pure_technical_factor_bundles(
+                    O=O,
+                    H=H,
+                    L=L,
+                    C=C,
+                    V=V,
+                    valid_bar=valid_bar,
+                    selected_indicators=[indicator],
+                    selected_factors=selected_factor_ids,
+                    ama_state_cache_path=ama_state_path if indicator == "AMA" else None,
+                    ama_state_only=bootstrap_ama_state and indicator == "AMA",
                 )
             )
 
-        if not args.no_compact:
-            compact_signal_daily_parts(
-                output_base,
-                factor_names=selected_factor_ids,
-                workers=args.compact_workers,
-            )
-        del output, O, H, L, C, V, valid_bar
-        gc.collect()
-        print(f"指标完成: {indicator}")
+            plan_by_factor = indicator_plan.set_index("factor_id")
+            write_batches: list[
+                tuple[dict[str, pd.DataFrame], dict[str, tuple[pd.Timestamp, pd.Timestamp]]]
+            ] = [({}, {}), ({}, {})]
+            for factor_id, frame in output["factor_dfs"].items():
+                row = plan_by_factor.loc[factor_id]
+                last_dt = row["last_dt"]
+                missing_codes = list(row["missing_codes"])
+                factor_jobs: list[tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]] = []
+                if pd.isna(last_dt):
+                    factor_jobs.append((frame, start, effective_end))
+                else:
+                    last_dt = pd.Timestamp(last_dt).floor("D")
+                    if missing_codes:
+                        missing_columns = [code for code in missing_codes if code in frame.columns]
+                        if missing_columns and start <= min(last_dt, effective_end):
+                            factor_jobs.append(
+                                (frame.loc[:, missing_columns], start, min(last_dt, effective_end))
+                            )
+                    tail_start = last_dt + pd.Timedelta(days=1)
+                    if tail_start <= effective_end:
+                        factor_jobs.append((frame, tail_start, effective_end))
 
-    del O_all, H_all, L_all, C_all, V_all, valid_bar_all
-    gc.collect()
+                for job_index, (job_frame, save_start, save_end) in enumerate(factor_jobs):
+                    factor_dfs, save_ranges = write_batches[job_index]
+                    factor_dfs[factor_id] = job_frame
+                    save_ranges[factor_id] = (save_start, save_end)
+
+            for factor_dfs, save_ranges in write_batches:
+                completed_factors.update(
+                    write_factor_parts(
+                        factor_dfs=factor_dfs,
+                        output_base_dir=output_base,
+                        save_ranges=save_ranges,
+                        max_workers=args.max_save_workers,
+                    )
+                )
+            if indicator == "AMA":
+                try:
+                    committed_path = commit_ama_state_cache(ama_state_path)
+                    print(f"AMA 状态快照已提交: {committed_path}")
+                except Exception:
+                    discard_pending_ama_states(ama_state_path)
+                    raise
+            del output, O, H, L, C, V, valid_bar
+            gc.collect()
+
+        del O_all, H_all, L_all, C_all, V_all, valid_bar_all
+        gc.collect()
+        print(f"代码批次完成: {code_batch_index}/{len(code_batches)}")
+
+    if not args.no_compact:
+        compact_signal_daily_parts(
+            output_base,
+            factor_names=pending_factor_ids,
+            workers=args.compact_workers,
+        )
     print(f"纯技术面因子增量生成完成，写入因子数={len(completed_factors)}")
 
 

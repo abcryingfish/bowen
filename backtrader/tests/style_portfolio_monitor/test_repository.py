@@ -43,6 +43,21 @@ def test_ensure_model_version_reuses_same_hash_and_creates_new_version_for_chang
     assert repo.ensure_model_version(MODEL_DEFINITIONS[0], "hash-b") != first
 
 
+def test_ensure_model_version_skips_existing_version_number_after_cleanup(tmp_path):
+    repo = ready_repository(tmp_path)
+    first = repo.ensure_model_version(MODEL_DEFINITIONS[0], "hash-a")
+    second = repo.ensure_model_version(MODEL_DEFINITIONS[0], "hash-b")
+    assert first == "large_cap_raw-v1"
+    assert second == "large_cap_raw-v2"
+    conn = repo._connect()
+    try:
+        conn.execute("DELETE FROM model_definition WHERE model_version=?", [first])
+        conn.execute("DELETE FROM run_state WHERE model_version=?", [first])
+    finally:
+        conn.close()
+    assert repo.ensure_model_version(MODEL_DEFINITIONS[0], "hash-c") == "large_cap_raw-v3"
+
+
 def test_write_model_day_is_idempotent(tmp_path):
     repo = ready_repository(tmp_path)
     payload = make_model_day_payload()
@@ -59,3 +74,16 @@ def test_failed_day_rolls_back_all_rows_and_does_not_advance_watermark(tmp_path,
         repo.write_model_day(make_model_day_payload())
     assert repo.count_rows("nav_daily") == 0
     assert repo.get_run_state("large_cap_raw-v1").last_success_date is None
+
+
+def test_update_run_lifecycle_is_persisted_for_summary(tmp_path):
+    repo = ready_repository(tmp_path)
+    repo.create_update_run("run-1", through_date=date(2026, 1, 30))
+    repo.update_update_run("run-1", status="running", progress=25, message="growth_raw 2026-01-10")
+    repo.update_update_run("run-1", status="done", progress=100, message="更新完成")
+
+    latest = repo.query_summary()["latest_update"]
+    assert latest["run_id"] == "run-1"
+    assert latest["status"] == "done"
+    assert latest["progress"] == 100
+    assert latest["through_date"] == "2026-01-30"

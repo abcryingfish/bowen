@@ -19,6 +19,8 @@ def test_model_definitions_use_exact_factor_names_and_frequencies():
         ("growth_raw", "成长风格评分", "growth_style_score", "monthly"),
         ("growth_industry_neutral", "成长风格综合评分(行业标准化)", "growth_style_composite_score_industry_normalized", "monthly"),
         ("momentum_raw", "动量风格评分", "momentum_style_score", "weekly"),
+        ("momentum_5d_raw", "股票5日动量", "stock_momentum_5d", "weekly"),
+        ("momentum_20d_raw", "股票20日动量", "stock_momentum_20d", "weekly"),
         ("low_volatility_raw", "低波风格评分", "low_volatility_style_score", "monthly"),
         ("dividend_raw", "红利基础百分位", "dividend_base_percentile", "quarterly"),
         ("liquidity_raw", "流动性综合评分", "liquidity_composite_score", "weekly"),

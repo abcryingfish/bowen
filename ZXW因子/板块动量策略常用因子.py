@@ -44,6 +44,7 @@ _VALUATION_GLOB = (
 )
 
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {
+    "momentum_5d": 5,
     "momentum_20d": 20,
     "momentum_60d": 60,
     "momentum_120d": 120,
@@ -69,6 +70,7 @@ def get_factor_catalog() -> dict[str, dict[str, str]]:
     """返回主脚本自动规划使用的因子目录，不触发数据读取。"""
     return {
         "factor_name_map": {
+            "5日动量": "momentum_5d",
             "20日动量": "momentum_20d",
             "60日动量": "momentum_60d",
             "120日动量": "momentum_120d",
@@ -116,6 +118,7 @@ def build_momentum_factor_bundle(C: pd.DataFrame) -> dict[str, dict[str, pd.Data
     index, columns = C.index, C.columns
     close = _as_float_frame(C, index=index, columns=columns)
 
+    momentum_5d = close / close.shift(5) - 1.0
     momentum_20d = close / close.shift(20) - 1.0
     momentum_60d = close / close.shift(60) - 1.0
     momentum_120d = close / close.shift(120) - 1.0
@@ -184,6 +187,7 @@ def build_momentum_factor_bundle(C: pd.DataFrame) -> dict[str, dict[str, pd.Data
     ).clip(lower=-3.0, upper=3.0).where(sector_close.notna())
 
     factor_dfs = {
+        "momentum_5d": momentum_5d,
         "momentum_20d": momentum_20d,
         "momentum_60d": momentum_60d,
         "momentum_120d": momentum_120d,
@@ -198,6 +202,7 @@ def build_momentum_factor_bundle(C: pd.DataFrame) -> dict[str, dict[str, pd.Data
         "sector_ewma_rms_zscore_252d": sector_ewma_rms_zscore,
     }
     factor_name_map = {
+        "5日动量": "momentum_5d",
         "20日动量": "momentum_20d",
         "60日动量": "momentum_60d",
         "120日动量": "momentum_120d",

@@ -22,6 +22,7 @@ import os
 import re
 import json
 import importlib
+import subprocess
 import time
 import sys
 from pathlib import Path
@@ -154,18 +155,24 @@ from 纯技术面因子_bundle import (
     iter_pure_technical_factor_bundles,
 )
 from valid_bar_utils import compute_bundles_with_valid_bar
+from peak_valley_expost_annotation_v2 import (
+    V2_FACTOR_NAME_MAP,
+    build_peak_valley_expost_v2_label_bundle,
+    plan_peak_valley_v2_refresh,
+)
 BASE_PATH = r"D:\database\stock_basic_data_daily"   # 配置：股票日频数据根目录（只保留 year/month 分区）
 INDEX_BASE_PATH = r"D:\database\index_data_daily"   # 指数日频数据根目录
 ETF_BASE_PATH = r"D:\database\ETF_basic_data_daily"   # ETF 日频数据根目录
 MARKET_DAILY_SOURCE_PATHS = [BASE_PATH, INDEX_BASE_PATH, ETF_BASE_PATH]
 VIEW_NAME = "stock_day_merged"
+PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR = r"D:\database\signal_daily_label"
 
 # =========================
 # 运行参数（统一入口）
 # =========================
 RUN_MODE = "auto"  # 固定自动模式：按缺失检测补写，不做人工 full/incremental 切换
 # 仅配置起点；终点固定为运行当天的本机日历日（无需再填 END_DATE）
-START_DATE = "2010-01-01"
+START_DATE = "2016-01-01"
 
 # None 表示全市场（自动排除 .YKRS）
 TARGET_CODES: Optional[list[str]] = None
@@ -335,6 +342,7 @@ NON_STOCK_FACTOR_KEYS = {
 }
 
 SECTOR_MARKET_FACTOR_KEYS = {
+    "momentum_5d",
     "momentum_20d",
     "momentum_60d",
     "momentum_120d",
@@ -854,6 +862,75 @@ def _save_catalog_cache(cache_path: str, payload: dict) -> None:
         pass
 
 
+def _factor_storage_name_map(
+    bundle_key: str,
+    factor_name_map: dict[str, str],
+) -> dict[str, str]:
+    """规范化中文展示名到稳定 factor_id 的映射。"""
+    _ = bundle_key
+    return {
+        str(display_name).strip(): str(factor_id).strip()
+        for display_name, factor_id in factor_name_map.items()
+        if str(display_name).strip() and str(factor_id).strip()
+    }
+
+
+def _write_factor_identity_catalog(
+    base_dir: str,
+    bundle_catalog: dict[str, dict[str, str]],
+) -> Path:
+    """原子写入英文存储 ID 与中文展示标签，供前端统一读取。"""
+    aliases: dict[str, list[str]] = {}
+    factor_bundles: dict[str, list[str]] = {}
+    for bundle_name, factor_map in bundle_catalog.items():
+        for display_name, factor_id in factor_map.items():
+            display = str(display_name).strip()
+            stable_id = str(factor_id).strip()
+            if not display or not stable_id:
+                continue
+            aliases.setdefault(stable_id, [])
+            if display not in aliases[stable_id]:
+                aliases[stable_id].append(display)
+            factor_bundles.setdefault(stable_id, [])
+            if str(bundle_name) not in factor_bundles[stable_id]:
+                factor_bundles[stable_id].append(str(bundle_name))
+
+    path = Path(base_dir) / "_meta" / "factor_identity_catalog.json"
+    if path.is_file():
+        try:
+            existing_payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            existing_payload = {}
+        existing_aliases = existing_payload.get("factor_aliases", {})
+        if isinstance(existing_aliases, dict):
+            for factor_id, names in existing_aliases.items():
+                stable_id = str(factor_id).strip()
+                if not stable_id or not isinstance(names, list):
+                    continue
+                aliases.setdefault(stable_id, [])
+                for name in names:
+                    display = str(name).strip()
+                    if display and display not in aliases[stable_id]:
+                        aliases[stable_id].append(display)
+
+    payload = {
+        "version": 1,
+        "storage": "stable_english_factor_id",
+        "factor_labels": {factor_id: names[0] for factor_id, names in aliases.items()},
+        "factor_aliases": aliases,
+        "factor_bundles": factor_bundles,
+    }
+    meta_dir = Path(base_dir) / "_meta"
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    path = meta_dir / "factor_identity_catalog.json"
+    temp_path = path.with_suffix(".json.tmp")
+    with open(temp_path, "w", encoding="utf-8", newline="\n") as stream:
+        json.dump(payload, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    os.replace(temp_path, path)
+    return path
+
+
 def _compute_selected_bundles_for_planning(O, H, L, C, V, selected_bundles, T=None):
     selected_bundle_set = {str(x).strip().lower() for x in selected_bundles}
     bundle_outputs = []
@@ -914,7 +991,7 @@ def _compute_selected_bundles_for_planning(O, H, L, C, V, selected_bundles, T=No
     if "tdx_bottom_alert" in selected_bundle_set:
         bundle_outputs.append(build_tdx_bottom_alert_bundle(O=O, H=H, L=L, C=C, V=V, valid_bar=C.notna()))
     if "low_volatility" in selected_bundle_set:
-        bundle_outputs.append(build_low_volatility_factor_bundle(C=C, H=H, L=L, V=V))
+        bundle_outputs.append(build_low_volatility_factor_bundle(C=C, H=H, L=L))
 
     return bundle_outputs
 
@@ -934,7 +1011,10 @@ def _build_bundle_catalog_with_synthetic_data(selected_bundles: list[str]) -> di
             get_catalog = getattr(mod, "get_factor_catalog", None)
             if callable(get_catalog):
                 meta = get_catalog()
-                factor_map = dict(meta.get("factor_name_map", {}))
+                factor_map = _factor_storage_name_map(
+                    bundle_key,
+                    dict(meta.get("factor_name_map", {})),
+                )
                 if factor_map:
                     catalog[bundle_key] = factor_map
         except Exception:
@@ -953,7 +1033,10 @@ def _build_bundle_catalog_with_synthetic_data(selected_bundles: list[str]) -> di
             for bundle_key in remaining:
                 item = cache_catalog.get(bundle_key)
                 if isinstance(item, dict) and item:
-                    catalog[bundle_key] = dict(item)
+                    catalog[bundle_key] = _factor_storage_name_map(
+                        bundle_key,
+                        dict(item),
+                    )
 
     remaining = [b for b in remaining if b not in catalog]
     if not remaining:
@@ -989,6 +1072,10 @@ def _build_bundle_catalog_with_synthetic_data(selected_bundles: list[str]) -> di
             merged_name_map: dict[str, str] = {}
             for item in outputs:
                 merged_name_map.update(item.get("factor_name_map", {}))
+            merged_name_map = _factor_storage_name_map(
+                bundle_key,
+                merged_name_map,
+            )
             if merged_name_map:
                 catalog[bundle_key] = merged_name_map
                 computed_catalog[bundle_key] = merged_name_map
@@ -1056,7 +1143,12 @@ def _load_codes_from_market_globs(source_globs: list[str]) -> set[str]:
 
 
 def _sanitize_factor_dir_name(factor_name: str) -> str:
-    return re.sub(r'[\\/:*?"<>|]', "_", str(factor_name).strip()).rstrip(" .") or "未命名因子"
+    invalid_chars = '\\/:*?"<>|'
+    safe_name = "".join(
+        "_" if char in invalid_chars else char
+        for char in str(factor_name).strip()
+    )
+    return safe_name.rstrip(" .") or "未命名因子"
 
 
 def _factor_processed_date_path(base_dir: str, factor_name: str) -> Path:
@@ -1278,17 +1370,21 @@ def build_factor_fill_plan(
         usable_factor_keys = {str(k).strip() for k in factor_dfs_dict.keys()}
 
     rows: list[dict[str, object]] = []
+    planned_factor_ids: set[str] = set()
     for ch_name, eng_name in factor_name_map_dict.items():
         eng_key = str(eng_name).strip()
         if eng_key not in usable_factor_keys:
             continue
         if target_english and eng_key not in target_english:
             continue
+        if eng_key in planned_factor_ids:
+            continue
+        planned_factor_ids.add(eng_key)
 
         lookback_days = int(factor_windows.get(eng_key, 0) or 0)
         last_dt = _get_factor_last_date(
             base_dir=base_dir,
-            factor_cn_name=str(ch_name),
+            factor_cn_name=eng_key,
             factor_last_dt_map=factor_last_dt_map,
         )
         if last_dt is None:
@@ -1454,10 +1550,12 @@ def _format_save_progress_line(
     written_months: int,
     written_rows: int,
     elapsed_seconds: float,
+    storage_path: str | Path,
 ) -> str:
     return (
         f"[保存完成] {task_idx}/{task_total} {factor_name}，"
         f"区间={_format_date_range(start_dt, end_dt)}，"
+        f"落盘位置={storage_path}，"
         f"月份={int(written_months)}，行数={int(written_rows)}，"
         f"耗时={float(elapsed_seconds):.2f}秒"
     )
@@ -1496,7 +1594,84 @@ _source_end_dt = pd.Timestamp(_source_max_dt).floor("D")
 END_DATE = min(_today_dt, _source_end_dt).strftime("%Y-%m-%d")
 if datetime.strptime(START_DATE, "%Y-%m-%d").date() > datetime.strptime(END_DATE, "%Y-%m-%d").date():
     raise ValueError(f"START_DATE（{START_DATE}）不能晚于源数据终点（{END_DATE}）")
+
+
+def _update_pure_technical_factors_in_code_batches(end_date: str) -> None:
+    runner_path = Path(__file__).resolve().parent / "纯技术面因子" / "将所有的技术面进行使用.py"
+    command = [
+        sys.executable,
+        "-u",
+        str(runner_path),
+        "--start-date",
+        "2010-01-01",
+        "--end-date",
+        str(end_date),
+        "--output-base-dir",
+        FACTOR_LIBRARY_BASE_DIR,
+        "--code-batch-size",
+        "200",
+        "--max-save-workers",
+        "4",
+        "--compact-workers",
+        "4",
+        "--skip-missing-code-check",
+    ]
+    print("纯技术因子低内存预更新: 每批最多 200 个代码")
+    subprocess.run(command, cwd=str(runner_path.parent), check=True)
+
+
+_update_pure_technical_factors_in_code_batches(END_DATE)
 BATCH_COMPLETE_DATE = _get_batch_complete_date(FACTOR_LIBRARY_BASE_DIR)
+
+_peak_valley_v2_existing_map = _load_factor_last_date_map(
+    PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR
+)
+_peak_valley_v2_existing_dates = [
+    _peak_valley_v2_existing_map.get(_sanitize_factor_dir_name(factor_id))
+    for factor_id in V2_FACTOR_NAME_MAP.values()
+]
+_peak_valley_v2_source_dates = pd.DatetimeIndex(
+    pd.to_datetime(
+        con.execute(f"""
+        SELECT DISTINCT CAST(time AS DATE) AS trade_date
+        FROM {VIEW_NAME}
+        WHERE CAST(time AS DATE) <= DATE '{END_DATE}'
+          AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
+        ORDER BY trade_date
+        """).df()["trade_date"],
+        errors="coerce",
+    )
+).dropna()
+_peak_valley_v2_refresh_plan = plan_peak_valley_v2_refresh(
+    _peak_valley_v2_source_dates,
+    existing_last_dates=_peak_valley_v2_existing_dates,
+    start_date=START_DATE,
+    end_date=END_DATE,
+    required_factor_count=len(V2_FACTOR_NAME_MAP),
+)
+_PEAK_VALLEY_V2_NEEDS_REFRESH = bool(
+    _peak_valley_v2_refresh_plan["needs_refresh"]
+)
+_PEAK_VALLEY_V2_QUERY_START = _peak_valley_v2_refresh_plan["query_start"]
+_PEAK_VALLEY_V2_WRITE_START = _peak_valley_v2_refresh_plan["write_start"]
+_peak_valley_v2_manual_codes = {
+    str(code).strip().upper()
+    for code in (TARGET_CODES or [])
+    if str(code).strip()
+}
+_PEAK_VALLEY_V2_TARGET_CODES = sorted(
+    (_peak_valley_v2_manual_codes or set(_source_code_set))
+    - {code for code in _source_code_set if str(code).strip().upper().endswith(".YKRS")}
+)
+if _PEAK_VALLEY_V2_NEEDS_REFRESH:
+    print(
+        "[波峰波谷 V2 label] 需要刷新，"
+        f"读取起点={pd.Timestamp(_PEAK_VALLEY_V2_QUERY_START).date()}，"
+        f"覆盖起点={pd.Timestamp(_PEAK_VALLEY_V2_WRITE_START).date()}，"
+        f"标的数={len(_PEAK_VALLEY_V2_TARGET_CODES)}"
+    )
+else:
+    print("[波峰波谷 V2 label] 12 个标签已覆盖行情终点，本次跳过。")
 
 PREQUERY_PLAN_DF = pd.DataFrame()
 PREQUERY_TARGET_FACTOR_KEYS: set[str] = set()
@@ -1608,6 +1783,11 @@ if PREQUERY_EXECUTION_PLANS:
     ).strftime("%Y-%m-%d")
 else:
     QUERY_START_DATE = (_effective_start_dt - pd.Timedelta(days=REQUIRED_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+if _PEAK_VALLEY_V2_NEEDS_REFRESH and _PEAK_VALLEY_V2_QUERY_START is not None:
+    QUERY_START_DATE = min(
+        pd.Timestamp(QUERY_START_DATE).floor("D"),
+        pd.Timestamp(_PEAK_VALLEY_V2_QUERY_START).floor("D"),
+    ).strftime("%Y-%m-%d")
 
 print("视图创建完成：", VIEW_NAME)
 print("数据路径：", MARKET_DAILY_SOURCE_PATHS)
@@ -1654,6 +1834,21 @@ PREQUERY_PLAN_DF[["factor_cn", "factor_en", "status", "last_dt", "plan_start", "
 _execution_code_windows = _build_execution_code_windows(
     globals().get("PREQUERY_EXECUTION_PLANS", [])
 )
+if _PEAK_VALLEY_V2_NEEDS_REFRESH and _PEAK_VALLEY_V2_TARGET_CODES:
+    _peak_valley_v2_code_windows = pd.DataFrame(
+        {
+            "htsc_code": _PEAK_VALLEY_V2_TARGET_CODES,
+            "query_start": pd.Timestamp(_PEAK_VALLEY_V2_QUERY_START).floor("D"),
+        }
+    )
+    _execution_code_windows = (
+        pd.concat(
+            [_execution_code_windows, _peak_valley_v2_code_windows],
+            ignore_index=True,
+        )
+        .groupby("htsc_code", as_index=False, sort=True)["query_start"]
+        .min()
+    )
 _execution_code_windows_enabled = not _execution_code_windows.empty
 if _execution_code_windows_enabled:
     con.register("_zxw_execution_code_windows", _execution_code_windows)
@@ -1716,7 +1911,8 @@ def _adj_factor_daily_join_sql(data_sql: str) -> str | None:
     global _ADJ_FACTOR_DAILY_APPLIED
     if not ZXW_USE_ADJ_FACTOR_DAILY or str(ADJ_MODE).strip().lower() != "backward":
         return None
-    paths = _adj_factor_daily_paths_for_window(QUERY_START_DATE, END_DATE)
+    factor_start = (pd.Timestamp(QUERY_START_DATE).floor("D") - pd.Timedelta(days=62)).strftime("%Y-%m-%d")
+    paths = _adj_factor_daily_paths_for_window(factor_start, END_DATE)
     if not paths:
         return None
     path_list = _sql_string_list(paths)
@@ -1729,10 +1925,11 @@ a AS (
     SELECT
         UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
         CAST(time AS DATE) AS time,
-        TRY_CAST(adj_factor AS DOUBLE) AS adj_factor
+        MAX(TRY_CAST(adj_factor AS DOUBLE)) AS adj_factor
     FROM read_parquet({path_list}, union_by_name=true)
-    WHERE CAST(time AS DATE) >= DATE '{QUERY_START_DATE}'
+    WHERE CAST(time AS DATE) >= DATE '{factor_start}'
       AND CAST(time AS DATE) <= DATE '{END_DATE}'
+    GROUP BY 1, 2
 )
 SELECT d.* REPLACE (
     d.open * COALESCE(a.adj_factor, 1.0) AS open,
@@ -1740,12 +1937,38 @@ SELECT d.* REPLACE (
     d.low * COALESCE(a.adj_factor, 1.0) AS low,
     d.close * COALESCE(a.adj_factor, 1.0) AS close
 ),
-    d.close AS close_unadjusted
+    d.close AS close_unadjusted,
+    a.adj_factor AS _zxw_adj_factor
 FROM d
-LEFT JOIN a
+ASOF LEFT JOIN a
   ON UPPER(TRIM(CAST(d.htsc_code AS VARCHAR))) = a.htsc_code
- AND CAST(d.time AS DATE) = a.time
+ AND CAST(d.time AS DATE) >= a.time
 """
+
+
+def _validate_and_strip_adj_factor(
+    frame: pd.DataFrame,
+    stock_codes: set[str],
+) -> pd.DataFrame:
+    """Require adjustment coverage for stocks; indexes and ETFs stay unadjusted."""
+    if "_zxw_adj_factor" not in frame.columns:
+        return frame
+    if "htsc_code" not in frame.columns:
+        raise ValueError("adj_factor_daily 校验缺少 htsc_code 列")
+
+    factors = pd.to_numeric(frame.pop("_zxw_adj_factor"), errors="coerce")
+    codes = frame["htsc_code"].astype(str).str.strip().str.upper()
+    normalized_stock_codes = {
+        str(code).strip().upper()
+        for code in stock_codes
+        if str(code).strip()
+    }
+    invalid = factors.isna() | ~np.isfinite(factors.to_numpy(dtype=float)) | factors.le(0)
+    missing_stock = invalid & codes.isin(normalized_stock_codes)
+    if missing_stock.any():
+        samples = sorted(codes.loc[missing_stock].drop_duplicates().head(5).tolist())
+        raise ValueError(f"adj_factor_daily 无法覆盖全部个股行，样例={samples}")
+    return frame
 
 
 def _select_window_sql(extra_filter: str) -> str:
@@ -1776,7 +1999,10 @@ WHERE CAST(s.time AS DATE) >= DATE '{QUERY_START_DATE}'
 def _execute_window_sql_with_adj_fallback(sql_text: str) -> pd.DataFrame:
     global _ADJ_FACTOR_DAILY_APPLIED
     try:
-        return con.execute(sql_text).df()
+        frame = con.execute(sql_text).df()
+        if _ADJ_FACTOR_DAILY_APPLIED and "_zxw_adj_factor" in frame.columns:
+            frame = _validate_and_strip_adj_factor(frame, _stock_source_code_set)
+        return frame
     except Exception as exc:
         if not _ADJ_FACTOR_DAILY_APPLIED:
             raise
@@ -1812,7 +2038,11 @@ _market_compute_bundles = [
     for bundle in globals().get("PREQUERY_SELECTED_BUNDLES", [])
     if bundle not in POST_WRITE_DERIVED_BUNDLES
 ]
-_skip_market_load = AUTO_PLAN_FROM_FACTOR_LIBRARY and len(_market_compute_bundles) == 0
+_skip_market_load = (
+    AUTO_PLAN_FROM_FACTOR_LIBRARY
+    and len(_market_compute_bundles) == 0
+    and not _PEAK_VALLEY_V2_NEEDS_REFRESH
+)
 
 if _skip_market_load:
     print("预加载计划显示无需补写，跳过市场数据读取。")
@@ -1970,13 +2200,11 @@ def _zxw_apply_ratio_adjustment(df: pd.DataFrame, mode: str) -> pd.DataFrame:
             continue
         row_pos = out.index.get_indexer(idx)
         days = out.iloc[row_pos]["time"]
-        factors = days.map(backward_series).astype(float)
-        first_day = backward_series.index.min()
-        last_day = backward_series.index.max()
+        locations = backward_series.index.searchsorted(pd.DatetimeIndex(days), side="right") - 1
+        covered = locations >= 0
+        factors = np.ones(len(days), dtype=np.float64)
+        factors[covered] = backward_series.to_numpy(dtype=np.float64)[locations[covered]]
         last_factor = float(backward_series.iloc[-1])
-        factors = factors.mask(days > last_day, last_factor)
-        factors = factors.mask(days < first_day, 1.0)
-        factors = factors.fillna(1.0).to_numpy(dtype=np.float64)
         if mode == "forward":
             factors = factors / (last_factor if last_factor != 0.0 else 1.0)
         values = out.iloc[row_pos][cols].to_numpy(dtype=np.float64, copy=True)
@@ -2264,7 +2492,7 @@ def _compute_selected_bundles_raw(O, H, L, C, V, selected_bundles, T=None, enabl
     if "momentum_common" in selected_bundle_set:
         _add("momentum_common", build_momentum_factor_bundle(C=C))
     if "low_volatility" in selected_bundle_set:
-        _add("low_volatility", build_low_volatility_factor_bundle(C=C, H=H, L=L, V=V))
+        _add("low_volatility", build_low_volatility_factor_bundle(C=C, H=H, L=L))
 
     if "total_buy_signal" in selected_bundle_set:
         _add("total_buy_signal", build_total_buy_signal_bundle(O=O, H=H, L=L, C=C, V=V, precomputed_factors=shared_factor_dfs))
@@ -2345,8 +2573,7 @@ def compute_selected_bundles(
             for item in (target_factor_keys or [])
             if str(item).strip()
         }
-        bundle_outputs.extend(
-            iter_pure_technical_factor_bundles(
+        for output in iter_pure_technical_factor_bundles(
                 O=O,
                 H=H,
                 L=L,
@@ -2354,8 +2581,16 @@ def compute_selected_bundles(
                 V=V,
                 valid_bar=valid_bar,
                 selected_factors=requested_factor_keys or None,
+            ):
+            bundle_outputs.append(
+                {
+                    **output,
+                    "factor_name_map": _factor_storage_name_map(
+                        "pure_technical",
+                        dict(output.get("factor_name_map", {})),
+                    ),
+                }
             )
-        )
 
     if "stock_market_data" in requested_bundles:
         selected_bundle_set.add("stock_market_data")
@@ -2481,7 +2716,6 @@ def compute_selected_bundles(
         bundle_outputs.append(
             build_stock_dividend_raw_factor_bundle(
                 C=C,
-                unadjusted_close=unadjusted_close,
                 stock_codes=batch_stock_codes,
             )
         )
@@ -2784,6 +3018,35 @@ if compute_bundles:
 else:
     factor_log("factor_cell.noop", reason="no_bundle_needs_compute")
 
+peak_valley_v2_label_factor_dfs: dict[str, pd.DataFrame] = {}
+peak_valley_v2_label_name_map: dict[str, str] = dict(V2_FACTOR_NAME_MAP)
+peak_valley_v2_label_write_start = _PEAK_VALLEY_V2_WRITE_START
+if (
+    _PEAK_VALLEY_V2_NEEDS_REFRESH
+    and _PEAK_VALLEY_V2_TARGET_CODES
+    and len(_source_time_level) > 0
+):
+    _label_frames = _build_execution_plan_market_frames(
+        EXECUTION_MARKET_LONG,
+        codes=_PEAK_VALLEY_V2_TARGET_CODES,
+        query_start=pd.Timestamp(_PEAK_VALLEY_V2_QUERY_START).floor("D"),
+        plan_end=pd.Timestamp(_source_time_level.max()).floor("D"),
+    )
+    if _label_frames is not None:
+        _label_valid_bar = _label_frames["valid_bar"]
+        _label_output = build_peak_valley_expost_v2_label_bundle(
+            H=_label_frames["H"].where(_label_valid_bar),
+            L=_label_frames["L"].where(_label_valid_bar),
+            C=_label_frames["C"].where(_label_valid_bar),
+        )
+        peak_valley_v2_label_factor_dfs = _label_output["factor_dfs"]
+        print(
+            f"[波峰波谷 V2 label] 生成因子={len(peak_valley_v2_label_factor_dfs)}，"
+            f"股票数={len(_label_frames['C'].columns)}，"
+            f"区间={_label_frames['C'].index.min().date()} ~ {_label_frames['C'].index.max().date()}"
+        )
+        del _label_output, _label_frames, _label_valid_bar
+
 del EXECUTION_MARKET_LONG
 gc.collect()
 
@@ -2848,7 +3111,7 @@ OUTPUT_BASE_DIR = r"D:\database\signal_daily"
 write_start_ts = pd.Timestamp(globals().get("EFFECTIVE_START_DATE", START_DATE))
 write_end_ts = pd.Timestamp(END_DATE)
 
-# 新存储方式直接从 factor_dfs 写入 factor=中文因子名/year/month 长表，
+# 新存储方式直接从 factor_dfs 写入 factor=英文稳定ID/year/month 长表，
 # 这里保留 stock_factor_tables 变量兼容后续临时查看，但跳过旧的逐股票宽表组装。
 all_stocks = []
 stock_factor_tables = {}
@@ -3320,15 +3583,6 @@ def save_factors_to_partitioned_parquet(factor_tables_dict: dict, base_dir: str)
 # 路径示例：D:\database\signal_daily\factor=顶背离\year=2026\month=05\merged.parquet
 # 写入语义：旧值优先，仅用新值补旧值空缺或新增键
 # ==========================================
-INVALID_FACTOR_PATH_CHARS = re.compile(r'[\\/:*?"<>|]')
-
-
-def _sanitize_factor_dir_name(factor_name: str) -> str:
-    safe_name = INVALID_FACTOR_PATH_CHARS.sub("_", str(factor_name).strip())
-    safe_name = safe_name.rstrip(" .")
-    return safe_name or "未命名因子"
-
-
 def _month_start_range(start_dt: pd.Timestamp, end_dt: pd.Timestamp) -> list[pd.Timestamp]:
     cursor = pd.Timestamp(year=start_dt.year, month=start_dt.month, day=1)
     end_cursor = pd.Timestamp(year=end_dt.year, month=end_dt.month, day=1)
@@ -3533,10 +3787,14 @@ def save_factor_dfs_to_factor_partitioned_parquet(
     if start_dt > end_dt:
         raise ValueError(f"START_DATE 不能晚于 END_DATE: {start_date} > {end_date}")
 
+    factor_items_by_id = {
+        str(eng_name).strip(): factor_dfs_dict[eng_name]
+        for eng_name in factor_name_map_dict.values()
+        if str(eng_name).strip() and eng_name in factor_dfs_dict
+    }
     factor_items = [
-        (str(ch_name), eng_name, factor_dfs_dict[eng_name])
-        for ch_name, eng_name in factor_name_map_dict.items()
-        if eng_name in factor_dfs_dict
+        (factor_id, factor_id, factor_df)
+        for factor_id, factor_df in factor_items_by_id.items()
     ]
     if not factor_items:
         print("factor_name_map 中没有匹配 factor_dfs 的因子。")
@@ -3549,11 +3807,11 @@ def save_factor_dfs_to_factor_partitioned_parquet(
     }
 
     safe_names: dict[str, str] = {}
-    for ch_name, _, _ in factor_items:
-        safe = _sanitize_factor_dir_name(ch_name)
-        if safe in safe_names and safe_names[safe] != ch_name:
-            raise ValueError(f"中文因子目录名清洗后冲突: {safe_names[safe]} / {ch_name} -> {safe}")
-        safe_names[safe] = ch_name
+    for factor_id, _, _ in factor_items:
+        safe = _sanitize_factor_dir_name(factor_id)
+        if safe in safe_names and safe_names[safe] != factor_id:
+            raise ValueError(f"英文因子 ID 清洗后冲突: {safe_names[safe]} / {factor_id} -> {safe}")
+        safe_names[safe] = factor_id
 
     print(f"开始按因子长表增量保存（part 文件），目标路径: {base_dir}")
     print(f"目标写入区间: {start_dt.date()} ~ {end_dt.date()}")
@@ -3562,12 +3820,12 @@ def save_factor_dfs_to_factor_partitioned_parquet(
 
     factor_storage_summary = _load_factor_storage_summary(
         base_dir=base_dir,
-        factor_names=[str(ch_name) for ch_name, _, _ in factor_items],
+        factor_names=[str(factor_id) for factor_id, _, _ in factor_items],
         factor_last_dt_map=factor_last_dt_map,
     )
 
     tasks: list[dict[str, Any]] = []
-    for ch_name, eng_name, factor_df in factor_items:
+    for factor_id, eng_name, factor_df in factor_items:
         if not isinstance(factor_df, pd.DataFrame) or factor_df.empty:
             continue
 
@@ -3578,10 +3836,10 @@ def save_factor_dfs_to_factor_partitioned_parquet(
             task_start_dt = max(start_dt, pd.Timestamp(range_start).floor("D"))
             task_end_dt = min(end_dt, pd.Timestamp(range_end).floor("D"))
 
-        storage_item = factor_storage_summary.get(str(ch_name), {})
+        storage_item = factor_storage_summary.get(str(factor_id), {})
         tasks.extend(
             _build_factor_save_tasks(
-                ch_name=str(ch_name),
+                ch_name=str(factor_id),
                 eng_name=str(eng_name),
                 factor_df=factor_df,
                 base_dir=base_dir,
@@ -3626,6 +3884,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
                     written_months=written_months,
                     written_rows=written_rows,
                     elapsed_seconds=elapsed_seconds,
+                    storage_path=Path(task["base_dir"]) / f"factor={_sanitize_factor_dir_name(task['factor_key'])}",
                 )
             )
     else:
@@ -3658,6 +3917,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
                                 written_months=written_months,
                                 written_rows=written_rows,
                                 elapsed_seconds=elapsed_seconds,
+                                storage_path=Path(task["base_dir"]) / f"factor={_sanitize_factor_dir_name(task['factor_key'])}",
                             )
                         )
                     except Exception as exc:
@@ -3690,6 +3950,7 @@ def save_factor_dfs_to_factor_partitioned_parquet(
                     written_months=written_months,
                     written_rows=written_rows,
                     elapsed_seconds=elapsed_seconds,
+                    storage_path=Path(task["base_dir"]) / f"factor={_sanitize_factor_dir_name(task['factor_key'])}",
                 ).replace("[保存完成]", "[保存重试完成]", 1)
             )
 
@@ -3712,7 +3973,6 @@ save_factor_dfs_to_factor_partitioned_parquet(
     factor_time_ranges=_planned_ranges if _planned_ranges else None,
     factor_last_dt_map=globals().get("_factor_last_dt_map"),
 )
-
 
 def _run_stock_size_style_pure_post_write(
     *,
@@ -4766,6 +5026,15 @@ if _dividend_normalized_result is not None:
 SIGNAL_PART_KEY_COLS = ["time", "htsc_code"]
 
 
+def _normalize_signal_part_schema(frame: pl.DataFrame) -> pl.DataFrame:
+    """Normalize Parquet column order before Polars vertical concatenation."""
+    missing = [column for column in SIGNAL_PART_KEY_COLS if column not in frame.columns]
+    if missing:
+        raise ValueError(f"signal part 缺少主键列: {missing}")
+    value_columns = [column for column in frame.columns if column not in SIGNAL_PART_KEY_COLS]
+    return frame.select([*SIGNAL_PART_KEY_COLS, *value_columns])
+
+
 def _signal_part_resolve_target_month_dirs(
     base_dir: Path,
     factor: str | None = None,
@@ -4796,13 +5065,23 @@ def _signal_part_resolve_target_month_dirs(
     return month_dirs
 
 
-def _signal_part_compact_month_partition(month_dir: Path, keep_parts: bool = False) -> tuple[int, int]:
+def _signal_part_compact_month_partition(
+    month_dir: Path,
+    keep_parts: bool = False,
+    overwrite: bool = False,
+    replace_start: pd.Timestamp | None = None,
+    replace_end: pd.Timestamp | None = None,
+) -> tuple[int, int]:
     part_paths = sorted(month_dir.glob("part_*.parquet"))
     if not part_paths:
         return 0, 0
 
     merged_path = month_dir / "merged.parquet"
-    new_frames = [pl.read_parquet(str(path)) for path in part_paths if path.stat().st_size >= 12]
+    new_frames = [
+        _normalize_signal_part_schema(pl.read_parquet(str(path)))
+        for path in part_paths
+        if path.stat().st_size >= 12
+    ]
     if not new_frames:
         print(f"[SKIP] 无有效 part 文件: {month_dir}")
         return 0, 0
@@ -4815,9 +5094,27 @@ def _signal_part_compact_month_partition(month_dir: Path, keep_parts: bool = Fal
     )
 
     old_df = _read_existing_partition(str(merged_path))
+    if old_df is not None:
+        old_df = _normalize_signal_part_schema(old_df)
     if old_df is None:
         save_df = new_df
         print(f"[NEW] {month_dir} 新建 merged (新 {len(new_df)})")
+    elif overwrite:
+        if replace_start is not None and replace_end is not None:
+            replace_start = pd.Timestamp(replace_start).floor("D")
+            replace_end = pd.Timestamp(replace_end).floor("D")
+            old_outside = old_df.filter(
+                (pl.col("time") < replace_start) | (pl.col("time") > replace_end)
+            )
+            save_df = (
+                pl.concat([old_outside, new_df], how="vertical_relaxed")
+                .sort(SIGNAL_PART_KEY_COLS)
+                .unique(subset=SIGNAL_PART_KEY_COLS, keep="last")
+                .sort(SIGNAL_PART_KEY_COLS)
+            )
+        else:
+            save_df = new_df
+        print(f"[REPLACE] {month_dir} 覆盖 merged (新={len(new_df)})")
     else:
         save_df = _merge_preserve_old_values(old_df, new_df)
         print(f"[MERGE] {month_dir} (旧 {len(old_df)} + 新 {len(new_df)} => {len(save_df)})")
@@ -4842,8 +5139,17 @@ def _signal_part_default_workers() -> int:
 def _signal_part_compact_month_partition_task(
     month_dir: Path,
     keep_parts: bool,
+    overwrite: bool = False,
+    replace_start: pd.Timestamp | None = None,
+    replace_end: pd.Timestamp | None = None,
 ) -> tuple[Path, int, int]:
-    parts, rows = _signal_part_compact_month_partition(month_dir, keep_parts=keep_parts)
+    parts, rows = _signal_part_compact_month_partition(
+        month_dir,
+        keep_parts=keep_parts,
+        overwrite=overwrite,
+        replace_start=replace_start,
+        replace_end=replace_end,
+    )
     return month_dir, parts, rows
 
 
@@ -4854,6 +5160,9 @@ def compact_signal_daily_parts(
     month: int | None = None,
     keep_parts: bool = False,
     workers: int | None = None,
+    overwrite: bool = False,
+    replace_start: pd.Timestamp | None = None,
+    replace_end: pd.Timestamp | None = None,
 ) -> None:
     base_path = Path(base_dir)
     if not base_path.exists():
@@ -4877,17 +5186,30 @@ def compact_signal_daily_parts(
 
     if worker_count == 1 or len(target_month_dirs) <= 1:
         for month_dir in target_month_dirs:
-            parts, _ = _signal_part_compact_month_partition(month_dir, keep_parts=keep_parts)
+            parts, _ = _signal_part_compact_month_partition(
+                month_dir,
+                keep_parts=keep_parts,
+                overwrite=overwrite,
+                replace_start=replace_start,
+                replace_end=replace_end,
+            )
             if parts > 0:
                 touched_months += 1
                 total_parts += parts
     else:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            task_args = {
+                month_dir: (
+                    (month_dir, keep_parts, overwrite, replace_start, replace_end)
+                    if overwrite
+                    else (month_dir, keep_parts)
+                )
+                for month_dir in target_month_dirs
+            }
             futures = {
                 executor.submit(
                     _signal_part_compact_month_partition_task,
-                    month_dir,
-                    keep_parts,
+                    *task_args[month_dir],
                 ): month_dir
                 for month_dir in target_month_dirs
             }
@@ -4908,6 +5230,41 @@ def compact_signal_daily_parts(
         raise RuntimeError(f"月度 part 合并失败，共 {len(failed_months)} 个目录：{failure_details}")
 
     print(f"处理完成: 命中月份 {touched_months}，合并 part 文件总数 {total_parts}")
+
+
+# V2 波峰波谷是 label 专用的事后因子，单独写入 signal_daily_label，
+# 不混入普通 signal_daily，也不输出人工锚点列。
+if peak_valley_v2_label_factor_dfs and peak_valley_v2_label_name_map:
+    _v2_label_start_date = (
+        pd.Timestamp(peak_valley_v2_label_write_start).strftime("%Y-%m-%d")
+        if peak_valley_v2_label_write_start is not None
+        else START_DATE
+    )
+    save_factor_dfs_to_factor_partitioned_parquet(
+        peak_valley_v2_label_factor_dfs,
+        peak_valley_v2_label_name_map,
+        PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR,
+        _v2_label_start_date,
+        END_DATE,
+        factor_last_dt_map={},
+        drop_null_factor_keys=set(peak_valley_v2_label_factor_dfs),
+    )
+    for _v2_label_factor_name in dict.fromkeys(peak_valley_v2_label_name_map.values()):
+        compact_signal_daily_parts(
+            base_dir=PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR,
+            factor=_v2_label_factor_name,
+            overwrite=True,
+            replace_start=pd.Timestamp(_v2_label_start_date).floor("D"),
+            replace_end=pd.Timestamp(END_DATE).floor("D"),
+        )
+    _write_factor_identity_catalog(
+        PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR,
+        {"peak_valley_v2": peak_valley_v2_label_name_map},
+    )
+    print(
+        f"[波峰波谷 V2 label] 已写入: {PEAK_VALLEY_V2_LABEL_OUTPUT_BASE_DIR}，"
+        f"因子数={len(peak_valley_v2_label_name_map)}"
+    )
 
 
 def _finalize_factor_batch(
@@ -4955,17 +5312,19 @@ def _finalize_factor_batch(
     selected_compact_func = compact_func or compact_signal_daily_parts
     selected_watermark_writer = watermark_writer or _write_batch_watermark_atomic
     if has_factor_updates:
-        for factor_name in factor_name_map_dict:
+        for factor_name in dict.fromkeys(
+            str(value).strip() for value in factor_name_map_dict.values() if str(value).strip()
+        ):
             selected_compact_func(base_dir=base_dir, factor=factor_name)
 
     complete_date = target_dt
     if managed_factor_name_map is not None:
-        managed_map = {
-            str(ch_name): str(eng_name).strip()
-            for ch_name, eng_name in managed_factor_name_map.items()
-            if str(ch_name).strip() and str(eng_name).strip()
+        managed_ids = {
+            str(eng_name).strip()
+            for eng_name in managed_factor_name_map.values()
+            if str(eng_name).strip()
         }
-        if not managed_map:
+        if not managed_ids:
             path = _batch_watermark_path(base_dir)
             print("整批水位保持不变：受管因子目录为空。")
             return path
@@ -4977,9 +5336,9 @@ def _finalize_factor_batch(
             if last_dt is not None and not pd.isna(last_dt)
         }
         missing_factor_names = [
-            ch_name
-            for ch_name in managed_map
-            if _sanitize_factor_dir_name(ch_name) not in normalized_last_dates
+            factor_id
+            for factor_id in managed_ids
+            if _sanitize_factor_dir_name(factor_id) not in normalized_last_dates
         ]
         if missing_factor_names:
             path = _batch_watermark_path(base_dir)
@@ -4995,12 +5354,12 @@ def _finalize_factor_batch(
             target_dt,
             min(
                 normalized_last_dates[_sanitize_factor_dir_name(ch_name)]
-                for ch_name in managed_map
+                for ch_name in managed_ids
             ),
         )
-        managed_keys = list(managed_map.values())
+        managed_keys = list(managed_ids)
         summary = {
-            "factor_count": len(managed_map),
+            "factor_count": len(managed_ids),
             "all_market_factor_count": sum(
                 factor_key not in ths_only_factor_keys
                 for factor_key in managed_keys
@@ -5022,12 +5381,81 @@ def _finalize_factor_batch(
     return path
 
 
+# 股票短周期动量与 THS 板块动量分目录落盘。必须先完成这两项，
+# 才能发布整批完成水位并触发模型有效性账本更新。
+from 生成5日动量因子 import OUTPUT_DIR as STOCK_MOMENTUM_5D_OUTPUT_DIR
+from 生成5日动量因子 import rebuild_factor as rebuild_stock_momentum_5d
+from 生成20日动量因子 import OUTPUT_DIR as STOCK_MOMENTUM_20D_OUTPUT_DIR
+from 生成20日动量因子 import rebuild_factor as rebuild_stock_momentum_20d
+
+
+def _stock_momentum_rebuild_start(
+    output_dir: Path,
+    end_date: str,
+) -> str | None:
+    month_files: list[tuple[int, int, Path]] = []
+    for path in output_dir.glob("year=*/month=*/merged.parquet"):
+        try:
+            year = int(path.parent.parent.name.split("=", 1)[1])
+            month = int(path.parent.name.split("=", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        month_files.append((year, month, path))
+    if not month_files:
+        return "2010-01-01"
+    latest_path = max(month_files)[2]
+    latest_frame = pd.read_parquet(latest_path, columns=["time"])
+    latest_date = pd.to_datetime(latest_frame["time"], errors="coerce").max()
+    if pd.isna(latest_date):
+        return "2010-01-01"
+    latest_date = pd.Timestamp(latest_date).floor("D")
+    if latest_date >= pd.Timestamp(end_date).floor("D"):
+        return None
+    month_start = latest_date.to_period("M").start_time
+    return max(month_start, pd.Timestamp(START_DATE)).strftime("%Y-%m-%d")
+
+
+_stock_momentum_5d_start = _stock_momentum_rebuild_start(
+    STOCK_MOMENTUM_5D_OUTPUT_DIR,
+    END_DATE,
+)
+if _stock_momentum_5d_start is not None:
+    rebuild_stock_momentum_5d(
+        start_date=_stock_momentum_5d_start,
+        end_date=END_DATE,
+    )
+_stock_momentum_20d_start = _stock_momentum_rebuild_start(
+    STOCK_MOMENTUM_20D_OUTPUT_DIR,
+    END_DATE,
+)
+if _stock_momentum_20d_start is not None:
+    rebuild_stock_momentum_20d(
+        start_date=_stock_momentum_20d_start,
+        end_date=END_DATE,
+    )
+
+
 # 保存、校验和增量 part 合并全部成功后，最后更新整批完成水位。
 _managed_factor_name_map = {
     str(ch_name): str(eng_name)
     for bundle_name in SELECTED_BUNDLES
     for ch_name, eng_name in bundle_factor_catalog.get(bundle_name, {}).items()
 }
+_managed_factor_name_map.update(
+    {
+        "股票5日动量": "stock_momentum_5d",
+        "股票20日动量": "stock_momentum_20d",
+    }
+)
+bundle_factor_catalog["stock_short_momentum"] = {
+    "股票5日动量": "stock_momentum_5d",
+    "股票20日动量": "stock_momentum_20d",
+}
+_factor_identity_catalog_path = _write_factor_identity_catalog(
+    OUTPUT_BASE_DIR,
+    bundle_factor_catalog,
+)
+print(f"因子身份目录已更新: {_factor_identity_catalog_path}")
 _finalize_factor_batch(
     base_dir=OUTPUT_BASE_DIR,
     factor_dfs_dict=factor_dfs,
@@ -5038,4 +5466,17 @@ _finalize_factor_batch(
     ths_codes=set(_sector_source_code_set),
     ths_only_factor_keys=SECTOR_OUTPUT_FACTOR_KEYS,
     managed_factor_name_map=_managed_factor_name_map,
+)
+
+
+_style_monitor_backtrader_root = Path(__file__).resolve().parents[1] / "backtrader"
+if str(_style_monitor_backtrader_root) not in sys.path:
+    sys.path.append(str(_style_monitor_backtrader_root))
+from models.style_portfolio_monitor.generator_hook import run_after_factor_generation
+
+
+run_after_factor_generation(
+    signal_base_dir=OUTPUT_BASE_DIR,
+    market_base_dir=BASE_PATH,
+    through_date=END_DATE,
 )

@@ -475,13 +475,19 @@ const RIGHT_PANEL_TAB_CONTENT = {
                         <span class="morph-panel-check" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="morph-panel-item" data-morph-key="channel" aria-pressed="false">
-                        <span class="morph-panel-label">閫氶亾</span>
+                        <span class="morph-panel-label">通道</span>
                         <span class="morph-panel-check" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="morph-panel-item" data-morph-key="trend" aria-pressed="false">
                         <span class="morph-panel-label">趋势线</span>
                         <span class="morph-panel-check" aria-hidden="true"></span>
                     </button>
+                    <label class="morph-pattern-filter" for="morph-pattern-filter-select">
+                        <span class="morph-pattern-filter-label">形态筛选</span>
+                        <select id="morph-pattern-filter-select" class="morph-pattern-filter-select" aria-label="形态筛选">
+                            <option value="">全部形态</option>
+                        </select>
+                    </label>
                 </div>
             `,
     "舆情面": `
@@ -500,6 +506,7 @@ const RIGHT_PANEL_SNAPSHOT_DEBOUNCE_MS = 120;
 const SIGNAL_SERIES_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#a855f7", "#ef4444", "#14b8a6", "#eab308", "#ec4899"];
 
 const MORPH_PANEL_STORAGE_KEY = "MORPH_PANEL_STATE_V1";
+const MORPH_PATTERN_FILTER_STORAGE_KEY = "MORPH_PATTERN_FILTER_V1";
 const MORPH_PANEL_LEVEL_GROUP = "level";
 const MORPH_PANEL_OPTION_KEYS = ["level1", "level2", "level3", "channel", "trend"];
 const MORPH_PANEL_DEFAULT_STATE = Object.freeze({
@@ -511,6 +518,7 @@ const MORPH_PANEL_DEFAULT_STATE = Object.freeze({
 });
 let morphPanelState = { ...MORPH_PANEL_DEFAULT_STATE };
 let morphPanelUiBound = false;
+let selectedMorphPatternName = "";
 
 const MORPH_SIGNAL_LABELS = Object.freeze({
     level1: "1级形态面",
@@ -1236,6 +1244,7 @@ let watchlistSyncTimer = null;
 let watchlistPriceRefreshInFlight = null;
 let keyboardMarketCodesCache = [];
 let keyboardMarketCodesCacheUntil = 0;
+let keyboardRandomMarketCodes = [];
 let keyboardStockNavigationInFlight = false;
 let factorNames = [];
 let factorGroups = [];
@@ -2868,7 +2877,7 @@ function getSignalValueByTime(timeValue) {
         ? (() => {
             const levelKey = getMorphPrimarySignalKey();
             const patternNames = levelKey && morphLoadedLevelKey === levelKey
-                ? Array.from(morphPatternPointsByName.keys()).sort()
+                ? getVisibleMorphPatternNames()
                 : [];
             const primaryName = patternNames[0];
             if (primaryName) {
@@ -3579,10 +3588,12 @@ function updateSignalCaptionTitle() {
             return;
         }
         const windowLabel = `窗口 ${barsCache.length} 日`;
-        const patternCount = morphLoadedLevelKey === compoundKey
-            ? morphPatternPointsByName.size
-            : 0;
-        const patternPart = patternCount ? `${patternCount} 形态` : "当日形态数";
+        const patternNames = morphLoadedLevelKey === compoundKey
+            ? getVisibleMorphPatternNames()
+            : [];
+        const patternPart = selectedMorphPatternName && patternNames.length
+            ? getMorphPatternDisplayName(selectedMorphPatternName)
+            : (patternNames.length ? `${patternNames.length} 形态` : "当日形态数");
         const levelPart = levelKeys.map((key) => getMorphSignalLabel(key)).join(" / ");
         signalCaptionTitle.textContent = `形态面: ${levelPart} | ${patternPart} | ${windowLabel}`;
         return;
@@ -4650,12 +4661,29 @@ function normalizeKeyboardStockCodeList(items) {
 }
 
 function resolveKeyboardStockNavigationPool(currentCodeValue, currentWatchlistCodes, marketCodes) {
+    // 形态面使用会话内固定的随机全市场顺序，避免 +/- 回到自选/备选股票池。
+    if (PAGE_VIEW === "morph") {
+        const normalizedMarketCodes = normalizeKeyboardStockCodeList(marketCodes);
+        if (keyboardRandomMarketCodes.length !== normalizedMarketCodes.length) {
+            keyboardRandomMarketCodes = shuffleKeyboardStockCodes(normalizedMarketCodes);
+        }
+        return keyboardRandomMarketCodes;
+    }
     const code = normalizeCodeValue(currentCodeValue);
     const watchPool = normalizeKeyboardStockCodeList(currentWatchlistCodes);
     if (code && watchPool.includes(code)) {
         return watchPool;
     }
     return normalizeKeyboardStockCodeList(marketCodes);
+}
+
+function shuffleKeyboardStockCodes(codes) {
+    const shuffled = [...codes];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    return shuffled;
 }
 
 function resolveKeyboardStockNavigationTarget(currentCodeValue, poolCodes, direction) {

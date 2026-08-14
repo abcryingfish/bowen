@@ -1,5 +1,21 @@
+import os
+import threading
+import time
+import uuid
+from pathlib import Path
+from typing import Any
+
 import pandas as pd
 import numpy as np
+
+
+AMA_STATE_ALGORITHM_VERSION = "ama_recursive_v1"
+AMA_STATE_TAIL_ROWS = 20
+DEFAULT_AMA_STATE_CACHE_PATH = Path(
+    r"D:\database\signal_daily\_state\ama_latest_state.parquet"
+)
+_AMA_STATE_LOCK = threading.RLock()
+_AMA_PENDING_STATES: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 # 缩写解释和公式说明
@@ -485,32 +501,6 @@ class AMA:
             
         return signals_multi_index
 
-    def get_factor_matrices(self, Close_data, period=10):
-        """
-        将 AMA 的所有原子信号拆分为独立矩阵，每个信号一个 DataFrame。
-        返回格式: {signal_name: DataFrame(Date x Contract), ...}
-        """
-        comp = self.get_ama_components(Close_data, period)
-        
-        cross = self.cross_signals(Close_data, comp['ama_line'])
-        trend = self.trend_signals(comp['ama_slope'])
-        div = self.divergence_signals(Close_data, comp['ama_line'])
-        eff = self.efficiency_signals(comp['efficiency_ratio'])
-        mom = self.momentum_signals(comp['ama_momentum'])
-        band = self.band_signals(Close_data, comp['ama_line'], comp['ama_volatility'])
-
-        all_factors = {**cross, **trend, **div, **eff, **mom, **band}
-
-        for name, df in all_factors.items():
-            if df is not None:
-                df.iloc[:period * 2] = 0.0  # 冷启动期置零
-            else:
-                all_factors[name] = pd.DataFrame(0.0, index=Close_data.index, columns=Close_data.columns)
-
-        return all_factors
-
-
-
 # 引用方式示例 (作为注释，遵循您的格式要求)
 # '''
 # # 引用方式
@@ -546,3 +536,468 @@ class AMA:
                 all_factors[name].iloc[:period * 2] = 0.0
                     
             return all_factors
+
+
+def _encode_float_array(values: np.ndarray) -> bytes:
+    return np.ascontiguousarray(values, dtype=np.float64).tobytes()
+
+
+def _decode_float_array(raw: object) -> np.ndarray:
+    if isinstance(raw, memoryview):
+        raw = raw.tobytes()
+    return np.frombuffer(raw, dtype=np.float64).copy()
+
+
+def _encode_datetime_array(values: pd.DatetimeIndex) -> bytes:
+    return np.ascontiguousarray(values.asi8, dtype=np.int64).tobytes()
+
+
+def _decode_datetime_array(raw: object) -> pd.DatetimeIndex:
+    if isinstance(raw, memoryview):
+        raw = raw.tobytes()
+    return pd.to_datetime(np.frombuffer(raw, dtype=np.int64).copy())
+
+
+def load_ama_state_cache(
+    path: str | Path = DEFAULT_AMA_STATE_CACHE_PATH,
+) -> dict[str, dict[str, Any]]:
+    cache_path = Path(path)
+    if not cache_path.is_file():
+        return {}
+    try:
+        with _AMA_STATE_LOCK:
+            frame = pd.read_parquet(cache_path)
+    except Exception:
+        return {}
+    required = {
+        "htsc_code",
+        "last_dt",
+        "tail_dates_bytes",
+        "close_tail_bytes",
+        "ama_tail_bytes",
+        "period",
+        "fast_sc",
+        "slow_sc",
+        "algorithm_version",
+    }
+    if not required.issubset(frame.columns):
+        return {}
+
+    states: dict[str, dict[str, Any]] = {}
+    for _, row in frame.iterrows():
+        try:
+            tail_dates = _decode_datetime_array(row["tail_dates_bytes"])
+            close_tail = _decode_float_array(row["close_tail_bytes"])
+            ama_tail = _decode_float_array(row["ama_tail_bytes"])
+            if not (len(tail_dates) == len(close_tail) == len(ama_tail)):
+                continue
+            code = str(row["htsc_code"]).strip().upper()
+            states[code] = {
+                "htsc_code": code,
+                "last_dt": pd.Timestamp(row["last_dt"]).floor("D"),
+                "tail_dates": tail_dates,
+                "close_tail": close_tail,
+                "ama_tail": ama_tail,
+                "period": int(row["period"]),
+                "fast_sc": int(row["fast_sc"]),
+                "slow_sc": int(row["slow_sc"]),
+                "algorithm_version": str(row["algorithm_version"]),
+            }
+        except Exception:
+            continue
+    return states
+
+
+def _ama_state_usable(
+    state: dict[str, Any] | None,
+    *,
+    period: int,
+    fast_sc: int,
+    slow_sc: int,
+) -> bool:
+    if not state:
+        return False
+    return (
+        _ama_state_params_match(
+            state,
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        )
+        and len(state.get("tail_dates", ())) >= period + 1
+        and len(state.get("close_tail", ())) == len(state.get("ama_tail", ()))
+    )
+
+
+def _ama_state_params_match(
+    state: dict[str, Any] | None,
+    *,
+    period: int,
+    fast_sc: int,
+    slow_sc: int,
+) -> bool:
+    return bool(state) and (
+        state.get("algorithm_version") == AMA_STATE_ALGORITHM_VERSION
+        and int(state.get("period", -1)) == int(period)
+        and int(state.get("fast_sc", -1)) == int(fast_sc)
+        and int(state.get("slow_sc", -1)) == int(slow_sc)
+    )
+
+
+def ama_state_cache_covers(
+    path: str | Path,
+    codes: list[str] | set[str] | tuple[str, ...],
+    *,
+    period: int = 10,
+    fast_sc: int = 2,
+    slow_sc: int = 30,
+) -> bool:
+    states = load_ama_state_cache(path)
+    normalized_codes = {
+        str(code).strip().upper() for code in codes if str(code).strip()
+    }
+    return bool(normalized_codes) and all(
+        _ama_state_params_match(
+            states.get(code),
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        )
+        for code in normalized_codes
+    )
+
+
+def _ama_signal_frames(
+    analyzer: AMA,
+    close_prices: pd.DataFrame,
+    components: dict[str, pd.DataFrame],
+    *,
+    period: int,
+) -> dict[str, pd.DataFrame]:
+    factors = {
+        **analyzer.cross_signals(close_prices, components["ama_line"]),
+        **analyzer.trend_signals(components["ama_slope"]),
+        **analyzer.divergence_signals(close_prices, components["ama_line"]),
+        **analyzer.efficiency_signals(components["efficiency_ratio"]),
+        **analyzer.momentum_signals(components["ama_momentum"]),
+        **analyzer.band_signals(
+            close_prices,
+            components["ama_line"],
+            components["ama_volatility"],
+        ),
+    }
+    for frame in factors.values():
+        frame.iloc[: period * 2] = 0.0
+    return factors
+
+
+def _seeded_ama_components(
+    close_series: pd.Series,
+    ama_seed: pd.Series,
+    *,
+    period: int,
+    fast_sc: int,
+    slow_sc: int,
+) -> dict[str, pd.DataFrame]:
+    close = close_series.astype(float)
+    direction = (close - close.shift(period)).abs()
+    volatility = close.diff().abs().rolling(window=period).sum()
+    efficiency = (direction / volatility).where(volatility != 0, 0.0)
+    fastest = 2.0 / (fast_sc + 1)
+    slowest = 2.0 / (slow_sc + 1)
+    smoothing = (efficiency * (fastest - slowest) + slowest) ** 2
+
+    ama = ama_seed.reindex(close.index).astype(float)
+    seeded = np.flatnonzero(ama.notna().to_numpy())
+    if seeded.size == 0:
+        raise ValueError("AMA 状态缺少可用递归种子")
+    last_seed_pos = int(seeded[-1])
+    for position in range(last_seed_pos + 1, len(close)):
+        previous = ama.iloc[position - 1]
+        current_close = close.iloc[position]
+        current_smoothing = smoothing.iloc[position]
+        ama.iloc[position] = previous + current_smoothing * (current_close - previous)
+
+    ama_slope = ama.diff().ffill().fillna(0.0)
+    ama_momentum = ama.pct_change(fill_method=None).ffill().fillna(0.0)
+    ama_volatility = ama_momentum.rolling(window=10).std().ffill().fillna(0.0)
+    column = str(close_series.name)
+    to_frame = lambda series: series.to_frame(name=column)
+    return {
+        "ama_line": to_frame(ama.ffill().fillna(0.0)),
+        "efficiency_ratio": to_frame(efficiency),
+        "smoothing_constant": to_frame(smoothing),
+        "ama_slope": to_frame(ama_slope),
+        "ama_momentum": to_frame(ama_momentum),
+        "ama_volatility": to_frame(ama_volatility),
+    }
+
+
+def _bootstrap_ama_components(
+    close_prices: pd.DataFrame,
+    *,
+    period: int,
+    fast_sc: int,
+    slow_sc: int,
+) -> dict[str, pd.DataFrame]:
+    """首次 bootstrap 使用 NumPy 递归，避免 DataFrame.iloc 逐行写入。"""
+    direction = (close_prices - close_prices.shift(period)).abs()
+    volatility = close_prices.diff().abs().rolling(window=period).sum()
+    efficiency = pd.DataFrame(
+        np.where(volatility != 0, direction / volatility, 0.0),
+        index=close_prices.index,
+        columns=close_prices.columns,
+    )
+    fastest = 2.0 / (fast_sc + 1)
+    slowest = 2.0 / (slow_sc + 1)
+    smoothing = (efficiency * (fastest - slowest) + slowest) ** 2
+    close_np = close_prices.to_numpy(dtype=float)
+    smoothing_np = smoothing.to_numpy(dtype=float)
+    ama_np = np.full(close_np.shape, np.nan, dtype=float)
+    if len(close_np) > period:
+        ama_np[period] = close_np[period]
+        for position in range(period + 1, len(close_np)):
+            ama_np[position] = ama_np[position - 1] + smoothing_np[position] * (
+                close_np[position] - ama_np[position - 1]
+            )
+    ama_line = pd.DataFrame(ama_np, index=close_prices.index, columns=close_prices.columns)
+    ama_slope = ama_line.diff()
+    ama_momentum = ama_line.pct_change()
+    ama_volatility = ama_momentum.rolling(window=10).std()
+    return {
+        "ama_line": ama_line.ffill().fillna(0.0),
+        "efficiency_ratio": efficiency,
+        "smoothing_constant": smoothing,
+        "ama_slope": ama_slope.ffill().fillna(0.0),
+        "ama_momentum": ama_momentum.ffill().fillna(0.0),
+        "ama_volatility": ama_volatility.ffill().fillna(0.0),
+    }
+
+
+def _state_from_series(
+    code: str,
+    close_series: pd.Series,
+    ama_series: pd.Series,
+    *,
+    period: int,
+    fast_sc: int,
+    slow_sc: int,
+) -> dict[str, Any]:
+    valid = close_series.notna() & ama_series.notna()
+    close_tail = close_series.loc[valid].iloc[-AMA_STATE_TAIL_ROWS:]
+    ama_tail = ama_series.reindex(close_tail.index)
+    return {
+        "htsc_code": str(code).strip().upper(),
+        "last_dt": pd.Timestamp(close_tail.index[-1]).floor("D"),
+        "tail_dates": pd.DatetimeIndex(close_tail.index).floor("D"),
+        "close_tail": close_tail.to_numpy(dtype=np.float64),
+        "ama_tail": ama_tail.to_numpy(dtype=np.float64),
+        "period": int(period),
+        "fast_sc": int(fast_sc),
+        "slow_sc": int(slow_sc),
+        "algorithm_version": AMA_STATE_ALGORITHM_VERSION,
+    }
+
+
+def _queue_ama_states(path: str | Path, states: dict[str, dict[str, Any]]) -> None:
+    if not states:
+        return
+    key = str(Path(path).resolve())
+    with _AMA_STATE_LOCK:
+        _AMA_PENDING_STATES.setdefault(key, {}).update(states)
+
+
+def discard_pending_ama_states(path: str | Path) -> None:
+    key = str(Path(path).resolve())
+    with _AMA_STATE_LOCK:
+        _AMA_PENDING_STATES.pop(key, None)
+
+
+def commit_ama_state_cache(path: str | Path) -> Path:
+    cache_path = Path(path)
+    key = str(cache_path.resolve())
+    with _AMA_STATE_LOCK:
+        pending = dict(_AMA_PENDING_STATES.get(key, {}))
+        if not pending:
+            return cache_path
+        merged = load_ama_state_cache(cache_path)
+        merged.update(pending)
+        rows: list[dict[str, Any]] = []
+        updated_at = pd.Timestamp.now()
+        for code, state in sorted(merged.items()):
+            rows.append(
+                {
+                    "htsc_code": code,
+                    "last_dt": pd.Timestamp(state["last_dt"]).floor("D"),
+                    "tail_dates_bytes": _encode_datetime_array(
+                        pd.DatetimeIndex(state["tail_dates"])
+                    ),
+                    "close_tail_bytes": _encode_float_array(state["close_tail"]),
+                    "ama_tail_bytes": _encode_float_array(state["ama_tail"]),
+                    "period": int(state["period"]),
+                    "fast_sc": int(state["fast_sc"]),
+                    "slow_sc": int(state["slow_sc"]),
+                    "algorithm_version": AMA_STATE_ALGORITHM_VERSION,
+                    "updated_at": updated_at,
+                }
+            )
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = cache_path.with_name(
+            f"{cache_path.stem}.{os.getpid()}.{uuid.uuid4().hex}.tmp.parquet"
+        )
+        try:
+            pd.DataFrame(rows).to_parquet(temp_path, index=False)
+            last_error: OSError | None = None
+            for attempt in range(20):
+                try:
+                    os.replace(temp_path, cache_path)
+                    last_error = None
+                    break
+                except OSError as exc:
+                    last_error = exc
+                    time.sleep(0.1 * (attempt + 1))
+            if last_error is not None:
+                raise last_error
+            _AMA_PENDING_STATES.pop(key, None)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+    return cache_path
+
+
+def build_ama_factor_matrices_with_state(
+    close_data: pd.DataFrame,
+    *,
+    state_cache_path: str | Path,
+    period: int = 10,
+    fast_sc: int = 2,
+    slow_sc: int = 30,
+    state_only: bool = False,
+) -> dict[str, pd.DataFrame]:
+    """使用耐久状态续算 AMA；缓存缺失的代码按当前输入完整计算。"""
+    if not isinstance(close_data.index, pd.DatetimeIndex):
+        raise TypeError("AMA 状态续算要求 DatetimeIndex")
+    close_data = close_data.copy()
+    close_data.index = pd.DatetimeIndex(close_data.index).floor("D")
+    analyzer = AMA()
+    result = {
+        name: pd.DataFrame(np.nan, index=close_data.index, columns=close_data.columns)
+        for name in analyzer.all_signals
+    }
+    cached_states = load_ama_state_cache(state_cache_path)
+    new_states: dict[str, dict[str, Any]] = {}
+    bootstrap_columns: list[str] = []
+
+    for raw_code in close_data.columns:
+        code = str(raw_code).strip().upper()
+        state = cached_states.get(code)
+        valid_close = close_data[raw_code].dropna().astype(float)
+        if valid_close.empty or not _ama_state_usable(
+            state,
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        ):
+            if not valid_close.empty:
+                bootstrap_columns.append(raw_code)
+            continue
+
+        last_dt = pd.Timestamp(state["last_dt"]).floor("D")
+        if last_dt not in valid_close.index:
+            bootstrap_columns.append(raw_code)
+            continue
+        cached_close = float(np.asarray(state["close_tail"], dtype=float)[-1])
+        current_anchor = float(valid_close.loc[last_dt])
+        scale = current_anchor / cached_close if cached_close != 0 else np.nan
+        if not np.isfinite(scale) or scale <= 0:
+            bootstrap_columns.append(raw_code)
+            continue
+
+        tail_dates = pd.DatetimeIndex(state["tail_dates"]).floor("D")
+        tail_close = pd.Series(
+            np.asarray(state["close_tail"], dtype=float) * scale,
+            index=tail_dates,
+            name=code,
+        )
+        tail_ama = pd.Series(
+            np.asarray(state["ama_tail"], dtype=float) * scale,
+            index=tail_dates,
+            name=code,
+        )
+        new_close = valid_close.loc[valid_close.index > last_dt].rename(code)
+        if new_close.empty:
+            continue
+        combined_close = pd.concat([tail_close, new_close])
+        combined_close = combined_close[~combined_close.index.duplicated(keep="last")]
+        ama_seed = tail_ama.reindex(combined_close.index)
+        components = _seeded_ama_components(
+            combined_close,
+            ama_seed,
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        )
+        if not state_only:
+            factors = _ama_signal_frames(
+                analyzer,
+                combined_close.to_frame(name=code),
+                components,
+                period=period,
+            )
+            for name, frame in factors.items():
+                result[name].loc[new_close.index, raw_code] = frame.loc[new_close.index, code]
+        new_states[code] = _state_from_series(
+            code,
+            combined_close,
+            components["ama_line"][code],
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        )
+
+    if bootstrap_columns:
+        valid_series = {
+            raw_code: close_data[raw_code].dropna().astype(float)
+            for raw_code in bootstrap_columns
+        }
+        max_rows = max((len(series) for series in valid_series.values()), default=0)
+        compact = pd.DataFrame(
+            np.nan,
+            index=pd.RangeIndex(max_rows),
+            columns=bootstrap_columns,
+        )
+        for raw_code, series in valid_series.items():
+            compact.loc[: len(series) - 1, raw_code] = series.to_numpy(dtype=float)
+        components = _bootstrap_ama_components(
+            compact,
+            period=period,
+            fast_sc=fast_sc,
+            slow_sc=slow_sc,
+        )
+        factors = (
+            {}
+            if state_only
+            else _ama_signal_frames(analyzer, compact, components, period=period)
+        )
+        for raw_code, series in valid_series.items():
+            row_count = len(series)
+            if not state_only:
+                for name, frame in factors.items():
+                    result[name].loc[series.index, raw_code] = frame[raw_code].iloc[:row_count].to_numpy()
+            ama_series = pd.Series(
+                components["ama_line"][raw_code].iloc[:row_count].to_numpy(dtype=float),
+                index=series.index,
+                name=str(raw_code).strip().upper(),
+            )
+            code = str(raw_code).strip().upper()
+            new_states[code] = _state_from_series(
+                code,
+                series.rename(code),
+                ama_series,
+                period=period,
+                fast_sc=fast_sc,
+                slow_sc=slow_sc,
+            )
+
+    _queue_ama_states(state_cache_path, new_states)
+    return result

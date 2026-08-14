@@ -1,6 +1,8 @@
 import json
+from pathlib import Path
 
 import api_server
+import style_monitor_service
 
 
 class DummyHandler:
@@ -31,12 +33,46 @@ def test_positions_handler_rejects_invalid_leg(monkeypatch):
     assert handler.sent[1]["error"]["code"] == "INVALID_ARGUMENT"
 
 
-def test_update_handler_returns_202_and_job_status_is_looked_up(monkeypatch):
+def test_style_monitor_schema_is_initialized_without_running_models(monkeypatch):
+    calls = []
+
+    class FakeRepository:
+        def initialize_schema(self):
+            calls.append("initialize_schema")
+
+    monkeypatch.setattr(style_monitor_service, "_repo", lambda: FakeRepository())
+
+    style_monitor_service.initialize_style_monitor_schema()
+
+    assert calls == ["initialize_schema"]
+
+
+def test_api_exposes_style_monitor_as_read_only() -> None:
+    source = Path(api_server.__file__).read_text(encoding="utf-8")
+
+    assert "/api/style-monitor/update" not in source
+    assert "create_style_monitor_job" not in source
+
+
+def test_curves_handler_forwards_custom_benchmark_code(monkeypatch):
     handler = DummyHandler()
-    handler._read_json_body = lambda: {}
-    monkeypatch.setattr(api_server, "create_style_monitor_job", lambda payload: {"job_id": "job-1", "status": "queued"})
-    api_server.ApiRequestHandler._handle_style_monitor_update(handler)
-    assert handler.sent[0] == 202
-    monkeypatch.setattr(api_server, "get_style_monitor_job", lambda job_id: {"job_id": job_id, "status": "done"})
-    api_server.ApiRequestHandler._handle_style_monitor_job_status(handler, "job-1")
-    assert handler.sent[1]["status"] == "done"
+    calls = {}
+
+    def fake_query(model_id, range_key, start_date, end_date, benchmark_code=None):
+        calls.update(locals())
+        return {"benchmark": {"code": benchmark_code}}
+
+    monkeypatch.setattr(api_server, "query_style_monitor_curves", fake_query)
+    api_server.ApiRequestHandler._handle_style_monitor_curves(
+        handler,
+        {
+            "model_id": ["growth_raw"],
+            "range": ["custom"],
+            "start_date": ["2026-01-01"],
+            "end_date": ["2026-01-10"],
+            "benchmark_code": ["600000.SH"],
+        },
+    )
+
+    assert handler.sent[0] == 200
+    assert calls["benchmark_code"] == "600000.SH"

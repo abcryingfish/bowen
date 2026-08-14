@@ -52,7 +52,8 @@ SECONDARY_EXPORT = EXPORT_DIR / "Table.xlsx"
 AUDIT_PATH = PROJECT_ROOT / "temp" / "ths512_full_audit" / "sector_audit.parquet"
 VALUATION_GLOB = r"D:\database\qmt_company_data\table=factor_fundamental_valuation\year=*\month=*\merged.parquet"
 DEFAULT_START_DATE = "2010-01-01"
-LEVEL1_PREFIX_COUNTS = {"881": 90, "882": 33, "885": 293, "886": 96}
+# 同花顺软件一级板块的代码前缀相对稳定，但每个前缀下的板块数量会随客户端更新变化。
+LEVEL1_PREFIXES = ("881", "882", "885", "886")
 LEVEL_FILES = {
     "同花顺软件一级": "同花顺软件一级板块.csv",
     "同花顺软件二级": "同花顺软件二级板块.csv",
@@ -284,12 +285,18 @@ def extract_ths_sector_data(
     code_to_name, name_to_codes = load_index_names(stockname_file)
     levels = {
         "同花顺软件一级": sorted(
-            code for code in code_to_name if code.startswith(tuple(LEVEL1_PREFIX_COUNTS))
+            code for code in code_to_name if code.startswith(LEVEL1_PREFIXES)
         ),
         "同花顺软件二级": load_secondary_codes(secondary_export, name_to_codes),
     }
-    if len(levels["同花顺软件一级"]) != 512:
-        raise ValueError(f"软件一级应为 512 个板块，实际为 {len(levels['同花顺软件一级'])}")
+    if not levels["同花顺软件一级"]:
+        raise ValueError("软件一级板块清单为空，请检查同花顺 stockname 文件")
+    level1_counts = Counter(code[:3] for code in levels["同花顺软件一级"])
+    print(
+        f"软件一级板块：{len(levels['同花顺软件一级'])} 个；"
+        f"前缀分布：{dict(sorted(level1_counts.items()))}",
+        flush=True,
+    )
 
     block_names, block_members = parse_block_library(root)
     industry_members = load_industry_members(root)
@@ -417,7 +424,7 @@ def load_level1_indices(stockname_file: str | Path = STOCKNAME_FILE) -> list[dic
         security_id, index_name = line.split("=", 1)
         security_id = security_id.strip()
         index_name = index_name.strip()
-        if len(security_id) != 6 or security_id[:3] not in LEVEL1_PREFIX_COUNTS:
+        if len(security_id) != 6 or security_id[:3] not in LEVEL1_PREFIXES:
             continue
         rows.append(
             {
@@ -428,11 +435,8 @@ def load_level1_indices(stockname_file: str | Path = STOCKNAME_FILE) -> list[dic
             }
         )
     rows.sort(key=lambda row: row["security_id"])
-    counts = Counter(row["index_prefix"] for row in rows)
-    if counts != Counter(LEVEL1_PREFIX_COUNTS) or len(rows) != 512:
-        raise ValueError(
-            f"同花顺软件一级口径异常：期望 {LEVEL1_PREFIX_COUNTS} 合计512，实际 {dict(counts)} 合计{len(rows)}"
-        )
+    if not rows:
+        raise ValueError("同花顺软件一级指数清单为空，请检查 stockname 文件")
     if len({row["security_id"] for row in rows}) != len(rows):
         raise ValueError("同花顺软件一级指数代码存在重复")
     return rows

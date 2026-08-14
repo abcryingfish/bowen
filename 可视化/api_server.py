@@ -49,8 +49,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from backtest_job_service import cancel_backtest_job, create_backtest_job, get_backtest_job
-from style_monitor_job_service import StyleMonitorJobBusyError, create_style_monitor_job, get_style_monitor_job
 from style_monitor_service import (
+    initialize_style_monitor_schema,
     query_style_monitor_curves,
     query_style_monitor_positions,
     query_style_monitor_summary,
@@ -72,7 +72,10 @@ from market_data_service import (
     query_latest_backtest_position_snapshot,
     query_latest_backtest_summary,
     list_market_index_codes,
+    list_sector_constituents,
+    list_stock_sector_memberships,
     query_index_market_bars,
+    query_index_market_returns,
     query_market_bars,
     query_market_factor_couple_series,
     query_market_factor_snapshot,
@@ -89,6 +92,7 @@ from qmt_company_data_service import (
     query_qmt_company_table,
     query_qmt_company_tables,
 )
+from market_research_service import query_market_research_concentration
 from sector_research_service import dashboard as sector_dashboard, list_entities as sector_entities, report as sector_report
 from 量化因子有效性检验.factor_validation_service import (
     FactorValidationError,
@@ -270,8 +274,24 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_market_index_codes(query)
             return
 
+        if parsed.path == "/api/market/sector-memberships":
+            self._handle_sector_memberships(query)
+            return
+
+        if parsed.path == "/api/market/sector-constituents":
+            self._handle_sector_constituents(query)
+            return
+
         if parsed.path == "/api/market/index/bars":
             self._handle_market_index_bars(query)
+            return
+
+        if parsed.path == "/api/market/index/returns":
+            self._handle_market_index_returns(query)
+            return
+
+        if parsed.path == "/api/market/research/concentration":
+            self._handle_market_research_concentration(query)
             return
 
         if parsed.path == "/api/market/factors":
@@ -366,10 +386,6 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_style_monitor_trades(query)
             return
 
-        if parsed.path.startswith("/api/style-monitor/update/jobs/"):
-            self._handle_style_monitor_job_status(parsed.path.rsplit("/", 1)[-1])
-            return
-
         if parsed.path == "/api/watchlist":
             self._handle_watchlist_get()
             return
@@ -389,10 +405,6 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/backtest/run":
             self._handle_backtest_run()
-            return
-
-        if parsed.path == "/api/style-monitor/update":
-            self._handle_style_monitor_update()
             return
 
         if parsed.path == "/api/backtest/job/cancel":
@@ -629,6 +641,123 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                         "detail": str(exc),
                     }
                 },
+            )
+
+    def _handle_market_index_returns(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_index_market_returns(
+                prefix=self._first_query_value(query, "prefix"),
+                from_ts=self._first_query_value(query, "from"),
+                to_ts=self._first_query_value(query, "to"),
+                points=self._first_query_value(query, "points"),
+                codes=self._first_query_value(query, "codes"),
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}},
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}},
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "MARKET_DATA_ERROR", "message": str(exc)}},
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}},
+            )
+
+    def _handle_market_research_concentration(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_market_research_concentration(
+                from_ts=self._first_query_value(query, "from"),
+                to_ts=self._first_query_value(query, "to"),
+                points=self._first_query_value(query, "points"),
+                refresh=self._first_query_value(query, "refresh") in ("1", "true", "True"),
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}},
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}},
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "MARKET_DATA_ERROR", "message": str(exc)}},
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}},
+            )
+
+    def _handle_sector_memberships(self, query: dict[str, list[str]]) -> None:
+        try:
+            refresh = self._first_query_value(query, "refresh") in ("1", "true", "True")
+            result = list_stock_sector_memberships(
+                stock_code=self._first_query_value(query, "stock_code"),
+                force_refresh=refresh,
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}},
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}},
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "MARKET_DATA_ERROR", "message": str(exc)}},
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}},
+            )
+
+    def _handle_sector_constituents(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = list_sector_constituents(
+                sector_code=self._first_query_value(query, "sector_code"),
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}},
+            )
+        except MarketDataNotFoundError as exc:
+            self._send_json(
+                HTTPStatus.NOT_FOUND,
+                {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}},
+            )
+        except MarketDataError as exc:
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "MARKET_DATA_ERROR", "message": str(exc)}},
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}},
             )
 
     def _handle_market_fundamental(self, query: dict[str, list[str]]) -> None:
@@ -1438,7 +1567,10 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         try:
             model_id = self._first_query_value(query, "model_id") or ""
             range_key = self._first_query_value(query, "range") or "60d"
-            self._send_json(HTTPStatus.OK, query_style_monitor_curves(model_id, range_key))
+            start_date = self._first_query_value(query, "start_date")
+            end_date = self._first_query_value(query, "end_date")
+            benchmark_code = self._first_query_value(query, "benchmark_code")
+            self._send_json(HTTPStatus.OK, query_style_monitor_curves(model_id, range_key, start_date, end_date, benchmark_code))
         except (ValueError, KeyError) as exc:
             status = HTTPStatus.NOT_FOUND if str(exc).startswith("未知模型") else HTTPStatus.BAD_REQUEST
             self._send_json(status, {"error": {"code": "NOT_FOUND" if status == HTTPStatus.NOT_FOUND else "INVALID_ARGUMENT", "message": str(exc)}})
@@ -1468,25 +1600,6 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._send_json(status, {"error": {"code": "NOT_FOUND" if status == HTTPStatus.NOT_FOUND else "INVALID_ARGUMENT", "message": str(exc)}})
         except Exception as exc:  # noqa: BLE001
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合交易失败", "detail": str(exc)}})
-
-    def _handle_style_monitor_update(self) -> None:
-        try:
-            payload = self._read_json_body()
-            self._send_json(HTTPStatus.ACCEPTED, create_style_monitor_job(payload))
-        except StyleMonitorJobBusyError as exc:
-            self._send_json(HTTPStatus.CONFLICT, {"error": {"code": "CONFLICT", "message": str(exc)}})
-        except (ValueError, KeyError) as exc:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}})
-        except Exception as exc:  # noqa: BLE001
-            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "创建风格组合更新任务失败", "detail": str(exc)}})
-
-    def _handle_style_monitor_job_status(self, job_id: str) -> None:
-        try:
-            self._send_json(HTTPStatus.OK, get_style_monitor_job(job_id))
-        except KeyError as exc:
-            self._send_json(HTTPStatus.NOT_FOUND, {"error": {"code": "NOT_FOUND", "message": f"任务不存在: {exc}"}})
-        except Exception as exc:  # noqa: BLE001
-            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "读取风格组合任务失败", "detail": str(exc)}})
 
     def _handle_backtest_run(self) -> None:
         try:
@@ -1915,6 +2028,11 @@ def _describe_port_conflict(host: str, port: int, exc: OSError) -> str:
 
 def run_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> None:
     """启动 API 服务。"""
+    try:
+        initialize_style_monitor_schema()
+    except Exception as exc:
+        print(f"[{SERVER_NAME}] 风格模型账本结构迁移失败: {exc}")
+        raise SystemExit(1) from exc
     try:
         server = ReuseThreadingHTTPServer((host, port), ApiRequestHandler)
     except OSError as exc:

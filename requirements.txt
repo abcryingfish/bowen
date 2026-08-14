@@ -10,6 +10,7 @@ openpyxl>=3.1,<4
 backtrader>=1.9.78,<2
 optuna>=4.8,<5
 scipy>=1.15,<2
+statsmodels>=0.14,<1
 scikit-learn>=1.7,<2
 empyrical>=0.5,<1
 pyfolio>=0.9,<1
@@ -29,6 +30,7 @@ python-docx>=1.2,<2
 # Utilities
 pypinyin>=0.55,<1
 requests>=2.33,<3
+pycryptodome>=3.23,<4
 dateparser>=1.4,<2
 tqdm>=4.67,<5
 schedule>=1.2,<2

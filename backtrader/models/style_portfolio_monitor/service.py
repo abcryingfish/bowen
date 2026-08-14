@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from .config import INITIAL_CASH, INITIAL_DATE, LOT_SIZE, MIN_FACTOR_COVERAGE, STYLE_MONITOR_DB_PATH, MODEL_DEFINITIONS, build_config_hash, is_rebalance_day
 from .data import StyleDataSource
+from .equal_weight_runner import run_equal_weight_update
 from .portfolio import PortfolioState, build_target_shares, mark_to_market, rebalance_at_close, select_style_legs
 from .repository import LegDayPayload, ModelDayPayload, StyleMonitorRepository
 
@@ -21,6 +22,15 @@ def _definition_map():
 
 
 def run_incremental_update(*, model_ids=None, through_date: date | None = None, progress: Callable[[str, int, str], None] | None = None, database_path=None, data_source=None, repository=None) -> dict[str, Any]:
+    # 生产默认入口已切换为理论无手续费等权指数。保留显式注入 repository 的
+    # 旧实现，仅供历史单测/兼容代码使用，避免再次把净现金账本写入正式库。
+    if repository is None and data_source is None:
+        return run_equal_weight_update(
+            model_ids=model_ids,
+            through_date=through_date,
+            progress=progress,
+            database_path=database_path,
+        )
     source = data_source or StyleDataSource()
     repo = repository or StyleMonitorRepository(database_path or STYLE_MONITOR_DB_PATH)
     repo.initialize_schema()
@@ -49,11 +59,13 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
     results = {"completed_models": [], "paused_models": [], "failed_models": [], "latest_dates": {}, "processed_days": {}}
     states: dict[tuple[str, str], PortfolioState] = {}
     navs: dict[tuple[str, str], float] = {}
+    position_metadata: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
     rebalance_dates: dict[str, date | None] = {model_id: meta["run_state"].last_rebalance_date for model_id, meta in model_meta.items()}
     for meta in model_meta.values():
         for leg in ("high", "low"):
             restored_state, restored_nav = repo.load_portfolio_state(meta["version"], leg)
             states[(meta["version"], leg)] = restored_state
+            position_metadata[(meta["version"], leg)] = repo.load_position_metadata(meta["version"], leg)
             if restored_nav is not None:
                 navs[(meta["version"], leg)] = restored_nav
     blocked: set[str] = set()
@@ -82,6 +94,11 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
                 if due:
                     codes = [item.code for item in selections[leg]]
                     prices = {str(row.htsc_code): float(row.close) for row in snapshot.itertuples() if str(row.htsc_code) in codes and float(row.close) > 0}
+                    target_weight = 1.0 / len(prices) if prices else 0.0
+                    selected_metadata = {
+                        item.code: {"score": item.score, "rank": item.rank, "target_weight": target_weight if item.code in prices else 0.0}
+                        for item in selections[leg]
+                    }
                     target = build_target_shares(codes, prices, mark_to_market(state, prices).total_asset, 0.0003, LOT_SIZE)
                     execution = rebalance_at_close(state, target, prices, 0.0003)
                     state = execution.state
@@ -91,9 +108,16 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
                     execution = type("Execution", (), {"trades": [], "total_commission": 0.0, "turnover": 0.0})()
                 valuation = mark_to_market(state, prices)
                 state = PortfolioState(state.cash, dict(state.positions), {**state.last_prices, **valuation.prices})
+                metadata = position_metadata.setdefault((version, leg), {})
+                if due:
+                    metadata = {
+                        code: selected_metadata.get(code, {**metadata.get(code, {}), "target_weight": 0.0})
+                        for code in state.positions
+                    }
+                    position_metadata[(version, leg)] = metadata
                 previous_nav = navs.get((version, leg), 100.0)
                 current_nav = valuation.total_asset / INITIAL_CASH * 100.0
-                positions = [{"htsc_code": code, "score": next((item.score for item in selections[leg] if item.code == code), None), "rank": next((item.rank for item in selections[leg] if item.code == code), None), "target_weight": 1.0 / len(state.positions) if state.positions else 0.0, "actual_weight": shares * valuation.prices.get(code, 0.0) / valuation.total_asset if valuation.total_asset else 0.0, "shares": shares, "price": valuation.prices.get(code, 0.0), "market_value": shares * valuation.prices.get(code, 0.0), "stale_price": code in valuation.stale_codes} for code, shares in state.positions.items()]
+                positions = [{"htsc_code": code, "score": metadata.get(code, {}).get("score"), "rank": metadata.get(code, {}).get("rank"), "target_weight": metadata.get(code, {}).get("target_weight", 0.0), "actual_weight": shares * valuation.prices.get(code, 0.0) / valuation.total_asset if valuation.total_asset else 0.0, "shares": shares, "price": valuation.prices.get(code, 0.0), "market_value": shares * valuation.prices.get(code, 0.0), "stale_price": code in valuation.stale_codes} for code, shares in state.positions.items()]
                 trade_rows = [{"htsc_code": trade.code, "side": trade.side, "shares": trade.shares, "price": trade.price, "trade_value": trade.trade_value, "commission": trade.commission} for trade in getattr(execution, "trades", [])]
                 legs[leg] = LegDayPayload(valuation.total_asset - valuation.market_value, valuation.market_value, valuation.total_asset, current_nav, current_nav / previous_nav - 1.0 if previous_nav else None, current_nav / 100.0 - 1.0, getattr(execution, "turnover", 0.0), getattr(execution, "total_commission", 0.0), due, float(snapshot.attrs.get("factor_coverage")) if due else None, len(valuation.stale_codes), "ok", "", positions, trade_rows)
                 states[(version, leg)] = state
@@ -101,8 +125,6 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
             repo.write_model_day(ModelDayPayload(version, model_id, build_config_hash(definition), trade_date, rebalance_dates[model_id], legs))
             results["processed_days"][model_id] = results["processed_days"].get(model_id, 0) + 1
             results["latest_dates"][model_id] = trade_date.isoformat()
-            if model_id not in results["completed_models"]:
-                results["completed_models"].append(model_id)
         except StyleMonitorPaused:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -110,4 +132,11 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
             results["failed_models"].append({"model_id": model_id, "date": trade_date.isoformat(), "message": str(exc)})
         if progress:
             progress("增量更新", int(completed / total * 100) if total else 100, f"{model_id} {trade_date.isoformat()}")
+    results["completed_models"] = [
+        definition.model_id
+        for definition in selected
+        if definition.model_id in model_meta
+        and definition.model_id not in blocked
+        and results["processed_days"].get(definition.model_id, 0) == len(model_meta[definition.model_id]["dates"])
+    ]
     return results

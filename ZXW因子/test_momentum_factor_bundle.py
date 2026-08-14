@@ -20,6 +20,7 @@ from 板块动量策略常用因子 import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MOMENTUM_FACTOR_NAMES = {
+    "5日动量",
     "20日动量",
     "60日动量",
     "120日动量",
@@ -135,6 +136,7 @@ def test_momentum_bundle_calculates_requested_factors() -> None:
     )
     pd.testing.assert_frame_equal(factors["close_above_ma60"], (close > close.rolling(60).mean()).astype(float))
     assert set(factors) == {
+        "momentum_5d",
         "momentum_120d",
         "momentum_20d",
         "momentum_60d",
@@ -158,6 +160,7 @@ def test_multi_period_momentum_uses_requested_lookback_windows() -> None:
     )
 
     factors = build_momentum_factor_bundle(C=close)["factor_dfs"]
+    pd.testing.assert_frame_equal(factors["momentum_5d"], close / close.shift(5) - 1)
 
     for window in (20, 60, 120, 252):
         pd.testing.assert_frame_equal(

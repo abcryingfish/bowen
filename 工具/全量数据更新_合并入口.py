@@ -12,8 +12,9 @@
 7. 股票分钟级数据
 8. 同花顺板块分钟级数据
 9. 股票日频换手率
+10. 股票粉丝特征增量
 
-换手率放最后，因为它依赖股票日 K 和 QMT Capital 股本数据。
+换手率依赖股票日 K 和 QMT Capital 股本数据；粉丝特征增量作为最终阶段执行。
 """
 from __future__ import annotations
 
@@ -52,6 +53,7 @@ STAGES: tuple[Stage, ...] = (
     Stage("stock_mins", "股票分钟级数据", "获得股票分钟级数据.py"),
     Stage("ths_index_mins", "同花顺板块分钟级数据", "获得同花顺板块分钟级数据.py"),
     Stage("turnover", "股票日频换手率", "获得股票日频换手率.py"),
+    Stage("stock_fans", "股票粉丝特征增量", "获得股票粉丝特征.py", ("--sleep-sec", "0.5")),
 )
 
 
@@ -71,7 +73,12 @@ STAGE_KEY_ALIASES = {
     "ths_mins": "ths_index_mins",
     "ths_minute": "ths_index_mins",
     "turnover_rate": "turnover",
+    "fans": "stock_fans",
+    "stock_fans_factor": "stock_fans",
 }
+
+# Fuyao 认证尚未配置时，默认不阻断其他全量数据阶段；需要时可通过 --only 显式运行。
+DEFAULT_SKIP_STAGES = {"ths_index_mins"}
 
 
 def _split_stage_args(value: str) -> list[str]:
@@ -109,12 +116,15 @@ def _build_stage_args(args: argparse.Namespace) -> dict[str, list[str]]:
         "stock_mins": _split_stage_args(args.stock_mins_args),
         "ths_index_mins": _split_stage_args(args.ths_index_mins_args),
         "turnover": _split_stage_args(args.turnover_args),
+        "stock_fans": _split_stage_args(args.stock_fans_args),
     }
 
 
 def _selected_stages(args: argparse.Namespace) -> list[Stage]:
     only = _normalize_stage_keys(args.only)
     skip = _normalize_stage_keys(args.skip)
+    if not only:
+        skip.update(DEFAULT_SKIP_STAGES)
     selected = []
     for stage in STAGES:
         if only and stage.key not in only:
@@ -164,7 +174,7 @@ def parse_args() -> argparse.Namespace:
         "--only",
         nargs="*",
         default=None,
-        help="只运行指定阶段，可选 stock_daily,index_daily,ths_level1_index_daily,etf_daily,qmt_company,qmt_adj,stock_mins,turnover",
+        help="只运行指定阶段，可选 stock_daily,index_daily,ths_level1_index_daily,etf_daily,qmt_company,qmt_adj,stock_mins,turnover,stock_fans",
     )
     parser.add_argument(
         "--skip",
@@ -191,6 +201,7 @@ def parse_args() -> argparse.Namespace:
         help="透传给 获得同花顺板块分钟级数据.py 的参数字符串",
     )
     parser.add_argument("--turnover-args", default="", help="透传给 获得股票日频换手率.py 的参数字符串")
+    parser.add_argument("--stock-fans-args", default="", help="透传给 获得股票粉丝特征.py 的参数字符串")
     return parser.parse_args()
 
 
@@ -203,8 +214,8 @@ def main() -> None:
 
     failed: list[tuple[Stage, int]] = []
     print("执行顺序: " + " -> ".join(stage.key for stage in selected))
-    if selected and selected[-1].key != "turnover" and not args.only:
-        print("[WARN] 当前选择下换手率不是最后一个阶段，请确认 --skip 是否符合预期。")
+    if selected and selected[-1].key != "stock_fans" and not args.only:
+        print("[WARN] 当前选择下股票粉丝特征增量不是最后一个阶段，请确认 --skip 是否符合预期。")
 
     for stage in selected:
         rc = run_stage(

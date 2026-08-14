@@ -108,8 +108,7 @@ body.page-model-validity {
     opacity: 0.4;
 }
 
-.model-live-link,
-.live-model-link {
+.model-live-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -125,8 +124,7 @@ body.page-model-validity {
     white-space: nowrap;
 }
 
-.model-live-link:hover,
-.live-model-link:hover {
+.model-live-link:hover {
     color: #d9fff9;
     background: rgba(38, 166, 154, 0.22);
 }
@@ -163,8 +161,6 @@ body.page-model-validity {
 .status-kicker { display: block; color: #26a69a; font-size: 9px; letter-spacing: .14em; }
 .monitor-status span:not(.status-kicker), .paper-note, .monitor-progress { color: var(--muted, #8b97a5); font-size: 11px; }
 .monitor-actions { display: flex; align-items: center; gap: 10px; }
-#style-monitor-update { width: 30px; height: 30px; border: 1px solid rgba(38,166,154,.5); border-radius: 4px; color: #9fe8de; background: rgba(38,166,154,.12); font-size: 20px; cursor: pointer; }
-#style-monitor-update:disabled { opacity: .5; cursor: wait; }
 .summary-rankings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 10px 0; }
 .ranking-column { min-width: 0; padding: 8px 10px; border-left: 2px solid rgba(107,156,255,.45); background: rgba(30,34,45,.58); }
 .ranking-column h2 { margin: 0 0 5px; color: #f3f4f6; font-size: 11px; }
@@ -175,17 +171,31 @@ body.page-model-validity {
 .ranking-row strong { color: #9fe8de; font-size: 11px; font-variant-numeric: tabular-nums; }
 .range-toolbar { border-top: 1px solid var(--line, #2b2b2b); border-bottom: 0; }
 .toolbar-label { color: #d1d4dc; font-size: 11px; }
-.range-switch { display: inline-flex; gap: 3px; margin-right: auto; }
+.range-switch { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-right: auto; }
 .range-switch button, .drawer-tabs button { min-height: 26px; padding: 0 9px; border: 1px solid rgba(139,151,165,.3); border-radius: 3px; color: #aab4c5; background: rgba(255,255,255,.04); font: inherit; font-size: 11px; cursor: pointer; }
 .range-switch button.active, .drawer-tabs button.active { color: #fff; border-color: rgba(38,166,154,.7); background: rgba(38,166,154,.2); }
+.custom-range-field { display: inline-flex; align-items: center; gap: 4px; color: #aab4c5; font-size: 11px; }
+.custom-range-field input { width: 118px; min-height: 26px; box-sizing: border-box; padding: 0 5px; border: 1px solid rgba(139,151,165,.3); border-radius: 3px; color: #dce4ef; background: rgba(255,255,255,.06); font: inherit; color-scheme: dark; }
+.custom-range-field input[type="number"] { width: 78px; }
+.benchmark-field { position: relative; }
+.benchmark-input-wrap { position: relative; display: inline-flex; }
+#style-benchmark-code { width: 112px; text-transform: uppercase; }
+.benchmark-suggestions { position: absolute; z-index: 20; top: calc(100% + 3px); left: 0; display: none; width: 220px; max-height: 180px; margin: 0; padding: 3px 0; overflow-y: auto; border: 1px solid rgba(139,151,165,.35); border-radius: 4px; background: #202634; box-shadow: 0 5px 18px rgba(0,0,0,.35); list-style: none; }
+.benchmark-suggestions.show { display: block; }
+.benchmark-suggestions li { padding: 5px 8px; color: #dce4ef; font-size: 11px; cursor: pointer; }
+.benchmark-suggestions li:hover, .benchmark-suggestions li.active { background: rgba(38,166,154,.22); }
+#style-benchmark-status { color: #8fa4c4; font-size: 10px; }
+.custom-range-apply { min-height: 26px; padding: 0 9px; border: 1px solid rgba(38,166,154,.7); border-radius: 3px; color: #fff; background: rgba(38,166,154,.2); font: inherit; font-size: 11px; cursor: pointer; }
+.custom-range-apply:disabled { opacity: .45; cursor: not-allowed; }
 .page-state { min-height: 22px; padding: 7px 2px; color: #8b97a5; font-size: 11px; }
 .chart-card-head > div { min-width: 0; }
-.chart-legend { display: flex; gap: 5px; padding: 0 2px 3px; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 3px 5px; min-height: 32px; padding: 0 2px 3px; }
 .chart-legend button { border: 0; padding: 0 4px; color: #aab4c5; background: transparent; font-size: 10px; cursor: pointer; }
 .chart-legend button.muted { opacity: .35; }
 .chart-legend i { display: inline-block; width: 7px; height: 7px; margin-right: 3px; border-radius: 50%; background: #26a69a; }
 .chart-legend button:nth-child(2) i { background: #f59e0b; }
 .chart-legend button:nth-child(3) i { background: #6b9cff; }
+.chart-legend button:nth-child(4) i { background: #a78bfa; }
 .chart-empty { display: flex; align-items: center; justify-content: center; color: #8b97a5; font-size: 11px; }
 .detail-button { flex: 0 0 auto; min-height: 24px; padding: 0 7px; border: 1px solid rgba(139,151,165,.3); border-radius: 3px; color: #aab4c5; background: rgba(255,255,255,.04); font-size: 10px; cursor: pointer; }
 .style-detail-drawer { position: fixed; z-index: 30; top: 0; right: 0; bottom: 0; display: flex; width: min(720px, 92vw); flex-direction: column; border-left: 1px solid var(--line,#2b2b2b); background: #171b24; box-shadow: -8px 0 24px rgba(0,0,0,.35); transform: translateX(102%); transition: transform .18s ease; }
@@ -239,6 +249,19 @@ body.page-model-validity {
     color: #8fa4c4;
     font-size: 10px;
 }
+.chart-card-head .model-diagnostics {
+    display: block;
+    margin-top: 2px;
+    color: #78869c;
+    font-size: 9px;
+    line-height: 1.3;
+}
+.detail-note {
+    margin: 12px 0;
+    color: #aab4c5;
+    font-size: 12px;
+    line-height: 1.6;
+}
 
 .chart-mount {
     position: relative;
@@ -269,13 +292,6 @@ body.page-model-validity {
     pointer-events: none;
 }
 
-.live-model-link {
-    position: fixed;
-    top: 8px;
-    left: 8px;
-    z-index: 20;
-}
-
 @media (max-width: 1200px) {
     .model-chart-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -288,6 +304,7 @@ body.page-model-validity {
     .monitor-actions { width: 100%; justify-content: space-between; }
     .summary-rankings { grid-template-columns: 1fr; }
     .range-switch { margin-right: 0; }
+    .custom-range-field input { width: 110px; }
     .model-validity-header {
         grid-template-columns: 1fr auto;
         min-height: 64px;

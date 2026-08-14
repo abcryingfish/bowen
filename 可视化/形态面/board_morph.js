@@ -798,6 +798,63 @@ function getMorphPatternDisplayName(signalName) {
     return morphPatternDisplayNames.get(key) || key;
 }
 
+function getVisibleMorphPatternNames() {
+    const patternNames = Array.from(morphPatternPointsByName.keys()).sort();
+    if (!selectedMorphPatternName) {
+        return patternNames;
+    }
+    return patternNames.includes(selectedMorphPatternName) ? [selectedMorphPatternName] : [];
+}
+
+function isMorphPatternVisible(signalName) {
+    return !selectedMorphPatternName || String(signalName || "") === selectedMorphPatternName;
+}
+
+function syncMorphPatternFilterOptions() {
+    const selectEl = document.getElementById("morph-pattern-filter-select");
+    if (!selectEl) {
+        return;
+    }
+    const patternNames = Array.from(morphPatternPointsByName.keys()).sort((a, b) => (
+        getMorphPatternDisplayName(a).localeCompare(getMorphPatternDisplayName(b), "zh-CN")
+    ));
+    selectEl.replaceChildren();
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = patternNames.length ? `全部形态 (${patternNames.length})` : "全部形态";
+    selectEl.appendChild(allOption);
+    for (const patternName of patternNames) {
+        const optionEl = document.createElement("option");
+        optionEl.value = patternName;
+        optionEl.textContent = getMorphPatternDisplayName(patternName);
+        selectEl.appendChild(optionEl);
+    }
+    if (selectedMorphPatternName && !patternNames.includes(selectedMorphPatternName)) {
+        const selectedOption = document.createElement("option");
+        selectedOption.value = selectedMorphPatternName;
+        selectedOption.textContent = `${getMorphPatternDisplayName(selectedMorphPatternName)}（当前股票无信号）`;
+        selectEl.appendChild(selectedOption);
+    }
+    selectEl.value = selectedMorphPatternName;
+    selectEl.disabled = patternNames.length === 0 && !selectedMorphPatternName;
+}
+
+function loadMorphPatternFilter() {
+    try {
+        return String(localStorage.getItem(MORPH_PATTERN_FILTER_STORAGE_KEY) || "");
+    } catch {
+        return "";
+    }
+}
+
+function saveMorphPatternFilter() {
+    try {
+        localStorage.setItem(MORPH_PATTERN_FILTER_STORAGE_KEY, selectedMorphPatternName);
+    } catch {
+        /* ignore */
+    }
+}
+
 function redrawMorphPatternOverlayAtCachedTime() {
     if (!isMorphSignalTab()) {
         return;
@@ -1068,6 +1125,9 @@ function collectMorphOverlayItems(crossBarIndex) {
         const dayKey = alignToCurrentInterval(Number(barsCache[barIdx].time));
         const events = morphEventsByDay.get(dayKey) || [];
         for (const event of events) {
+            if (!isMorphPatternVisible(event.signal_name)) {
+                continue;
+            }
             const eventBarIndex = findBarIndexByUnixTime(event.time);
             const startIdx = findBarIndexByUnixTime(event.start_time || event.time);
             if (eventBarIndex < 0 || startIdx < 0) {
@@ -1140,7 +1200,7 @@ function drawMorphPatternOverlayForDay(chartTime) {
     }
     const levelKey = getMorphPrimarySignalKey();
     const patternNames = levelKey && morphLoadedLevelKey === levelKey
-        ? Array.from(morphPatternPointsByName.keys()).sort()
+        ? getVisibleMorphPatternNames()
         : [];
     const overlayItems = collectMorphOverlayItems(crossBarIndex);
     if (!overlayItems.length) {
@@ -1280,6 +1340,7 @@ async function refreshMorphSignalData(isInitialLoad = false) {
         morphPatternPointsByName.clear();
         morphEventsByDay.clear();
         morphLoadedLevelKey = "";
+        syncMorphPatternFilterOptions();
         renderMorphSignalData();
         updateSignalCaptionTitle();
         setFactorHint(currentInterval !== "1day" ? "形态面仅在日线周期可用" : "YKRS 标的不请求形态信号");
@@ -1292,6 +1353,7 @@ async function refreshMorphSignalData(isInitialLoad = false) {
         morphEventsByDay.clear();
         morphLoadedLevelKey = "";
         morphSummaryPointsCache = [];
+        syncMorphPatternFilterOptions();
         renderMorphSignalData();
         updateSignalCaptionTitle();
         return;
@@ -1319,6 +1381,7 @@ async function refreshMorphSignalData(isInitialLoad = false) {
             applyMorphCandlestickPayload(payload, compoundKey, { merge: i > 0 });
         }
         morphLoadedLevelKey = compoundKey;
+        syncMorphPatternFilterOptions();
         renderMorphSignalData();
         updateSignalCaptionTitle();
         clearMorphPatternOverlay(false);
@@ -1329,6 +1392,7 @@ async function refreshMorphSignalData(isInitialLoad = false) {
         morphPatternPointsByName.clear();
         morphEventsByDay.clear();
         morphLoadedLevelKey = "";
+        syncMorphPatternFilterOptions();
         renderMorphSignalData();
         updateSignalCaptionTitle();
         const message = err instanceof Error ? err.message : "形态信号刷新失败";
@@ -1460,6 +1524,7 @@ function toggleMorphPanelOption(key) {
 
 function installMorphPanelUi() {
     morphPanelState = loadMorphPanelState();
+    selectedMorphPatternName = loadMorphPatternFilter();
     applyMorphPanelStateToDom();
     if (morphPanelUiBound || !rightPanelBody) {
         return;
@@ -1474,6 +1539,24 @@ function installMorphPanelUi() {
         }
         toggleMorphPanelOption(String(itemEl.dataset.morphKey || ""));
     });
+    rightPanelBody.addEventListener("change", (event) => {
+        const selectEl = event.target instanceof Element
+            ? event.target.closest("#morph-pattern-filter-select")
+            : null;
+        if (!selectEl || !rightPanelBody.contains(selectEl)) {
+            return;
+        }
+        selectedMorphPatternName = String(selectEl.value || "");
+        saveMorphPatternFilter();
+        const cachedTime = morphOverlayLastChartTime;
+        renderMorphSignalData();
+        updateSignalCaptionTitle();
+        clearMorphPatternOverlay(false);
+        if (cachedTime !== undefined && cachedTime !== null) {
+            drawMorphPatternOverlayForDay(cachedTime);
+        }
+    });
+    syncMorphPatternFilterOptions();
     morphPanelUiBound = true;
 }
 
@@ -1521,7 +1604,8 @@ function renderMorphSignalData() {
         return;
     }
 
-    const patternNames = Array.from(morphPatternPointsByName.keys()).sort();
+    syncMorphPatternFilterOptions();
+    const patternNames = getVisibleMorphPatternNames();
     if (!patternNames.length) {
         clearAllMorphPatternLineSeries();
         const summaryPoints = getMorphSummaryPoints();

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>板块轮动</title>
+    <link rel="stylesheet" href="../shared/edge_float.css">
+    <link rel="stylesheet" href="./sector_rotation.css">
+</head>
+
+<body class="page-sector-rotation">
+    <header class="rotation-header">
+        <div class="brand">量化研究工作台</div>
+        <div class="rotation-title"><span>SECTOR ROTATION</span><h1>板块轮动</h1></div>
+        <div class="header-status"><strong id="sector-count">--</strong><span id="page-clock">--</span></div>
+    </header>
+
+    <main class="rotation-shell">
+        <section class="control-band" aria-label="板块筛选">
+            <div class="prefix-switch" role="group" aria-label="板块类型">
+                <button type="button" class="active" data-prefix="881"><strong>881</strong><span>粗行业</span></button>
+                <button type="button" data-prefix="882"><strong>882</strong><span>地域</span></button>
+                <button type="button" data-prefix="885"><strong>885</strong><span>早期细分概念</span></button>
+                <button type="button" data-prefix="886"><strong>886</strong><span>后期细分概念</span></button>
+            </div>
+            <div class="toolbar-row">
+                <div class="range-switch" role="group" aria-label="走势区间">
+                    <button type="button" data-range="20d">20日</button>
+                    <button type="button" data-range="60d" class="active">60日</button>
+                    <button type="button" data-range="ytd">年初至今</button>
+                </div>
+                <div class="custom-range" role="group" aria-label="自定义走势天数">
+                    <input id="custom-range-days" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="天数" aria-label="自定义走势天数">
+                    <button id="custom-range-apply" type="button">应用</button>
+                    <button type="button" class="sort-button active" data-sort="desc">收益率降低</button>
+                    <button type="button" class="sort-button" data-sort="asc">收益率提高</button>
+                </div>
+                <div class="sector-search"><span class="search-icon" aria-hidden="true"></span><input id="sector-search" type="search" placeholder="股票名称、首字母、代码或板块" autocomplete="off" aria-controls="sector-search-suggestions" aria-expanded="false"><ul id="sector-search-suggestions" class="sector-search-suggestions" role="listbox"></ul></div>
+                <button id="refresh-sectors" class="refresh-button" type="button" title="刷新板块清单" aria-label="刷新板块清单">↻</button>
+            </div>
+        </section>
+
+        <div id="sector-state" class="page-state" role="status">正在读取板块清单...</div>
+        <section id="sector-grid" class="sector-grid" aria-label="板块走势列表"></section>
+    </main>
+
+    <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
+        <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
+            <canvas id="edge-float-mangekyo-canvas" class="edge-float-mangekyo-canvas" width="600" height="600" aria-hidden="true"></canvas>
+        </div>
+    </div>
+    <div id="edge-float-menu" class="edge-float-menu" role="menu" aria-hidden="true"></div>
+
+    <div id="constituent-dialog" class="constituent-dialog" role="dialog" aria-modal="true" aria-labelledby="constituent-title" aria-hidden="true">
+        <div class="constituent-dialog-backdrop" data-close-constituents></div>
+        <section class="constituent-panel">
+            <header class="constituent-panel-head">
+                <div><h2 id="constituent-title">板块成分股 · 20天曲线</h2><span id="constituent-meta"></span></div>
+                <button id="constituent-close" type="button" title="关闭" aria-label="关闭">×</button>
+            </header>
+            <div id="constituent-state" class="constituent-state">正在读取成分股...</div>
+            <div id="constituent-list" class="constituent-list"></div>
+        </section>
+    </div>
+
+    <script>window.PAGE_VIEW = "sector-rotation";</script>
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
+    <script defer src="../shared/edge_float_hud.js"></script>
+    <script defer src="./sector_rotation.js"></script>
+</body>
+
+</html>

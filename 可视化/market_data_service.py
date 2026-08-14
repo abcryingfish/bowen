@@ -75,10 +75,12 @@ INDEX_DAILY_BASE_PATH = r"D:\database\index_data_daily"
 INDEX_MINUTE_BASE_PATH = r"D:\database\index_data_mins"
 INDEX_UNIVERSE_PATH = Path(INDEX_DAILY_BASE_PATH) / "_meta" / "ths_level1_universe.parquet"
 INDEX_MINUTE_UNIVERSE_PATH = Path(INDEX_MINUTE_BASE_PATH) / "_meta" / "ths_level1_universe.parquet"
+SECTOR_CONSTITUENT_BASE_PATH = Path(r"D:\database\sector_information\constituent_snapshots_eligible")
 ETF_DAILY_BASE_PATH = r"D:\database\ETF_basic_data_daily"
 PORTFOLIO_MINUTE_BASE_PATH = r"D:\database\stock_portfolio_data_mins"
 PORTFOLIO_DAILY_BASE_PATH = r"D:\database\stock_portfolio_data_daily"
 SIGNAL_DAILY_BASE_PATH = r"D:\database\signal_daily"
+SIGNAL_DAILY_LABEL_BASE_PATH = r"D:\database\signal_daily_label"
 INTRADAY_SIGNAL_SNAPSHOT_BASE_PATH = r"D:\database\intraday_signal_snapshot"
 SIGNAL_DAILY_MORPH_BASE_PATH = r"D:\database\signal_daily_形态"
 MORPH_CANDLESTICK_SOURCE_DIR = "candlestick_no_vol"
@@ -119,6 +121,7 @@ BACKTEST_POSITION_FILE_GLOB = "position_log_*.parquet"
 BACKTEST_ORDER_FILE_GLOB = "order_log_*.*"
 FACTOR_CATALOG_PATH = Path(__file__).resolve().parents[1] / "因子分类" / "factor_catalog.json"
 PURE_TECHNICAL_CATALOG_CACHE_FILE = "pure_technical_factor_catalog_cache.json"
+FACTOR_IDENTITY_CATALOG_FILE = "factor_identity_catalog.json"
 SUPPORTED_INTERVALS = ("1min", "1day")
 TEMP_TODAY_MARKET_CACHE_PATH = os.environ.get("TEMP_TODAY_MARKET_CACHE_PATH", "")
 
@@ -420,7 +423,7 @@ DAILY_DEFAULT_LOOKBACK_SECONDS = 730 * 24 * 60 * 60
 CODE_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 SEARCH_QUERY_ALLOWED_PATTERN = re.compile(r"^[\u4e00-\u9fffA-Za-z0-9._-]+$")
 FACTOR_DIR_INVALID_CHAR_PATTERN = re.compile(r'[\\/:*?"<>|]')
-CODE_SEARCH_LIMIT = 5
+CODE_SEARCH_LIMIT = 8
 CODE_SEARCH_REFRESH_INTERVAL_SECONDS = 300
 
 _code_index_lock = Lock()
@@ -447,6 +450,10 @@ _index_universe_mtime: float = 0.0
 _ths_minute_universe_lock = Lock()
 _ths_minute_universe_cache: list[dict[str, str]] = []
 _ths_minute_universe_mtime: float = 0.0
+_sector_membership_lock = Lock()
+_sector_membership_cache: dict[str, list[dict[str, str]]] = {}
+_sector_membership_cache_path: str = ""
+_sector_membership_cache_mtime: float = 0.0
 
 
 def _build_name_pinyin_aliases(name: str) -> tuple[str, ...]:
@@ -610,6 +617,11 @@ def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
             if item.get("code") and item.get("name")
         }
     )
+    universe_records = {
+        item["code"]: item
+        for item in _load_index_universe_records()
+        if item.get("code")
+    }
     ordered: list[str] = []
     for code in DEFAULT_INDEX_CODES:
         upper = code.upper()
@@ -622,6 +634,14 @@ def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
         {
             "code": code,
             "name": labels.get(code, code),
+            "pinyin_initials": (
+                str(universe_records.get(code, {}).get("pinyin_initials") or "").upper()
+                or "".join(
+                    part[0]
+                    for part in pinyin(labels.get(code, code), style=Style.FIRST_LETTER)
+                    if part and part[0]
+                ).upper()
+            ),
         }
         for code in ordered
     ]
@@ -630,6 +650,190 @@ def list_market_index_codes(force_refresh: bool = False) -> dict[str, Any]:
         "meta": {
             "count": len(items),
             "base_path": INDEX_DAILY_BASE_PATH,
+            "server_time": int(time.time()),
+        },
+    }
+
+
+def normalize_a_share_code(value: Any) -> str:
+    """将 6 位 A 股代码规范化为带交易所后缀的代码。"""
+    raw = str(value or "").strip().upper()
+    if re.fullmatch(r"\d{6}\.(SH|SZ|BJ)", raw):
+        return raw
+    if not re.fullmatch(r"\d{6}", raw):
+        raise MarketDataValidationError("股票代码须为 6 位数字，或带 .SH/.SZ/.BJ 后缀")
+    if raw[0] in "569":
+        return f"{raw}.SH"
+    if raw[0] in "0123":
+        return f"{raw}.SZ"
+    if raw[0] in "48":
+        return f"{raw}.BJ"
+    raise MarketDataValidationError(f"无法识别股票代码所属交易所: {raw}")
+
+
+def _latest_sector_constituent_snapshot_path() -> Path | None:
+    files = sorted(SECTOR_CONSTITUENT_BASE_PATH.glob("analysis_date=*/part-*.parquet"))
+    return files[-1] if files else None
+
+
+def _load_sector_membership_index(force_refresh: bool = False) -> tuple[dict[str, list[dict[str, str]]], Path]:
+    global _sector_membership_cache, _sector_membership_cache_path, _sector_membership_cache_mtime
+    path = _latest_sector_constituent_snapshot_path()
+    if path is None:
+        raise MarketDataNotFoundError(f"板块成分快照不存在: {SECTOR_CONSTITUENT_BASE_PATH}")
+    resolved_path = str(path.resolve())
+    mtime = path.stat().st_mtime
+    with _sector_membership_lock:
+        if (
+            not force_refresh
+            and _sector_membership_cache
+            and _sector_membership_cache_path == resolved_path
+            and _sector_membership_cache_mtime == mtime
+        ):
+            return _sector_membership_cache, path
+        conn = duckdb.connect(database=":memory:")
+        try:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT
+                    UPPER(TRIM(CAST(stock_code AS VARCHAR))) AS stock_code,
+                    UPPER(TRIM(CAST(sector_code AS VARCHAR))) AS sector_code,
+                    COALESCE(CAST(sector_name AS VARCHAR), '') AS sector_name
+                FROM read_parquet(?)
+                WHERE COALESCE(TRY_CAST(eligible AS BOOLEAN), TRUE)
+                  AND stock_code IS NOT NULL
+                  AND sector_code IS NOT NULL
+                ORDER BY stock_code, sector_code
+                """,
+                [str(path)],
+            ).fetchall()
+        finally:
+            conn.close()
+        index: dict[str, list[dict[str, str]]] = {}
+        for stock_code, sector_code, sector_name in rows:
+            index.setdefault(str(stock_code), []).append(
+                {"code": str(sector_code), "name": str(sector_name or "")}
+            )
+        _sector_membership_cache = index
+        _sector_membership_cache_path = resolved_path
+        _sector_membership_cache_mtime = mtime
+        return index, path
+
+
+def list_stock_sector_memberships(stock_code: Any, force_refresh: bool = False) -> dict[str, Any]:
+    """返回最新 eligible 快照中包含指定股票的全部同花顺板块。"""
+    normalized_code = normalize_a_share_code(stock_code)
+    index, path = _load_sector_membership_index(force_refresh=force_refresh)
+    items = list(index.get(normalized_code, []))
+    return {
+        "stock_code": normalized_code,
+        "items": items,
+        "meta": {
+            "count": len(items),
+            "snapshot_date": path.parent.name.removeprefix("analysis_date="),
+            "snapshot_path": str(path),
+            "server_time": int(time.time()),
+        },
+    }
+
+
+def list_sector_constituents(sector_code: Any) -> dict[str, Any]:
+    """返回最新 eligible 快照中指定同花顺板块的全部成分股。"""
+    normalized_code = str(sector_code or "").strip().upper()
+    if not is_ths_level1_code(normalized_code):
+        raise MarketDataValidationError("sector_code 必须是 881/882/885/886 开头的 .THS 板块代码")
+    path = _latest_sector_constituent_snapshot_path()
+    if path is None:
+        raise MarketDataNotFoundError(f"板块成分快照不存在: {SECTOR_CONSTITUENT_BASE_PATH}")
+
+    conn = duckdb.connect(database=":memory:")
+    try:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT
+                UPPER(TRIM(CAST(stock_code AS VARCHAR))) AS stock_code,
+                COALESCE(CAST(sector_name AS VARCHAR), '') AS sector_name
+            FROM read_parquet(?)
+            WHERE COALESCE(TRY_CAST(eligible AS BOOLEAN), TRUE)
+              AND UPPER(TRIM(CAST(sector_code AS VARCHAR))) = ?
+              AND stock_code IS NOT NULL
+            ORDER BY stock_code
+            """,
+            [str(path), normalized_code],
+        ).fetchall()
+    finally:
+        conn.close()
+
+    stock_names = {
+        str(item.get("code") or "").strip().upper(): str(item.get("name") or "").strip()
+        for item in _load_stock_universe_records()
+    }
+    stock_codes = [str(stock_code) for stock_code, _sector_name in rows]
+    sparkline_map: dict[str, list[float]] = {}
+    if stock_codes:
+        to_ts = int(time.time())
+        from_ts = to_ts - 45 * 86400
+        partition_paths = build_partition_paths(DAILY_BASE_PATH, from_ts, to_ts)
+        if partition_paths:
+            path_placeholders = ", ".join(["?"] * len(partition_paths))
+            code_placeholders = ", ".join(["?"] * len(stock_codes))
+            sparkline_conn = duckdb.connect(database=":memory:")
+            try:
+                sparkline_rows = sparkline_conn.execute(
+                    f"""
+                    WITH raw AS (
+                        SELECT
+                            UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS normalized_code,
+                            COALESCE(
+                                TRY_CAST(time AS BIGINT),
+                                CAST(EPOCH(TRY_CAST(time AS TIMESTAMP)) AS BIGINT)
+                            ) AS time_sec,
+                            TRY_CAST(close AS DOUBLE) AS close
+                        FROM read_parquet([{path_placeholders}], union_by_name = true)
+                    ), deduplicated AS (
+                        SELECT normalized_code, time_sec, MAX(close) AS close
+                        FROM raw
+                        WHERE normalized_code IN ({code_placeholders})
+                          AND time_sec BETWEEN ? AND ?
+                          AND close IS NOT NULL
+                          AND close > 0
+                        GROUP BY normalized_code, time_sec
+                    ), ranked AS (
+                        SELECT *, ROW_NUMBER() OVER (
+                            PARTITION BY normalized_code ORDER BY time_sec DESC
+                        ) AS reverse_rank
+                        FROM deduplicated
+                    )
+                    SELECT normalized_code, time_sec, close
+                    FROM ranked
+                    WHERE reverse_rank <= 20
+                    ORDER BY normalized_code, time_sec
+                    """,
+                    [*partition_paths, *stock_codes, from_ts, to_ts],
+                ).fetchall()
+                for stock_code, _time_sec, close in sparkline_rows:
+                    sparkline_map.setdefault(str(stock_code), []).append(float(close))
+            except Exception:
+                sparkline_map = {}
+            finally:
+                sparkline_conn.close()
+
+    items = [
+        {
+            "code": stock_code,
+            "name": stock_names.get(stock_code, ""),
+            "closes_20d": sparkline_map.get(stock_code, []),
+        }
+        for stock_code in stock_codes
+    ]
+    sector_name = str(rows[0][1] or "") if rows else ""
+    return {
+        "sector_code": normalized_code,
+        "sector_name": sector_name,
+        "items": items,
+        "meta": {
+            "count": len(items),
+            "snapshot_date": path.parent.name.removeprefix("analysis_date="),
             "server_time": int(time.time()),
         },
     }
@@ -653,6 +857,136 @@ def query_index_market_bars(
         base_path=INDEX_DAILY_BASE_PATH,
         adjust="none",
     )
+
+
+def query_index_market_returns(
+    prefix: Any,
+    from_ts: Any,
+    to_ts: Any,
+    points: Any = None,
+    codes: Any = None,
+) -> dict[str, Any]:
+    """一次聚合多个同花顺板块的区间收益率，供板块轮动排序使用。"""
+    parsed_prefix = str(prefix or "").strip()
+    if parsed_prefix not in {"881", "882", "885", "886"}:
+        raise MarketDataValidationError("prefix 仅支持 881、882、885、886")
+    parsed_from = _parse_optional_int(from_ts, "from")
+    parsed_to = _parse_optional_int(to_ts, "to")
+    if parsed_from is None or parsed_to is None:
+        raise MarketDataValidationError("from 和 to 必须提供 Unix 秒时间戳")
+    if parsed_from > parsed_to:
+        raise MarketDataValidationError("from 不能大于 to")
+
+    parsed_points = 0
+    if points not in (None, ""):
+        try:
+            parsed_points = int(points)
+        except (TypeError, ValueError) as exc:
+            raise MarketDataValidationError("points 必须为整数") from exc
+        if parsed_points < 2 or parsed_points > 2000:
+            raise MarketDataValidationError("points 必须在 2 到 2000 之间")
+
+    requested_codes: list[str] = []
+    if codes not in (None, ""):
+        raw_codes = codes if isinstance(codes, (list, tuple, set)) else str(codes).split(",")
+        for value in raw_codes:
+            code = str(value or "").strip().upper()
+            if not is_ths_level1_code(code) or not code.startswith(parsed_prefix):
+                raise MarketDataValidationError(f"板块代码与 prefix 不匹配: {code}")
+            if code not in requested_codes:
+                requested_codes.append(code)
+        if len(requested_codes) > 500:
+            raise MarketDataValidationError("codes 最多支持 500 个板块")
+
+    partition_paths = build_partition_paths(INDEX_DAILY_BASE_PATH, parsed_from, parsed_to)
+    if not partition_paths:
+        raise MarketDataNotFoundError("指定区间未找到指数日线分区")
+    path_placeholders = ", ".join(["?"] * len(partition_paths))
+    code_filter = ""
+    params: list[Any] = [*partition_paths, f"{parsed_prefix}%", parsed_from, parsed_to]
+    if requested_codes:
+        code_placeholders = ", ".join(["?"] * len(requested_codes))
+        code_filter = f"AND normalized_code IN ({code_placeholders})"
+        params.extend(requested_codes)
+    params.extend([parsed_points, parsed_points])
+    sql = f"""
+    WITH raw AS (
+        SELECT
+            UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS normalized_code,
+            COALESCE(
+                TRY_CAST(time AS BIGINT),
+                CAST(EPOCH(TRY_CAST(time AS TIMESTAMP)) AS BIGINT)
+            ) AS time_sec,
+            TRY_CAST(close AS DOUBLE) AS close
+        FROM read_parquet([{path_placeholders}], union_by_name = true)
+    ), filtered AS (
+        SELECT normalized_code, time_sec, close
+        FROM raw
+        WHERE normalized_code LIKE ?
+          AND time_sec BETWEEN ? AND ?
+          AND close IS NOT NULL
+          AND close > 0
+          {code_filter}
+    ), deduplicated AS (
+        SELECT normalized_code, time_sec, MAX(close) AS close
+        FROM filtered
+        GROUP BY normalized_code, time_sec
+    ), ranked AS (
+        SELECT *, ROW_NUMBER() OVER (
+            PARTITION BY normalized_code ORDER BY time_sec DESC
+        ) AS reverse_rank
+        FROM deduplicated
+    ), selected AS (
+        SELECT normalized_code, time_sec, close
+        FROM ranked
+        WHERE ? = 0 OR reverse_rank <= ?
+    )
+    SELECT
+        normalized_code,
+        ARG_MIN(close, time_sec) AS first_close,
+        ARG_MAX(close, time_sec) AS last_close,
+        MIN(time_sec) AS first_time,
+        MAX(time_sec) AS last_time,
+        COUNT(*) AS point_count
+    FROM selected
+    GROUP BY normalized_code
+    HAVING COUNT(*) >= 2
+    ORDER BY normalized_code
+    """
+    conn = duckdb.connect(database=":memory:")
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    except Exception as exc:  # noqa: BLE001
+        raise MarketDataError(f"批量计算板块收益率失败: {exc}") from exc
+    finally:
+        conn.close()
+
+    items = []
+    for code, first_close, last_close, first_time, last_time, point_count in rows:
+        first_value = float(first_close)
+        last_value = float(last_close)
+        items.append(
+            {
+                "code": str(code),
+                "first_close": first_value,
+                "last_close": last_value,
+                "return_pct": (last_value / first_value - 1.0) * 100.0,
+                "first_time": int(first_time),
+                "last_time": int(last_time),
+                "point_count": int(point_count),
+            }
+        )
+    return {
+        "items": items,
+        "meta": {
+            "count": len(items),
+            "prefix": parsed_prefix,
+            "from": parsed_from,
+            "to": parsed_to,
+            "points": parsed_points or None,
+            "server_time": int(time.time()),
+        },
+    }
 
 
 def get_portfolio_daily_base_path(run_tag: str) -> str:
@@ -863,6 +1197,24 @@ def _list_factor_names_from_dirs(base_path: str) -> list[str]:
         if factor_name:
             factor_names.append(factor_name)
     return sorted(set(factor_names))
+
+
+def _resolve_signal_factor_storage(
+    factor_name: str,
+    base_path: Optional[str] = None,
+    *,
+    force_refresh: bool = False,
+) -> tuple[str, str | None]:
+    """Resolve a factor against normal signals first, then offline label signals."""
+    candidates = [base_path] if base_path else [SIGNAL_DAILY_BASE_PATH, SIGNAL_DAILY_LABEL_BASE_PATH]
+    for candidate in candidates:
+        if not candidate or not os.path.exists(candidate):
+            continue
+        names = _get_cached_factor_names(candidate, force_refresh=force_refresh)
+        resolved = _resolve_factor_column_name(factor_name, set(names))
+        if resolved is not None:
+            return candidate, resolved
+    return (base_path or SIGNAL_DAILY_BASE_PATH), None
 
 
 def _build_factor_partition_paths(base_path: str, factor_name: str, from_ts: int, to_ts: int) -> list[str]:
@@ -2755,6 +3107,22 @@ def _load_pure_technical_factor_metadata(base_path: str) -> dict[str, Any]:
     }
 
 
+def _load_factor_identity_metadata(base_path: str) -> dict[str, Any]:
+    path = Path(base_path) / "_meta" / FACTOR_IDENTITY_CATALOG_FILE
+    if not path.is_file():
+        return {"factor_labels": {}, "factor_aliases": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"factor_labels": {}, "factor_aliases": {}}
+    labels = payload.get("factor_labels")
+    aliases = payload.get("factor_aliases")
+    return {
+        "factor_labels": labels if isinstance(labels, dict) else {},
+        "factor_aliases": aliases if isinstance(aliases, dict) else {},
+    }
+
+
 def _load_factor_catalog(
     available_factors: list[str],
     force_refresh: bool = False,
@@ -2781,6 +3149,20 @@ def _load_factor_catalog(
         raw_catalog = _factor_catalog_cache.get("data")
 
     pure_metadata = _load_pure_technical_factor_metadata(base_path)
+    identity_metadata = _load_factor_identity_metadata(base_path)
+    for factor_id, aliases in identity_metadata["factor_aliases"].items():
+        if not isinstance(aliases, list):
+            continue
+        stable_id = str(factor_id).strip()
+        if not stable_id:
+            continue
+        for alias in aliases:
+            display_name = str(alias).strip()
+            if not display_name:
+                continue
+            current = _FACTOR_DISPLAY_TO_INTERNAL.get(display_name, ())
+            if stable_id not in current:
+                _FACTOR_DISPLAY_TO_INTERNAL[display_name] = (*current, stable_id)
     dynamic_groups = pure_metadata["groups"]
     if isinstance(raw_catalog, dict) and isinstance(raw_catalog.get("groups"), list):
         merged_raw_catalog = {
@@ -2794,11 +3176,17 @@ def _load_factor_catalog(
 
     normalized = _normalize_factor_catalog(merged_raw_catalog, available_factors)
     available_set = set(available_factors)
-    normalized["factor_labels"] = {
+    identity_labels = {
+        str(factor_id): str(label)
+        for factor_id, label in identity_metadata["factor_labels"].items()
+        if str(factor_id) in available_set and str(label).strip()
+    }
+    pure_labels = {
         str(factor_id): str(label)
         for factor_id, label in pure_metadata["factor_labels"].items()
         if str(factor_id) in available_set and str(label).strip()
     }
+    normalized["factor_labels"] = {**identity_labels, **pure_labels}
     return normalized
 
 
@@ -2994,6 +3382,10 @@ def list_signal_factors(
 
     force_refresh = str(refresh).strip().lower() in {"1", "true", "yes", "y"} if refresh is not None else False
     factors = _get_cached_factor_names(resolved_base_path, force_refresh=force_refresh)
+    if not base_path and os.path.exists(SIGNAL_DAILY_LABEL_BASE_PATH):
+        factors = sorted(set(factors) | set(
+            _get_cached_factor_names(SIGNAL_DAILY_LABEL_BASE_PATH, force_refresh=force_refresh)
+        ))
     if not factors:
         raise MarketDataNotFoundError("未找到可用因子字段")
 
@@ -3344,18 +3736,23 @@ def query_market_signal(
         raise MarketDataValidationError("factor 不能为空")
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
-    if not os.path.exists(resolved_base_path):
+    signal_storage_paths = [resolved_base_path] if base_path else [
+        path
+        for path in (SIGNAL_DAILY_BASE_PATH, SIGNAL_DAILY_LABEL_BASE_PATH)
+        if os.path.exists(path)
+    ]
+    if not signal_storage_paths:
         fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
         if fallback is not None:
             return fallback
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
-    available_factors = _get_cached_factor_names(resolved_base_path)
-    resolved_factor_name = _resolve_factor_column_name(factor_name, set(available_factors))
+    resolved_base_path, resolved_factor_name = _resolve_signal_factor_storage(factor_name, base_path)
     if resolved_factor_name is None:
         # 新增因子或名称切换后短时间内可能命中旧缓存，这里再强制刷新一次后重试判定。
-        available_factors = _get_cached_factor_names(resolved_base_path, force_refresh=True)
-        resolved_factor_name = _resolve_factor_column_name(factor_name, set(available_factors))
+        resolved_base_path, resolved_factor_name = _resolve_signal_factor_storage(
+            factor_name, base_path, force_refresh=True
+        )
         if resolved_factor_name is None:
             fallback = _query_intraday_signal_fallback(params.code, factor_name, params.to_ts)
             if fallback is not None:
@@ -3726,13 +4123,22 @@ def query_market_factor_snapshot(
         raise MarketDataValidationError("mode=union 时 group_id 不能为空")
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
-    if not os.path.exists(resolved_base_path):
+    signal_base_paths = [resolved_base_path] if base_path else [
+        path
+        for path in (SIGNAL_DAILY_BASE_PATH, SIGNAL_DAILY_LABEL_BASE_PATH)
+        if os.path.exists(path)
+    ]
+    if not signal_base_paths:
         fallback = _query_intraday_factor_snapshot_fallback(parsed_code, parsed_time)
         if fallback is not None:
             return fallback
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
-    available_factors = _get_cached_factor_names(resolved_base_path)
+    available_factors = sorted({
+        factor_name
+        for signal_base_path in signal_base_paths
+        for factor_name in _get_cached_factor_names(signal_base_path)
+    })
     catalog = _load_factor_catalog(
         available_factors,
         force_refresh=False,
@@ -3797,7 +4203,8 @@ def query_market_factor_snapshot(
         conn = duckdb.connect(database=":memory:")
         try:
             for factor_name in selected_factors:
-                paths = _build_factor_partition_paths(resolved_base_path, factor_name, parsed_time, parsed_time)
+                factor_base_path, _ = _resolve_signal_factor_storage(factor_name, base_path)
+                paths = _build_factor_partition_paths(factor_base_path, factor_name, parsed_time, parsed_time)
                 if not paths:
                     continue
                 placeholders = ", ".join(["?"] * len(paths))
@@ -3817,8 +4224,9 @@ def query_market_factor_snapshot(
     conn = duckdb.connect(database=":memory:")
     try:
         for factor_name in selected_factors:
+            factor_base_path, _ = _resolve_signal_factor_storage(factor_name, base_path)
             partition_paths = _build_factor_partition_paths(
-                resolved_base_path,
+                factor_base_path,
                 factor_name,
                 parsed_time,
                 parsed_time,
@@ -3897,11 +4305,11 @@ def export_market_factor_rank_csv(
     if not os.path.exists(resolved_base_path):
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
-    available_factors = _get_cached_factor_names(resolved_base_path)
-    resolved_factor_name = _resolve_factor_column_name(factor_name, set(available_factors))
+    resolved_base_path, resolved_factor_name = _resolve_signal_factor_storage(factor_name, base_path)
     if resolved_factor_name is None:
-        available_factors = _get_cached_factor_names(resolved_base_path, force_refresh=True)
-        resolved_factor_name = _resolve_factor_column_name(factor_name, set(available_factors))
+        resolved_base_path, resolved_factor_name = _resolve_signal_factor_storage(
+            factor_name, base_path, force_refresh=True
+        )
         if resolved_factor_name is None:
             raise MarketDataValidationError(f"factor 不存在: {factor_name}")
 

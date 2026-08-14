@@ -18,16 +18,21 @@ def _repo() -> StyleMonitorRepository:
     return StyleMonitorRepository(STYLE_MONITOR_DB_PATH)
 
 
+def initialize_style_monitor_schema() -> None:
+    """API 启动时只迁移账本结构，不触发模型计算。"""
+    _repo().initialize_schema()
+
+
 def query_style_monitor_summary():
     if not STYLE_MONITOR_DB_PATH.is_file():
-        models = [{"model_id": model.model_id, "model_version": None, "title": model.title, "factor_name": model.factor_name, "frequency": model.rebalance_frequency, "latest_date": None, "last_rebalance_date": None, "high_nav": None, "low_nav": None, "relative_nav": None, "holding_count_high": 0, "holding_count_low": 0, "status": "empty", "status_message": "尚未运行"} for model in MODEL_DEFINITIONS]
+        models = [{"model_id": model.model_id, "model_version": None, "title": model.title, "factor_name": model.factor_name, "frequency": model.rebalance_frequency, "latest_date": None, "last_rebalance_date": None, "high_nav": None, "low_nav": None, "relative_nav": None, "holding_count_high": 0, "holding_count_low": 0, "valid_price_coverage_high": None, "valid_price_coverage_low": None, "status": "empty", "status_message": "尚未运行"} for model in MODEL_DEFINITIONS]
         empty_rankings = {horizon: [{"model_id": model.model_id, "value": None} for model in MODEL_DEFINITIONS] for horizon in ("1d", "5d", "20d")}
         return {"as_of": None, "models": models, "rankings": empty_rankings, "latest_update": None}
     return _repo().query_summary()
 
 
-def query_style_monitor_curves(model_id: str, range_key: str):
-    return _repo().query_curves(model_id, range_key)
+def query_style_monitor_curves(model_id: str, range_key: str, start_date: str | None = None, end_date: str | None = None, benchmark_code: str | None = None):
+    return _repo().query_curves(model_id, range_key, start_date, end_date, benchmark_code)
 
 
 def query_style_monitor_positions(model_id: str, leg: str, trade_date: str | None):

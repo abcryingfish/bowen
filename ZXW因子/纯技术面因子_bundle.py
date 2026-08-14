@@ -12,7 +12,7 @@ import pandas as pd
 
 from valid_bar_utils import compute_bundles_with_valid_bar
 from 纯技术面因子.ADX import ADX
-from 纯技术面因子.AMA import AMA
+from 纯技术面因子.AMA import AMA, build_ama_factor_matrices_with_state
 from 纯技术面因子.APO import APO
 from 纯技术面因子.AROON import AROON
 from 纯技术面因子.BOLL import BOLL
@@ -188,10 +188,18 @@ def _compute_indicator(
     H_adj: pd.DataFrame,
     L_adj: pd.DataFrame,
     C_adj: pd.DataFrame,
+    ama_state_cache_path: str | Path | None = None,
+    ama_state_only: bool = False,
 ) -> dict[str, pd.DataFrame]:
     if indicator == "ADX":
         return ADX().get_factor_matrices(H, L, C)
     if indicator == "AMA":
+        if ama_state_cache_path is not None:
+            return build_ama_factor_matrices_with_state(
+                C,
+                state_cache_path=ama_state_cache_path,
+                state_only=ama_state_only,
+            )
         return AMA().get_factor_matrices(O, H, L, C, V)
     if indicator == "APO":
         return APO().get_factor_matrices(O, H, L, C, V)
@@ -311,6 +319,8 @@ def iter_pure_technical_factor_bundles(
     valid_bar: pd.DataFrame | None = None,
     selected_indicators: Sequence[str] | None = None,
     selected_factors: Sequence[str] | None = None,
+    ama_state_cache_path: str | Path | None = None,
+    ama_state_only: bool = False,
 ) -> Iterator[dict[str, object]]:
     """按指标逐个生成 bundle，避免同时持有全部 401 个矩阵。"""
     adjusted = (
@@ -327,7 +337,33 @@ def iter_pure_technical_factor_bundles(
         if target_factors and not any(name.startswith(f"{indicator}_") for name in target_factors):
             continue
 
-        if valid_bar is not None and adjusted_matches_primary:
+        if indicator == "AMA" and ama_state_cache_path is not None:
+            raw = _compute_indicator(
+                indicator,
+                O=O,
+                H=H,
+                L=L,
+                C=C,
+                V=V,
+                H_adj=adjusted[0],
+                L_adj=adjusted[1],
+                C_adj=adjusted[2],
+                ama_state_cache_path=ama_state_cache_path,
+                ama_state_only=ama_state_only,
+            )
+            prefixed = _validate_and_prefix(indicator, raw, index=C.index, columns=C.columns)
+            if valid_bar is not None:
+                mask = valid_bar.reindex(index=C.index, columns=C.columns).fillna(False)
+                prefixed = {name: frame.where(mask, 0.0) for name, frame in prefixed.items()}
+            factor_labels = {name: _factor_display_name(name) for name in prefixed}
+            output = {
+                "bundle_id": BUNDLE_ID,
+                "indicator": indicator,
+                "factor_dfs": prefixed,
+                "factor_name_map": {label: name for name, label in factor_labels.items()},
+                "factor_labels": factor_labels,
+            }
+        elif valid_bar is not None and adjusted_matches_primary:
             _, outputs = compute_bundles_with_valid_bar(
                 _compute_single_bundle_raw,
                 O=O,

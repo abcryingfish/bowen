@@ -4,6 +4,7 @@ import importlib.util
 import sys
 from datetime import date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import polars as pl
 import pytest
@@ -264,6 +265,18 @@ def test_combined_entry_registers_independent_ths_minute_stage():
     stage = next(stage for stage in entry.STAGES if stage.key == "ths_index_mins")
     assert stage.script_name == "获得同花顺板块分钟级数据.py"
     assert entry.STAGE_KEY_ALIASES["ths_mins"] == "ths_index_mins"
+
+
+def test_combined_entry_skips_ths_minute_by_default_but_allows_explicit_only():
+    entry = load_module(ENTRY_PATH, "combined_entry_ths_minute_default_skip")
+
+    default_selected = entry._selected_stages(SimpleNamespace(only=None, skip=None))
+    explicit_selected = entry._selected_stages(
+        SimpleNamespace(only=["ths_index_mins"], skip=None)
+    )
+
+    assert "ths_index_mins" not in {stage.key for stage in default_selected}
+    assert [stage.key for stage in explicit_selected] == ["ths_index_mins"]
 
 
 def test_build_fuyao_payload_uses_month_range(module):
