@@ -12,3 +12,4 @@ __pycache__/
 *.db
 *.log
 工具/logs/
+node_modules/
