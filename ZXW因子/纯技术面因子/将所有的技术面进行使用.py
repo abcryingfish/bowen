@@ -162,56 +162,62 @@ def _load_raw_market_data(
     return frame
 
 
-def _load_wide_xdy_series(
-    wide_xdy_base_path: str | Path,
-    start_date: pd.Timestamp,
-    end_date: pd.Timestamp,
-    target_codes: set[str],
-) -> dict[str, pd.Series]:
-    parts: dict[str, list[pd.Series]] = {}
-    for path in _partition_paths(wide_xdy_base_path, start_date, end_date):
-        frame = pd.read_parquet(path)
-        if frame.empty or "htsc_code" not in frame.columns:
-            continue
-        frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
-        if target_codes:
-            frame = frame[frame["htsc_code"].isin(target_codes)]
-        date_columns: list[tuple[str, pd.Timestamp]] = []
-        for column in frame.columns:
-            if column in {"htsc_code", "year", "month"}:
-                continue
-            date_value = pd.to_datetime(str(column), format="%Y/%m/%d", errors="coerce")
-            if not pd.isna(date_value):
-                date_columns.append((column, pd.Timestamp(date_value).normalize()))
-        for _, row in frame.iterrows():
-            code = str(row["htsc_code"]).strip().upper()
-            values = {
-                date_value: float(row[column])
-                for column, date_value in date_columns
-                if not pd.isna(row[column])
-            }
-            if values:
-                parts.setdefault(code, []).append(pd.Series(values, dtype=np.float64))
+def _build_segment_factor_series(segments: pd.DataFrame) -> dict[str, pd.Series]:
+    required = {"htsc_code", "begin_date", "xdy"}
+    missing = sorted(required.difference(segments.columns))
+    if missing:
+        raise ValueError(f"adj_factor_segments 缺少字段: {missing}")
+
+    frame = segments.copy()
+    frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
+    frame["begin_date"] = pd.to_datetime(frame["begin_date"], errors="coerce").dt.normalize()
+    frame["xdy"] = pd.to_numeric(frame["xdy"], errors="coerce")
+    invalid = (
+        frame["htsc_code"].eq("")
+        | frame["begin_date"].isna()
+        | frame["xdy"].isna()
+        | ~np.isfinite(frame["xdy"].to_numpy(dtype=float))
+        | frame["xdy"].le(0)
+    )
+    if invalid.any():
+        samples = frame.loc[invalid, ["htsc_code", "begin_date", "xdy"]].head(5).to_dict("records")
+        raise ValueError(f"adj_factor_segments 存在无效分段，样例={samples}")
+
+    frame = frame.sort_values(["htsc_code", "begin_date"], kind="stable")
+    duplicated = frame.duplicated(["htsc_code", "begin_date"], keep=False)
+    if duplicated.any():
+        samples = frame.loc[duplicated, ["htsc_code", "begin_date", "xdy"]].head(5).to_dict("records")
+        raise ValueError(f"adj_factor_segments 存在重复起始日，样例={samples}")
+
     result: dict[str, pd.Series] = {}
-    for code, series_parts in parts.items():
-        series = pd.concat(series_parts).sort_index()
-        result[code] = series[~series.index.duplicated(keep="last")].astype(float)
+    for code, group in frame.groupby("htsc_code", sort=False):
+        with np.errstate(over="ignore", invalid="ignore"):
+            cumulative = np.cumprod(group["xdy"].to_numpy(dtype=float))
+        if not np.isfinite(cumulative).all() or (cumulative <= 0).any():
+            raise FloatingPointError(f"adj_factor_segments 累乘结果无效: {code}")
+        result[str(code)] = pd.Series(
+            cumulative,
+            index=pd.DatetimeIndex(group["begin_date"]),
+            dtype=float,
+        )
     return result
 
 
-def _backward_factor_series(xdy_series: pd.Series) -> pd.Series:
-    values = pd.to_numeric(xdy_series, errors="coerce").dropna().astype(float).sort_index()
-    if values.empty:
-        return pd.Series(dtype=float)
-    raw = values.to_numpy(dtype=float)
-    starts = np.ones(len(raw), dtype=bool)
-    if len(raw) > 1:
-        starts[1:] = raw[1:] != raw[:-1]
-    factors = np.where(starts, raw, 1.0)
-    return pd.Series(np.cumprod(factors), index=values.index, dtype=float)
+def _load_segment_factor_series(
+    wide_xdy_base_path: str | Path,
+    target_codes: set[str],
+) -> dict[str, pd.Series]:
+    segments_path = Path(wide_xdy_base_path).parent / "adj_factor_segments.parquet"
+    if not segments_path.is_file():
+        raise FileNotFoundError(f"adj_factor_segments 不存在: {segments_path}")
+    frame = pd.read_parquet(segments_path, columns=["htsc_code", "begin_date", "xdy"])
+    frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
+    if target_codes:
+        frame = frame[frame["htsc_code"].isin(target_codes)]
+    return _build_segment_factor_series(frame)
 
 
-def _apply_wide_xdy_backward(
+def _apply_segment_backward(
     market: pd.DataFrame,
     wide_xdy_base_path: str | Path,
     start_date: pd.Timestamp,
@@ -219,30 +225,29 @@ def _apply_wide_xdy_backward(
 ) -> tuple[pd.DataFrame, int]:
     if market.empty:
         return market, 0
-    factor_by_code = _load_wide_xdy_series(
+    factor_by_code = _load_segment_factor_series(
         wide_xdy_base_path,
-        start_date,
-        end_date,
         set(market["htsc_code"].astype(str).str.upper()),
     )
     output = market.copy()
     output["time"] = pd.to_datetime(output["time"]).dt.normalize()
     matched_rows = 0
     for code, index_labels in output.groupby("htsc_code", sort=False).groups.items():
-        xdy = factor_by_code.get(str(code).upper())
-        if xdy is None or xdy.empty:
+        backward = factor_by_code.get(str(code).upper())
+        if backward is None or backward.empty:
             continue
-        backward = _backward_factor_series(xdy)
         row_index = list(index_labels)
         dates = output.loc[row_index, "time"]
         locations = backward.index.searchsorted(pd.DatetimeIndex(dates), side="right") - 1
         covered = locations >= 0
         factors = np.ones(len(dates), dtype=float)
         factors[covered] = backward.to_numpy(dtype=float)[locations[covered]]
-        output.loc[row_index, ["open", "high", "low", "close"]] = (
-            output.loc[row_index, ["open", "high", "low", "close"]].to_numpy(dtype=float)
-            * factors[:, None]
-        )
+        values = output.loc[row_index, ["open", "high", "low", "close"]].to_numpy(dtype=float)
+        with np.errstate(over="ignore", invalid="ignore"):
+            adjusted_values = values * factors[:, None]
+        if (np.isfinite(values) & ~np.isfinite(adjusted_values)).any():
+            raise FloatingPointError(f"分段复权后价格溢出: {code}")
+        output.loc[row_index, ["open", "high", "low", "close"]] = adjusted_values
         matched_rows += len(row_index)
     return output, matched_rows
 
@@ -302,7 +307,7 @@ ORDER BY d.htsc_code, d.time
         except Exception as exc:
             if wide_xdy_base_path is None:
                 raise
-            print(f"[WARN] adj_factor_daily 快路径失败，回退 wide_xdy: {exc}")
+            print(f"[WARN] adj_factor_daily 快路径失败，回退 adj_factor_segments: {exc}")
         else:
             frame["time"] = pd.to_datetime(frame["time"]).dt.normalize()
             frame = frame.drop_duplicates(["htsc_code", "time"], keep="last").reset_index(drop=True)
@@ -318,7 +323,7 @@ ORDER BY d.htsc_code, d.time
     raw["time"] = pd.to_datetime(raw["time"]).dt.normalize()
     raw = raw.drop_duplicates(["htsc_code", "time"], keep="last").reset_index(drop=True)
     if wide_xdy_base_path is not None:
-        adjusted, matched = _apply_wide_xdy_backward(raw, wide_xdy_base_path, start, end)
+        adjusted, matched = _apply_segment_backward(raw, wide_xdy_base_path, start, end)
     else:
         adjusted, matched = raw, 0
     return adjusted, {
@@ -358,6 +363,29 @@ GROUP BY 1
         return set(), None
     codes = set(frame["htsc_code"].astype(str).str.upper())
     return codes, pd.Timestamp(frame["last_dt"].max()).floor("D")
+
+
+def get_market_codes_on_date(
+    market_base_paths: Sequence[str | Path],
+    trade_date: str | pd.Timestamp,
+    target_codes: Sequence[str] | None = None,
+) -> set[str]:
+    date = _normalize_date(trade_date)
+    paths = _market_paths(market_base_paths, date, date)
+    sql = f"""
+SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code
+FROM read_parquet({_sql_path_list(paths)}, hive_partitioning=1, union_by_name=true)
+WHERE CAST(time AS DATE) = DATE '{date:%Y-%m-%d}'
+  AND htsc_code IS NOT NULL
+  AND UPPER(TRIM(CAST(htsc_code AS VARCHAR))) NOT LIKE '%.YKRS'
+  {_code_filter_sql(target_codes)}
+"""
+    con = duckdb.connect(database=":memory:")
+    try:
+        frame = con.execute(sql).df()
+    finally:
+        con.close()
+    return set(frame["htsc_code"].astype(str).str.upper()) if not frame.empty else set()
 
 
 def _factor_root(base_dir: str | Path, factor_name: str) -> Path:
@@ -403,6 +431,7 @@ def load_factor_storage_summary(
     factor_ids: Sequence[str],
     *,
     include_code_coverage: bool = True,
+    coverage_date: str | pd.Timestamp | None = None,
 ) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
     con = duckdb.connect(database=":memory:")
@@ -427,9 +456,17 @@ FROM read_parquet({_sql_path_list(paths)}, union_by_name=true)
                 if include_code_coverage
                 else []
             )
+            coverage_codes: set[str] = set()
+            if coverage_date is not None:
+                date = _normalize_date(coverage_date)
+                coverage_rows = con.execute(
+                    f"SELECT DISTINCT UPPER(TRIM(CAST(htsc_code AS VARCHAR))) FROM read_parquet({_sql_path_list(paths)}, union_by_name=true) WHERE CAST(time AS DATE) = DATE '{date:%Y-%m-%d}' AND htsc_code IS NOT NULL"
+                ).fetchall()
+                coverage_codes = {str(row[0]).upper() for row in coverage_rows if row[0]}
             result[str(factor_id)] = {
                 "last_dt": pd.Timestamp(last_dt).floor("D") if last_dt is not None else None,
                 "codes": {str(row[0]).upper() for row in code_rows if row[0]},
+                "coverage_codes": coverage_codes,
             }
     finally:
         con.close()
@@ -445,12 +482,18 @@ def build_incremental_plan(
     end_date: str | pd.Timestamp,
     lookback_config: dict[str, object],
     check_missing_codes: bool = True,
+    required_end_date_codes: set[str] | None = None,
 ) -> pd.DataFrame:
     start = _normalize_date(start_date)
     end = _normalize_date(end_date)
     lookbacks = dict(lookback_config.get("factor_lookback_days", {}))
     full_history = set(lookback_config.get("full_history_factor_keys", []))
     normalized_codes = {str(code).strip().upper() for code in available_codes if str(code).strip()}
+    normalized_end_codes = {
+        str(code).strip().upper()
+        for code in (required_end_date_codes or set())
+        if str(code).strip()
+    }
     rows: list[dict[str, object]] = []
 
     for factor_id in factor_ids:
@@ -464,24 +507,33 @@ def build_incremental_plan(
             tuple(sorted(normalized_codes.difference(existing_codes)))
             if check_missing_codes else ()
         )
+        end_date_codes = {str(code).strip().upper() for code in item.get("coverage_codes", set())}
+        missing_end_date_codes = tuple(sorted(normalized_end_codes.difference(end_date_codes)))
 
         if last_dt is None:
             status = "missing"
             compute_start = start
             save_start = start
             reason = "因子目录不存在或无历史数据"
-        elif last_dt < end or missing_codes:
+        elif last_dt < end or missing_codes or missing_end_date_codes:
             status = "stale"
             if factor_id in full_history or missing_codes:
                 compute_start = start
             else:
-                compute_start = max(start, last_dt - pd.Timedelta(days=int(lookbacks.get(factor_id, 520))))
-            save_start = start if missing_codes else last_dt + pd.Timedelta(days=1)
+                compute_start = max(start, min(last_dt, end) - pd.Timedelta(days=int(lookbacks.get(factor_id, 520))))
+            if missing_codes:
+                save_start = start
+            elif last_dt < end:
+                save_start = last_dt + pd.Timedelta(days=1)
+            else:
+                save_start = end
             reason_parts = []
             if last_dt < end:
                 reason_parts.append(f"历史末日={last_dt.date()}，需补到={end.date()}")
             if missing_codes:
                 reason_parts.append(f"缺少代码={len(missing_codes)}")
+            if missing_end_date_codes:
+                reason_parts.append(f"结束日缺少代码={len(missing_end_date_codes)}")
             reason = "；".join(reason_parts)
         else:
             status = "up_to_date"
@@ -499,6 +551,7 @@ def build_incremental_plan(
                 "save_start": save_start,
                 "save_end": end if status != "up_to_date" else pd.NaT,
                 "missing_codes": missing_codes,
+                "missing_end_date_codes": missing_end_date_codes,
                 "reason": reason,
             }
         )
@@ -524,7 +577,10 @@ def _factor_month_to_long_polars(
     )
     if long_df.empty:
         return None
-    return (
+    raw_values = pd.to_numeric(long_df["value"], errors="coerce").to_numpy(dtype=np.float64)
+    if np.isinf(raw_values).any():
+        raise FloatingPointError("纯技术因子包含 inf/-inf，拒绝落盘")
+    result = (
         pl.from_pandas(long_df, include_index=False)
         .with_columns(
             pl.col("time").cast(pl.Datetime),
@@ -533,6 +589,9 @@ def _factor_month_to_long_polars(
         )
         .sort(SIGNAL_KEY_COLUMNS)
     )
+    if result.select(pl.col("value").is_infinite().any()).item():
+        raise FloatingPointError("纯技术因子转为 float32 后溢出，拒绝落盘")
+    return result
 
 
 def _write_parquet_atomic(df: pl.DataFrame, file_path: Path, max_retries: int = 20) -> None:
@@ -659,7 +718,13 @@ def _read_signal_parquet(path: Path) -> pl.DataFrame | None:
         return None
 
 
-def _compact_month(month_dir: Path, keep_parts: bool = False) -> tuple[int, int]:
+def _compact_month(
+    month_dir: Path,
+    keep_parts: bool = False,
+    overwrite: bool = False,
+    replace_start: pd.Timestamp | None = None,
+    replace_end: pd.Timestamp | None = None,
+) -> tuple[int, int]:
     part_paths = sorted(month_dir.glob("part_*.parquet"))
     if not part_paths:
         return 0, 0
@@ -674,6 +739,18 @@ def _compact_month(month_dir: Path, keep_parts: bool = False) -> tuple[int, int]
     old_df = _read_signal_parquet(merged_path)
     if old_df is None:
         save_df = new_df.sort(SIGNAL_KEY_COLUMNS)
+    elif overwrite:
+        if replace_start is not None and replace_end is not None:
+            start = _normalize_date(replace_start)
+            end = _normalize_date(replace_end)
+            old_df = old_df.filter((pl.col("time") < start) | (pl.col("time") > end))
+        else:
+            old_df = old_df.clear()
+        save_df = (
+            pl.concat([old_df, new_df], how="vertical_relaxed", rechunk=True)
+            .unique(SIGNAL_KEY_COLUMNS, keep="last", maintain_order=True)
+            .sort(SIGNAL_KEY_COLUMNS)
+        )
     else:
         save_df = (
             pl.concat([old_df, new_df], how="vertical_relaxed", rechunk=True)
@@ -693,6 +770,9 @@ def compact_signal_daily_parts(
     factor_names: Sequence[str] | None = None,
     workers: int = 4,
     keep_parts: bool = False,
+    overwrite: bool = False,
+    replace_start: pd.Timestamp | None = None,
+    replace_end: pd.Timestamp | None = None,
 ) -> tuple[int, int]:
     root = Path(base_dir)
     if not root.exists():
@@ -714,10 +794,30 @@ def compact_signal_daily_parts(
     touched_months = 0
     worker_count = max(1, min(int(workers), len(month_dirs)))
     if worker_count == 1:
-        results = [_compact_month(month_dir, keep_parts=keep_parts) for month_dir in month_dirs]
+        results = [
+            _compact_month(
+                month_dir,
+                keep_parts=keep_parts,
+                overwrite=overwrite,
+                replace_start=replace_start,
+                replace_end=replace_end,
+            )
+            for month_dir in month_dirs
+        ]
     else:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            results = list(executor.map(lambda path: _compact_month(path, keep_parts), month_dirs))
+            futures = [
+                executor.submit(
+                    _compact_month,
+                    month_dir,
+                    keep_parts,
+                    overwrite,
+                    replace_start,
+                    replace_end,
+                )
+                for month_dir in month_dirs
+            ]
+            results = [future.result() for future in as_completed(futures)]
     for part_count, _ in results:
         if part_count:
             touched_months += 1
@@ -824,11 +924,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--index-base-path", default=str(DEFAULT_INDEX_BASE_PATH))
     parser.add_argument("--etf-base-path", default=str(DEFAULT_ETF_BASE_PATH))
     parser.add_argument("--adj-factor-base-path", default=str(DEFAULT_ADJ_FACTOR_BASE_PATH))
-    parser.add_argument("--wide-xdy-base-path", default=str(DEFAULT_WIDE_XDY_BASE_PATH))
+    parser.add_argument(
+        "--wide-xdy-base-path",
+        default=str(DEFAULT_WIDE_XDY_BASE_PATH),
+        help="兼容参数；复权回退读取其同级 adj_factor_segments.parquet，不再累乘每日 wide_xdy",
+    )
     parser.add_argument("--output-base-dir", default=str(DEFAULT_OUTPUT_BASE_PATH))
     parser.add_argument("--target-codes", nargs="*", default=None)
     parser.add_argument("--selected-indicators", nargs="*", default=None)
     parser.add_argument("--target-factors", nargs="*", default=None)
+    parser.add_argument("--repair-start-date", default=None)
+    parser.add_argument("--repair-end-date", default=None)
     parser.add_argument("--max-save-workers", type=int, default=4)
     parser.add_argument("--compact-workers", type=int, default=4)
     parser.add_argument(
@@ -855,6 +961,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def run(args: argparse.Namespace) -> None:
     start = _normalize_date(args.start_date)
     requested_end = _normalize_date(args.end_date)
+    repair_start_raw = str(args.repair_start_date or "").strip()
+    repair_end_raw = str(args.repair_end_date or "").strip()
+    if bool(repair_start_raw) != bool(repair_end_raw):
+        raise ValueError("repair-start-date 与 repair-end-date 必须同时设置")
+    repair_mode = bool(repair_start_raw)
+    repair_start = _normalize_date(repair_start_raw) if repair_mode else None
+    repair_end = _normalize_date(repair_end_raw) if repair_mode else None
+    if repair_mode:
+        if repair_start > repair_end:
+            raise ValueError(f"修复起点不能晚于终点: {repair_start.date()} > {repair_end.date()}")
+        requested_end = repair_end
     output_base = Path(args.output_base_dir)
     market_bases = [args.stock_base_path, args.index_base_path, args.etf_base_path]
     target_codes = _parse_tokens(args.target_codes, upper=True)
@@ -879,7 +996,7 @@ def run(args: argparse.Namespace) -> None:
             raise ValueError(f"未知或未选中的因子: {', '.join(unknown_factors)}")
         factor_ids = [name for name in factor_ids if name in target_factors]
 
-    if not args.plan_only and not bootstrap_ama_state:
+    if not args.plan_only and not bootstrap_ama_state and not repair_mode:
         compact_signal_daily_parts(
             output_base,
             factor_names=factor_ids,
@@ -892,11 +1009,17 @@ def run(args: argparse.Namespace) -> None:
     effective_end = min(requested_end, market_last_dt)
     if effective_end < requested_end:
         print(f"目标结束日无行情，实际按最新交易日执行: {effective_end.date()}")
+    required_end_date_codes = get_market_codes_on_date(
+        market_bases,
+        effective_end,
+        target_codes,
+    )
 
     storage_summary = load_factor_storage_summary(
         output_base,
         factor_ids,
         include_code_coverage=not args.skip_missing_code_check,
+        coverage_date=effective_end,
     )
     ama_state_path = output_base / "_state" / "ama_latest_state.parquet"
     lookback_config = get_factor_lookback_config()
@@ -919,7 +1042,29 @@ def run(args: argparse.Namespace) -> None:
         end_date=effective_end,
         lookback_config=lookback_config,
         check_missing_codes=not args.skip_missing_code_check,
+        required_end_date_codes=required_end_date_codes,
     )
+    if repair_mode:
+        factor_lookbacks = dict(lookback_config.get("factor_lookback_days", {}))
+        full_history_factors = {
+            str(factor_id)
+            for factor_id in lookback_config.get("full_history_factor_keys", [])
+        }
+        for row_index, row in plan.iterrows():
+            factor_id = str(row["factor_id"])
+            lookback_days = int(factor_lookbacks.get(factor_id, 0) or 0)
+            compute_start = (
+                start
+                if factor_id in full_history_factors
+                else max(start, repair_start - pd.Timedelta(days=lookback_days))
+            )
+            plan.loc[row_index, "status"] = "stale"
+            plan.loc[row_index, "compute_start"] = compute_start
+            plan.loc[row_index, "save_start"] = repair_start
+            plan.loc[row_index, "save_end"] = repair_end
+            plan.loc[row_index, "reason"] = (
+                f"定向修复 {repair_start.date()} ~ {repair_end.date()}"
+            )
     if bootstrap_ama_state:
         ama_rows = plan["indicator"].eq("AMA")
         plan.loc[ama_rows, "status"] = "stale"
@@ -1023,8 +1168,11 @@ def run(args: argparse.Namespace) -> None:
                 row = plan_by_factor.loc[factor_id]
                 last_dt = row["last_dt"]
                 missing_codes = list(row["missing_codes"])
+                missing_end_date_codes = list(row["missing_end_date_codes"])
                 factor_jobs: list[tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]] = []
-                if pd.isna(last_dt):
+                if repair_mode:
+                    factor_jobs.append((frame, repair_start, repair_end))
+                elif pd.isna(last_dt):
                     factor_jobs.append((frame, start, effective_end))
                 else:
                     last_dt = pd.Timestamp(last_dt).floor("D")
@@ -1037,7 +1185,21 @@ def run(args: argparse.Namespace) -> None:
                     tail_start = last_dt + pd.Timedelta(days=1)
                     if tail_start <= effective_end:
                         factor_jobs.append((frame, tail_start, effective_end))
+                    if missing_end_date_codes and last_dt >= effective_end:
+                        missing_end_columns = [
+                            code for code in missing_end_date_codes if code in frame.columns
+                        ]
+                        if missing_end_columns:
+                            factor_jobs.append(
+                                (
+                                    frame.loc[:, missing_end_columns],
+                                    effective_end,
+                                    effective_end,
+                                )
+                            )
 
+                while len(write_batches) < len(factor_jobs):
+                    write_batches.append(({}, {}))
                 for job_index, (job_frame, save_start, save_end) in enumerate(factor_jobs):
                     factor_dfs, save_ranges = write_batches[job_index]
                     factor_dfs[factor_id] = job_frame
@@ -1071,6 +1233,9 @@ def run(args: argparse.Namespace) -> None:
             output_base,
             factor_names=pending_factor_ids,
             workers=args.compact_workers,
+            overwrite=repair_mode,
+            replace_start=repair_start,
+            replace_end=repair_end,
         )
     print(f"纯技术面因子增量生成完成，写入因子数={len(completed_factors)}")
 

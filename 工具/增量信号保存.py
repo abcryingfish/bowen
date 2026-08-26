@@ -9,6 +9,17 @@ import polars as pl
 
 
 KEY_COLS = ["time", "htsc_code"]
+SIGNAL_COLS = [*KEY_COLS, "value"]
+
+
+def _normalize_signal_schema(df: pl.DataFrame) -> pl.DataFrame:
+    missing = [column for column in SIGNAL_COLS if column not in df.columns]
+    if missing:
+        raise ValueError(f"signal parquet 缺少字段: {missing}")
+    return df.select(SIGNAL_COLS).with_columns(
+        pl.col("time").cast(pl.Datetime),
+        pl.col("htsc_code").cast(pl.Utf8),
+    )
 
 
 def _align_polars_schema(df: pl.DataFrame, columns_order: list[str]) -> pl.DataFrame:
@@ -106,12 +117,7 @@ def _read_existing_partition(file_path: str) -> pl.DataFrame | None:
         if os.path.getsize(file_path) < 12:
             _move_corrupt_parquet(file_path, "文件小于 12 字节")
             return None
-        return pl.read_parquet(file_path).with_columns(
-            [
-                pl.col("time").cast(pl.Datetime),
-                pl.col("htsc_code").cast(pl.Utf8),
-            ]
-        )
+        return _normalize_signal_schema(pl.read_parquet(file_path))
     except Exception as exc:
         _move_corrupt_parquet(file_path, repr(exc))
         return None
@@ -153,7 +159,11 @@ def compact_month_partition(month_dir: Path, keep_parts: bool = False) -> tuple[
         return 0, 0
 
     merged_path = month_dir / "merged.parquet"
-    new_frames = [pl.read_parquet(str(path)) for path in part_paths if path.stat().st_size >= 12]
+    new_frames = [
+        _normalize_signal_schema(pl.read_parquet(str(path)))
+        for path in part_paths
+        if path.stat().st_size >= 12
+    ]
     if not new_frames:
         print(f"[SKIP] 无有效 part 文件: {month_dir}")
         return 0, 0
@@ -238,6 +248,7 @@ def main() -> None:
     print(f"待处理月份目录数: {len(target_month_dirs)}，workers={max(1, int(args.workers))}")
     total_parts = 0
     touched_months = 0
+    failed_months: list[tuple[Path, Exception]] = []
     workers = max(1, int(args.workers))
 
     if workers == 1 or len(target_month_dirs) <= 1:
@@ -262,11 +273,15 @@ def main() -> None:
                     _, parts, _rows = future.result()
                 except Exception as exc:
                     print(f"[ERROR] 处理失败: {month_dir}，原因: {exc}")
+                    failed_months.append((month_dir, exc))
                     continue
                 if parts > 0:
                     touched_months += 1
                     total_parts += parts
 
+    if failed_months:
+        details = "；".join(f"{path}: {exc}" for path, exc in failed_months)
+        raise RuntimeError(f"part 合并失败，共 {len(failed_months)} 个目录：{details}")
     print(f"处理完成: 命中月份 {touched_months}，合并 part 文件总数 {total_parts}")
 
 

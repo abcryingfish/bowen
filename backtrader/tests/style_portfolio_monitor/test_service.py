@@ -71,7 +71,7 @@ def test_first_run_starts_at_2016_or_factor_first_usable_date(tmp_path):
         factor_first_usable_date=date(2015, 12, 31),
     )
     result = run_incremental_update(model_ids=["growth_raw"], data_source=source, repository=ready_repository(tmp_path), through_date=date(2016, 1, 5))
-    assert source.requested_dates["成长风格评分"][0] == date(2016, 1, 4)
+    assert source.requested_dates["growth_style_score"][0] == date(2016, 1, 4)
     assert result["completed_models"] == ["growth_raw"]
 
 

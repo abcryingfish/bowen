@@ -18,6 +18,10 @@ INPUT_FACTOR_NAMES = {
     "momentum_12_1": "252日纯动量",
     "momentum_6_1": "纯动量",
 }
+INPUT_FACTOR_KEYS = {
+    "momentum_12_1": "pure_momentum_252d",
+    "momentum_6_1": "pure_momentum",
+}
 FACTOR_NAME_MAP = {"动量风格评分": "momentum_style_score"}
 
 
@@ -74,12 +78,13 @@ def load_saved_factor_frame(
     *,
     base_dir: str | Path,
     factor_name: str,
+    factor_key: str,
     start_date: str | pd.Timestamp,
     end_date: str | pd.Timestamp,
 ) -> pd.DataFrame:
     """读取因子月分区，按文件顺序让最新 part 覆盖同键旧值。"""
     start_dt, end_dt = _normalize_range(start_date, end_date)
-    factor_dir = Path(base_dir) / f"factor={factor_name}"
+    factor_dir = Path(base_dir) / f"factor={factor_key}"
     files: list[Path] = []
     missing_months: list[str] = []
     for month_start in _month_starts(start_dt, end_dt):
@@ -231,12 +236,14 @@ def build_stock_momentum_style_bundle(
     momentum_12_1 = load_saved_factor_frame(
         base_dir=signal_base_dir,
         factor_name=INPUT_FACTOR_NAMES["momentum_12_1"],
+        factor_key=INPUT_FACTOR_KEYS["momentum_12_1"],
         start_date=start_date,
         end_date=end_date,
     )
     momentum_6_1 = load_saved_factor_frame(
         base_dir=signal_base_dir,
         factor_name=INPUT_FACTOR_NAMES["momentum_6_1"],
+        factor_key=INPUT_FACTOR_KEYS["momentum_6_1"],
         start_date=start_date,
         end_date=end_date,
     )

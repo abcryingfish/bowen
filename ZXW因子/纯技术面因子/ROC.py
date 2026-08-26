@@ -60,7 +60,12 @@ class ROC:
             "channel_pullback": 0.1,
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "relative_value",
+            "slope_rate",
+            "range_position",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_roc_components(self, Close_data, Volume, roc_period=12, signal_period=5):
         """向量化计算ROC核心组件"""
@@ -100,13 +105,15 @@ class ROC:
         death_cross = ((roc_line_prev >= roc_sma_prev) & (roc_line < roc_sma)).astype(float) * self.signal_strength["death_cross"]
         
         # 2. 零轴突破 / 零轴回踩
-        signals["zero_line_breakthrough"] = ((roc_line_prev <= 0) & above_zero).astype(float) * self.signal_strength["zero_line_breakthrough"]
-        signals["zero_line_pullback"] = ((roc_line_prev > 0) & (roc_line <= 0)).astype(float) * self.signal_strength["zero_line_pullback"]
+        positive_cross = (roc_line_prev <= 0) & above_zero
+        negative_cross = (roc_line_prev > 0) & (roc_line <= 0)
+        signals["zero_line_breakthrough"] = positive_cross.astype(float) * self.signal_strength["zero_line_breakthrough"]
+        signals["zero_line_pullback"] = negative_cross.astype(float) * self.signal_strength["zero_line_pullback"]
         
         # 零轴突破相关 (正值突破/多空转换)
-        signals["positive_breakthrough"] = signals["zero_line_breakthrough"].copy() * self.signal_strength["positive_breakthrough"]
-        signals["bull_bear_transition"] = signals["zero_line_breakthrough"].copy() * self.signal_strength["bull_bear_transition"]
-        signals["negative_breakthrough"] = signals["zero_line_pullback"].copy() * self.signal_strength["negative_breakthrough"]
+        signals["positive_breakthrough"] = positive_cross.astype(float) * self.signal_strength["positive_breakthrough"]
+        signals["bull_bear_transition"] = positive_cross.astype(float) * self.signal_strength["bull_bear_transition"]
+        signals["negative_breakthrough"] = negative_cross.astype(float) * self.signal_strength["negative_breakthrough"]
 
         # 3. ROC趋势加速/减速 (基于斜率的逻辑)
         # 加速: 斜率增加且为正 ROC Line > 0
@@ -316,6 +323,24 @@ class ROC:
         is_volume_surge = (volume_ratio > volume_surge_threshold).astype(float) * self.signal_strength["volume_surge"]
         return {"volume_surge": is_volume_surge}
 
+    def continuous_signals(self, roc_line, roc_slope, lookback_period=20):
+        """返回可用于排序/回归的连续 ROC 特征。"""
+        relative_value = (roc_line / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        slope_rate = (roc_slope / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        roc_min = roc_line.rolling(window=lookback_period, min_periods=1).min()
+        roc_max = roc_line.rolling(window=lookback_period, min_periods=1).max()
+        roc_range = (roc_max - roc_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (roc_line - roc_min) / roc_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "relative_value": relative_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
+        }
+
 
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, 
                                 roc_period=12, signal_period=5, divergence_threshold=0.02, volume_surge_threshold=1.5, enabled_signals=None):
@@ -513,6 +538,7 @@ class ROC:
         ma_cross = self.ma_cross_signals_simple(roc_line, ma_line)
         zero = self.zero_cross_signals(roc_line)
         extreme = self.extreme_signals(roc_line)
+        continuous = self.continuous_signals(roc_line, roc_slope)
 
         all_factors = {
             **single_bar,
@@ -522,7 +548,8 @@ class ROC:
             **vol_surge,
             **ma_cross,
             **zero,
-            **extreme
+            **extreme,
+            **continuous,
         }
 
         for name, df in all_factors.items():

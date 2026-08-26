@@ -95,8 +95,13 @@ class DEMA:
             "pullback_confirmation": 0.4,                       # 回调确认
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 所有信号名称列表；连续特征使用价格尺度归一化后的幅度。
+        self.continuous_signal_names = [
+            "relative_bias",
+            "slope_rate",
+            "momentum_rate",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
         
         # 复杂形态信号列表（已完整实现，可通过exclude_complex_patterns参数选择是否启用）
         self.complex_patterns = [
@@ -126,8 +131,8 @@ class DEMA:
         dema_momentum = dema_slope.diff()
 
         # 填充初始NaN值 (由于EMA计算)
-        dema_line = dema_line.fillna(method='ffill').fillna(price_matrix)
-        ema = ema.fillna(method='ffill').fillna(price_matrix)
+        dema_line = dema_line.ffill().fillna(price_matrix)
+        ema = ema.ffill().fillna(price_matrix)
         dema_slope = dema_slope.fillna(0)
         dema_momentum = dema_momentum.fillna(0)
         
@@ -243,6 +248,16 @@ class DEMA:
         return {
             "top_divergence": is_top_divergence.fillna(0),
             "bottom_divergence": is_bottom_divergence.fillna(0)
+        }
+
+    def continuous_signals(self, price_matrix, dema_line, ema, dema_slope, dema_momentum):
+        """返回不依赖价格绝对单位的连续 DEMA 特征。"""
+        denominator = price_matrix.abs().replace(0.0, np.nan)
+        ema_denominator = ema.abs().replace(0.0, np.nan)
+        return {
+            "relative_bias": ((dema_line - ema) / ema_denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
+            "slope_rate": (dema_slope / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
+            "momentum_rate": (dema_momentum / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
         }
 
     def complex_pattern_signals(self, price_matrix, dema_line, ema, dema_slope, lookback_period=20):
@@ -454,6 +469,7 @@ class DEMA:
         extreme_cross = self.extreme_crossover_signals(Close_data, dema_line, ema)
         divergence = self.divergence_signals(dema_line, Close_data)
         complex_patterns = self.complex_pattern_signals(Close_data, dema_line, ema, dema_slope)
+        continuous = self.continuous_signals(Close_data, dema_line, ema, dema_slope, dema_momentum)
 
         # 3. 零轴穿越信号 (DEMA穿越零轴)
         dema_prev = dema_line.shift(1)
@@ -468,7 +484,8 @@ class DEMA:
             **momentum_exh, 
             **extreme_cross, 
             **divergence,
-            **complex_patterns
+            **complex_patterns,
+            **continuous
         }
 
         # 4. 累加启用的信号强度
@@ -538,6 +555,7 @@ class DEMA:
         extreme_cross = self.extreme_crossover_signals(Close_data, dema_line, ema)
         divergence = self.divergence_signals(dema_line, Close_data)
         complex_patterns = self.complex_pattern_signals(Close_data, dema_line, ema, dema_slope)
+        continuous = self.continuous_signals(Close_data, dema_line, ema, dema_slope, dema_momentum)
 
         # 零轴穿越信号
         dema_prev = dema_line.shift(1)
@@ -550,7 +568,8 @@ class DEMA:
             momentum_exh, 
             extreme_cross, 
             divergence,
-            complex_patterns
+            complex_patterns,
+            continuous
         ]
         
         # 3. 统一处理所有信号记录（包含复杂形态）
@@ -606,6 +625,7 @@ class DEMA:
         extreme_cross = self.extreme_crossover_signals(Close_data, dema_line, ema)
         divergence = self.divergence_signals(dema_line, Close_data)
         complex_patterns = self.complex_pattern_signals(Close_data, dema_line, ema, dema_slope)
+        continuous = self.continuous_signals(Close_data, dema_line, ema, dema_slope, dema_momentum)
         
         # 零轴穿越信号
         dema_prev = dema_line.shift(1)
@@ -620,7 +640,8 @@ class DEMA:
             **momentum_exh, 
             **extreme_cross, 
             **divergence,
-            **complex_patterns
+            **complex_patterns,
+            **continuous
         }
         
         # 4. 过滤信号
@@ -713,6 +734,7 @@ class DEMA:
         extreme = self.extreme_crossover_signals(Close_data, line, ema)
         div = self.divergence_signals(line, Close_data)
         complex_p = self.complex_pattern_signals(Close_data, line, ema, slope)
+        continuous = self.continuous_signals(Close_data, line, ema, slope, mom)
 
         # 处理特殊的零轴穿越（在 get_total_signal_matrix 中单独定义的逻辑）
         dema_prev = line.shift(1)
@@ -722,7 +744,7 @@ class DEMA:
         all_factors = {
             "golden_cross": golden, 
             "death_cross": death,
-            **trend, **exhaustion, **extreme, **div, **complex_p
+            **trend, **exhaustion, **extreme, **div, **complex_p, **continuous
         }
         
         for name in all_factors:

@@ -1,7 +1,23 @@
 (function () {
     "use strict";
 
-    const API_BASE = window.STYLE_MONITOR_API_BASE || "http://127.0.0.1:8000";
+    function resolveApiBase() {
+        const query = new URLSearchParams(window.location.search);
+        const candidates = [window.STYLE_MONITOR_API_BASE, query.get("api_base"), query.get("api")];
+        try {
+            candidates.push(localStorage.getItem("RESULTS_API_BASE"));
+            candidates.push(localStorage.getItem("API_BASE_URL"));
+        } catch (_) {}
+        for (const rawValue of candidates) {
+            const raw = String(rawValue || "").trim();
+            if (!raw) continue;
+            try { return new URL(/^https?:\/\//i.test(raw) ? raw : `http://${raw}`).origin; } catch (_) {}
+        }
+        if (window.location.protocol === "https:") return window.location.origin;
+        if (window.location.protocol === "http:") return `http://${window.location.hostname}:8000`;
+        return "http://127.0.0.1:8000";
+    }
+    const API_BASE = resolveApiBase();
     const DEFAULT_ZOOM = 1.25;
     const ZOOM_STEPS = [1, 1.1, DEFAULT_ZOOM, 1.4, 1.5];
     const ZOOM_STORAGE_KEY = "model-validity.zoom";
@@ -15,7 +31,7 @@
     }
 
     async function apiFetch(path, options) {
-        const response = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options && options.headers) } });
+        const response = await fetch(`${API_BASE}${path}`, { cache: "no-store", ...options, headers: { "Content-Type": "application/json", ...(options && options.headers) } });
         const payload = await response.json();
         if (!response.ok) {
             const error = new Error(payload.error?.message || `HTTP ${response.status}`);
@@ -381,6 +397,11 @@
         benchmarkInput?.addEventListener("keydown", async (event) => { if (event.key === "Enter") { event.preventDefault(); await applyBenchmark(); } else if (event.key === "Escape") hideBenchmarkSuggestions(); });
         benchmarkInput?.addEventListener("blur", () => window.setTimeout(hideBenchmarkSuggestions, 120));
         document.getElementById("style-benchmark-apply")?.addEventListener("click", applyBenchmark);
+        document.getElementById("style-monitor-refresh")?.addEventListener("click", async () => {
+            const button = document.getElementById("style-monitor-refresh");
+            if (button) { button.disabled = true; button.textContent = "刷新中..."; }
+            try { await loadSummary(); } finally { if (button) { button.disabled = false; button.textContent = "刷新账本"; } }
+        });
         updateBenchmarkStatus();
         document.getElementById("style-range-start")?.addEventListener("input", () => { const lookback = document.getElementById("style-range-lookback"); if (lookback) lookback.value = ""; });
         document.getElementById("style-detail-close").addEventListener("click", () => document.getElementById("style-detail-drawer").setAttribute("aria-hidden", "true"));

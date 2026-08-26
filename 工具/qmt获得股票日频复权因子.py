@@ -370,19 +370,15 @@ def build_monthly_adj_factor_daily_frames(
     if work.is_empty():
         return {}
 
+    # xdy/dr is the single-event adjustment multiplier.  Event identity is
+    # (htsc_code, begin_date), not the numeric xdy value: two different
+    # corporate actions may legitimately have the same multiplier and must
+    # both participate in the cumulative product.
     work = (
         _seg_parse_dates(work)
         .sort(["htsc_code", "begin_date", "end_date"])
         .with_columns(
-            (
-                pl.col("xdy").shift(1).over("htsc_code").is_null()
-                | (pl.col("xdy") != pl.col("xdy").shift(1).over("htsc_code"))
-            ).alias("_segment_start")
-        )
-        .with_columns(
-            pl.when(pl.col("_segment_start"))
-            .then(pl.col("xdy"))
-            .otherwise(1.0)
+            pl.col("xdy")
             .cum_prod()
             .over("htsc_code")
             .alias("adj_factor")

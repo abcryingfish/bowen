@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>长飞光纤 · 新手决策版</title>
+<style>
+  :root{
+    --ink:#0d1117;
+    --paper:#f7f4ec;
+    --paper2:#efe9dc;
+    --line:#d8cfbb;
+    --soft:#6b6457;
+    --bull:#0a8f5b;
+    --bull-bg:#e6f4ec;
+    --bear:#c0392b;
+    --bear-bg:#fbeae7;
+    --warn:#b8860b;
+    --warn-bg:#f7efd9;
+    --accent:#1f4e79;
+    --accent2:#7a3fa0;
+    --hl:#ff7a00;
+    --hl-bg:#fff0b3;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--paper);color:var(--ink);line-height:1.75;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:0 40px 90px}
+
+  .sec > p, .sec > h2, .sec > h3, .eyebrow, .lead,
+  .gauge > p, .chart .takeaway{max-width:none}
+
+  .split2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  .split2 .txt p:last-child{margin-bottom:0}
+
+  .hl{color:var(--hl);font-weight:800}
+  .mark{background:linear-gradient(transparent 55%,var(--hl-bg) 55%);font-weight:700;padding:0 2px}
+  .key-num{color:var(--hl);font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* ===== HERO ===== */
+  .hero{padding:54px 0 30px;border-bottom:2px solid var(--ink)}
+  .kicker{font-size:12px;letter-spacing:4px;color:var(--accent);font-weight:700;text-transform:uppercase}
+  .hero h1{font-size:30px;font-weight:800;line-height:1.25;margin:14px 0 6px;letter-spacing:-.5px}
+  .hero h1 em{font-style:normal;color:var(--accent);border-bottom:3px solid var(--hl)}
+  .hero .meta{font-size:13px;color:var(--soft)}
+  .badge-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .badge{font-size:12px;font-weight:600;padding:4px 11px;border-radius:999px;border:1px solid var(--line);background:#fff}
+  .badge.t{color:var(--accent);border-color:#bcd0e3}
+  .timestamp{font-size:11px;color:var(--soft);margin-top:8px}
+
+  /* ===== STATBAR ===== */
+  .statbar{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:28px 0 4px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 12px;text-align:center}
+  .stat .l{font-size:12px;color:var(--soft);font-weight:700;margin-bottom:6px}
+  .stat .v{font-size:25px;font-weight:800;letter-spacing:-.5px}
+  .stat .v.hl{color:var(--hl)} .stat .v.bear{color:var(--bear)} .stat .v.bull{color:var(--bull)}
+  .stat .s{font-size:11px;color:var(--soft);margin-top:3px}
+
+  /* ===== VERDICT ===== */
+  .verdict{margin:30px 0;border:2px solid var(--ink);border-radius:14px;overflow:hidden;box-shadow:8px 8px 0 var(--ink)}
+  .verdict .top{background:var(--ink);color:var(--paper);padding:16px 26px;display:flex;align-items:center;gap:12px}
+  .verdict .top .dot{width:11px;height:11px;border-radius:50%;background:var(--hl);box-shadow:0 0 0 4px rgba(255,122,0,.25)}
+  .verdict .top .label{font-size:12px;letter-spacing:3px;font-weight:700}
+  .verdict .top .read{margin-left:auto;font-size:12px;color:#b9b3a5}
+  .verdict .body{padding:26px;display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:center}
+  .verdict .one-liner{font-size:22px;font-weight:800;line-height:1.45;margin:0;border-right:2px dashed var(--line);padding-right:24px}
+  .verdict .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .vbox{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fff}
+  .vbox .h{font-size:11px;letter-spacing:1px;color:var(--soft);font-weight:700;margin-bottom:4px}
+  .vbox .v{font-size:14px;font-weight:600;line-height:1.5}
+  .vbox.g{background:var(--bull-bg);border-color:#bfe0cd}
+  .vbox.r{background:var(--bear-bg);border-color:#eccac4}
+  .vbox.y{background:var(--warn-bg);border-color:#e6d6a8}
+  .tag{font-weight:800}
+  .tag.g{color:var(--bull)} .tag.r{color:var(--bear)} .tag.y{color:var(--warn)}
+
+  /* ===== SECTION ===== */
+  .sec{margin:46px 0}
+  .eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .eyebrow .n{font-size:12px;font-weight:800;color:#fff;background:var(--ink);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .eyebrow .q{font-size:12px;letter-spacing:1px;color:var(--accent);font-weight:700}
+  .sec h2{font-size:23px;font-weight:800;letter-spacing:-.4px;margin-bottom:14px;line-height:1.3}
+  .sec p{font-size:15px;margin-bottom:12px}
+  .lead{font-size:16px;color:#2a2f36}
+  .pill-note{display:inline-block;font-size:12px;background:var(--paper2);border:1px dashed var(--line);border-radius:6px;padding:1px 8px;color:var(--soft);font-weight:600}
+
+  /* ===== CHART ===== */
+  .chart{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;margin:16px 0}
+  .chart .ct{font-size:13px;font-weight:800;margin-bottom:2px}
+  .chart .cs{font-size:12px;color:var(--soft);margin-bottom:14px}
+  .chart .takeaway{font-size:12.5px;color:var(--ink);margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);font-weight:600}
+  .chart .takeaway b{color:var(--hl)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--soft);font-weight:600;margin-top:8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  .hbar{display:grid;grid-template-columns:88px 1fr 54px;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+  .hbar .nm{font-weight:600;text-align:right;color:var(--soft)}
+  .hbar .track{background:var(--paper2);border-radius:5px;height:22px;overflow:hidden}
+  .hbar .fill{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;color:#fff;font-size:11px;font-weight:800}
+  .hbar .val{font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* ===== CONFLICT ===== */
+  .conflict{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;margin:18px 0;border:2px solid var(--ink);border-radius:14px;overflow:hidden}
+  .conflict .side{padding:18px}
+  .conflict .bullside{background:var(--bull-bg)}
+  .conflict .bearside{background:var(--bear-bg)}
+  .conflict .vs{display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);font-weight:800;font-size:13px;padding:0 14px;letter-spacing:1px}
+  .conflict .side .who{font-size:12px;font-weight:800;letter-spacing:1px;margin-bottom:8px}
+  .conflict .bullside .who{color:var(--bull)}
+  .conflict .bearside .who{color:var(--bear)}
+  .conflict .side .claim{font-size:15px;font-weight:700;line-height:1.5;margin-bottom:10px}
+  .conflict .side ul{list-style:none}
+  .conflict .side li{font-size:13px;padding:5px 0;border-top:1px solid rgba(0,0,0,.07);line-height:1.55}
+  .conflict .bullside li::before{content:"▲ ";color:var(--bull);font-weight:800}
+  .conflict .bearside li::before{content:"▼ ";color:var(--bear);font-weight:800}
+
+  /* ===== GAUGE ===== */
+  .gauge{border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:0 12px 12px 0;background:#fff;padding:18px 20px;margin:14px 0}
+  .gauge .hd{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .gauge .num{font-size:13px;font-weight:800;color:var(--accent)}
+  .gauge .name{font-size:17px;font-weight:800}
+  .gauge .why{font-size:12px;font-weight:700;color:var(--accent2);background:#f1e9f6;padding:2px 9px;border-radius:6px}
+  .gauge p{font-size:14px;margin-bottom:10px}
+  .track-row{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;flex-wrap:wrap}
+  .track-row .step{background:var(--paper2);border-radius:6px;padding:3px 10px}
+  .track-row .step.now{background:var(--hl);color:#fff}
+  .track-row .arrow{color:var(--soft)}
+  .track-row .good{color:var(--bull)}
+
+  /* ===== RISK ===== */
+  .risk{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .risk th{background:var(--ink);color:var(--paper);text-align:left;padding:11px 13px;font-size:12px;letter-spacing:1px}
+  .risk td{padding:11px 13px;border-top:1px solid var(--line);vertical-align:top}
+  .risk tr:nth-child(even) td{background:#fbf9f3}
+  .risk .star{white-space:nowrap;font-size:13px;letter-spacing:1px}
+  .risk .s5{color:var(--bear)} .risk .s4{color:#d35400} .risk .s3{color:var(--warn)}
+  .risk .when{color:var(--soft);font-size:12.5px}
+
+  /* ===== SCENARIOS ===== */
+  .scenarios{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0 6px}
+  .scn{border:2px solid var(--line);border-radius:12px;padding:16px 14px;text-align:center;background:#fff}
+  .scn.bear{border-color:#eccac4}
+  .scn.base{border-color:var(--ink);box-shadow:4px 4px 0 var(--ink);transform:translateY(-4px)}
+  .scn.bull{border-color:#bfe0cd}
+  .scn .lab{font-size:12px;font-weight:800;letter-spacing:1px;margin-bottom:8px}
+  .scn.bear .lab{color:var(--bear)} .scn.base .lab{color:var(--accent)} .scn.bull .lab{color:var(--bull)}
+  .scn .profit{font-size:13px;color:var(--soft);font-weight:600}
+  .scn .mv{font-size:24px;font-weight:800;margin:6px 0 2px;letter-spacing:-.5px}
+  .scn .delta{font-size:12px;font-weight:700}
+  .scn .delta.up{color:var(--bull)} .scn .delta.dn{color:var(--bear)}
+  .anchor-now{text-align:center;font-size:14px;font-weight:700;margin-top:4px;color:var(--soft)}
+  .anchor-now b{color:var(--hl);font-size:16px}
+
+  /* ===== VALUATION GAP ===== */
+  .gap-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:2px solid var(--ink);border-radius:12px;overflow:hidden}
+  .gap-table th{background:var(--ink);color:var(--paper);padding:11px 13px;font-size:12px;letter-spacing:1px;text-align:center}
+  .gap-table th:first-child{text-align:left}
+  .gap-table td{padding:12px 13px;border-top:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+  .gap-table td:first-child{text-align:left;font-weight:700}
+  .gap-table tr.warnrow td{background:var(--bear-bg)}
+  .gap-table tr.okrow td{background:#fff}
+  .gap-table tr.goodrow td{background:var(--bull-bg)}
+  .gap-table .big{font-size:18px;font-weight:800}
+  .gap-table .sub{font-size:11px;color:var(--soft);display:block}
+
+  /* ===== ACTION ===== */
+  .action{display:grid;gap:12px;margin:16px 0}
+  .act{border-radius:12px;padding:16px 18px;border:1px solid var(--line)}
+  .act.keep{background:var(--bull-bg);border-color:#bfe0cd}
+  .act.watch{background:var(--warn-bg);border-color:#e6d6a8}
+  .act.exit{background:var(--bear-bg);border-color:#eccac4}
+  .act .at{font-size:14px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .act.keep .at{color:var(--bull)} .act.watch .at{color:var(--warn)} .act.exit .at{color:var(--bear)}
+  .act ul{list-style:none;margin:0}
+  .act li{font-size:13.5px;padding:3px 0 3px 20px;position:relative;line-height:1.55}
+  .act li::before{position:absolute;left:0;top:0}
+  .act.keep li::before{content:"✓";color:var(--bull);font-weight:800}
+  .act.watch li::before{content:"!";color:var(--warn);font-weight:800}
+  .act.exit li::before{content:"✕";color:var(--bear);font-weight:800}
+
+  /* ===== TRUST / DASH ===== */
+  .callout{border:1px dashed var(--accent);background:#eef3f8;border-radius:12px;padding:16px 18px;margin:16px 0}
+  .callout .ct{font-size:13px;font-weight:800;color:var(--accent);margin-bottom:6px}
+  .callout p{font-size:13.5px;margin-bottom:0}
+  .dash{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:2px solid var(--ink);border-radius:10px;overflow:hidden}
+  .dash th{background:var(--accent);color:#fff;text-align:left;padding:10px 13px;font-size:12px;letter-spacing:1px}
+  .dash td{padding:10px 13px;border-top:1px solid var(--line)}
+  .dash .up{color:var(--bull);font-weight:800}
+  .dash .dn{color:var(--bear);font-weight:800}
+  .dash .fl{color:var(--soft);font-weight:800}
+
+  /* ===== TIMELINE ===== */
+  .tl{position:relative;margin:18px 0 6px}
+  .tl .row{position:relative;display:grid;grid-template-columns:56px 28px 1fr;align-items:start;gap:12px;padding:10px 0}
+  .tl .yr{font-size:14px;font-weight:800;color:var(--accent);text-align:right;padding-top:1px;white-space:nowrap}
+  .tl .axis{position:relative;align-self:stretch;display:flex;justify-content:center}
+  .tl .axis::before{content:"";position:absolute;top:-10px;bottom:-10px;width:2px;background:var(--line)}
+  .tl .axis::after{content:"";position:relative;margin-top:5px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--accent);z-index:1}
+  .tl .row:first-child .axis::before{top:6px}
+  .tl .row:last-child .axis::before{bottom:auto;height:16px}
+  .tl .row.bad .axis::after{border-color:var(--bear)}
+  .tl .row.big .axis::after{border-color:var(--hl);width:14px;height:14px;box-shadow:0 0 0 4px rgba(255,122,0,.18)}
+  .tl .ev{font-size:14px;font-weight:700;line-height:1.45}
+  .tl .ds{font-size:12.5px;color:var(--soft);margin-top:2px;font-weight:500}
+  .tl .chip{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:5px;margin-left:6px;vertical-align:1px}
+  .tl .chip.b{background:var(--bear-bg);color:var(--bear)}
+  .tl .chip.g{background:var(--bull-bg);color:var(--bull)}
+  .tl .chip.h{background:var(--hl-bg);color:#a85800}
+
+  /* ===== INSTITUTIONS ===== */
+  .inst{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .inst th{background:var(--ink);color:var(--paper);text-align:left;padding:11px 13px;font-size:12px;letter-spacing:1px}
+  .inst th.c,.inst td.c{text-align:center}
+  .inst td{padding:11px 13px;border-top:1px solid var(--line);vertical-align:middle}
+  .inst tr:nth-child(even) td{background:#fbf9f3}
+  .inst .rate{font-weight:800;font-size:12px;padding:2px 9px;border-radius:6px;white-space:nowrap}
+  .inst .rate.buy{background:var(--bull-bg);color:var(--bull)}
+  .inst .rate.hold{background:var(--warn-bg);color:var(--warn)}
+  .inst .rate.sell{background:var(--bear-bg);color:var(--bear)}
+  .inst .tp{font-weight:800;color:var(--hl);font-variant-numeric:tabular-nums}
+  .inst .foreign{font-size:10.5px;font-weight:800;color:var(--accent2);background:#f1e9f6;padding:1px 6px;border-radius:5px;margin-left:5px}
+  .consensus{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+  .cons{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;text-align:center}
+  .cons .cl{font-size:11px;color:var(--soft);font-weight:700;margin-bottom:5px}
+  .cons .cv{font-size:23px;font-weight:800;letter-spacing:-.5px}
+  .cons .cv.hl{color:var(--hl)} .cons .cv.bull{color:var(--bull)}
+  .cons .cs2{font-size:11px;color:var(--soft);margin-top:3px}
+
+  /* ===== ELASTICITY ===== */
+  .elas{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:2px solid var(--ink);border-radius:12px;overflow:hidden}
+  .elas th{background:var(--ink);color:var(--paper);padding:11px 13px;font-size:12px;letter-spacing:1px;text-align:center}
+  .elas th:first-child{text-align:left}
+  .elas td{padding:12px 13px;border-top:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+  .elas td:first-child{text-align:left;font-weight:700}
+  .elas tr.bearrow td{background:var(--bear-bg)}
+  .elas tr.baserow td{background:#fff}
+  .elas tr.bullrow td{background:var(--bull-bg)}
+  .elas .big{font-size:18px;font-weight:800;color:var(--hl)}
+  .elas .sub{font-size:11px;color:var(--soft);display:block}
+  .assume{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .assume .a{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-weight:600}
+  .assume .a b{color:var(--accent)}
+  .mystery{border:2px dashed var(--warn);background:var(--warn-bg);border-radius:12px;padding:16px 18px;margin:16px 0}
+  .mystery .mh{font-size:13px;font-weight:800;color:#8a6400;margin-bottom:6px}
+  .mystery p{font-size:13.5px;margin:0}
+
+  /* ===== MOAT ===== */
+  .moat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0}
+  .moat .m{background:#fff;border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:0 0 12px 12px;padding:15px}
+  .moat .m .ico{font-size:20px;margin-bottom:6px}
+  .moat .m .mt{font-size:14px;font-weight:800;margin-bottom:5px}
+  .moat .m .md{font-size:12.5px;color:var(--soft);line-height:1.55}
+  .moat .m .depth{margin-top:9px;font-size:11px;font-weight:800;letter-spacing:.5px}
+  .moat .m.deep .depth{color:var(--bull)} .moat .m.mid .depth{color:var(--warn)}
+
+  .insti{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .insti th{background:var(--ink);color:var(--paper);text-align:left;padding:11px 13px;font-size:12px;letter-spacing:.5px}
+  .insti td{padding:11px 13px;border-top:1px solid var(--line);vertical-align:middle}
+  .insti tr:nth-child(even) td{background:#fbf9f3}
+  .insti .org{font-weight:700}
+  .insti .foreign{display:inline-block;font-size:10px;font-weight:800;color:#fff;background:var(--accent2);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+  .insti .tp{font-weight:800;color:var(--hl);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .insti .rate{font-weight:700}
+  .insti .rate.buy{color:var(--bull)} .insti .rate.hold{color:var(--warn)}
+  .insti .src{font-size:11px;color:var(--soft)}
+  .consensus{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+  .consensus .c{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+  .consensus .c .cl{font-size:11px;color:var(--soft);font-weight:700;margin-bottom:5px}
+  .consensus .c .cv{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .consensus .c .cs{font-size:11px;color:var(--soft);margin-top:2px}
+
+  /* ===== CLOSE ===== */
+  .close{margin-top:50px;border:2px solid var(--ink);border-radius:14px;padding:26px;background:var(--ink);color:var(--paper)}
+  .close .q{font-size:18px;font-weight:800;line-height:1.5;margin-bottom:12px}
+  .close .q em{font-style:normal;color:var(--hl)}
+  .close p{font-size:14px;color:#cfc9bb;margin-bottom:0}
+  .close .sign{margin-top:14px;font-size:12px;color:#8d8678}
+  .disclaimer{font-size:11.5px;color:var(--soft);text-align:center;margin-top:30px;line-height:1.7}
+
+  /* ===== QUARTERLY TARGET CHART ===== */
+  .qtarget{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+  .qt{border:2px solid var(--line);border-radius:12px;padding:16px;text-align:center;background:#fff}
+  .qt .ql{font-size:12px;font-weight:800;letter-spacing:1px;margin-bottom:6px}
+  .qt.q-safe{border-color:#eccac4} .qt.q-req{border-color:var(--ink);box-shadow:4px 4px 0 var(--ink)} .qt.q-beat{border-color:#bfe0cd}
+  .qt .ql.s{color:var(--bear)} .qt .ql.r{color:var(--accent)} .qt .ql.b{color:var(--bull)}
+  .qt .qv{font-size:22px;font-weight:800;margin:6px 0}
+  .qt .qd{font-size:12px;color:var(--soft);margin-top:4px}
+  .qt .qv .hl{color:var(--hl)}
+
+  /* ===== CSS BAR CHARTS (vertical) ===== */
+  .vbars{display:flex;align-items:flex-end;gap:14px;padding:16px 0 0;border-bottom:1px solid var(--line);margin-bottom:4px}
+  .vb{flex:1;display:flex;flex-direction:column;align-items:center}
+  .vb .bnum{font-size:13px;font-weight:800;margin-bottom:4px;white-space:nowrap}
+  .vb .bar{border-radius:4px 4px 0 0;min-height:6px;width:100%;max-width:72px}
+  .vb .blab{font-size:11px;color:var(--soft);margin-top:6px;text-align:center;font-weight:600}
+
+  /* ===== CSS HORIZONTAL BARS ===== */
+  .hb{display:grid;grid-template-columns:76px 1fr 80px;align-items:center;gap:10px;margin:10px 0;font-size:13px}
+  .hb .nm{font-weight:600;text-align:right;color:var(--soft);font-size:12px}
+  .hb .track{background:var(--paper2);border-radius:5px;height:28px;overflow:hidden;position:relative}
+  .hb .fill{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+  .hb .val{font-weight:800;font-variant-numeric:tabular-nums;font-size:13px}
+
+  /* Responsive */
+  @media(max-width:900px){
+    .wrap{max-width:760px;padding:0 26px 90px}
+    .statbar{grid-template-columns:repeat(3,1fr)}
+    .verdict .body{grid-template-columns:1fr;gap:18px}
+    .verdict .one-liner{border-right:none;border-bottom:2px dashed var(--line);padding-right:0;padding-bottom:16px;font-size:19px}
+    .split2{grid-template-columns:1fr;gap:16px}
+    .elas{font-size:13px}
+    .qtarget{grid-template-columns:1fr}
+  }
+  @media(max-width:600px){
+    .wrap{padding:0 18px 80px}
+    .hero h1{font-size:24px}
+    .statbar{grid-template-columns:1fr 1fr}
+    .verdict .grid{grid-template-columns:1fr}
+    .conflict{grid-template-columns:1fr}
+    .scenarios{grid-template-columns:1fr}
+    .scn.base{transform:none}
+    .hbar{grid-template-columns:70px 1fr 48px}
+    .moat{grid-template-columns:1fr}
+    .tl .row{grid-template-columns:46px 24px 1fr;gap:10px}
+    .elas th,.elas td{padding:9px 7px;font-size:12px}
+    .elas .big{font-size:15px}
+    .consensus{grid-template-columns:1fr}
+    .insti th,.insti td{padding:8px 9px;font-size:12px}
+    .waterfall{height:140px}
+    .qtarget{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="hero">
+    <div class="kicker">601869 · 新手决策版</div>
+    <h1>长飞光纤：你买的不是"光纤股"，<br>是一场<em>AI时代的"光纤英伟达"梦</em></h1>
+    <div class="meta">11大板块 · 6图看懂 · 光棒垄断+空芯光纤+透支分析 · 数据截止2026年6月15日</div>
+    <div class="badge-row">
+      <span class="badge t">全球光棒产能第一</span>
+      <span class="badge t">三大工艺全掌握</span>
+      <span class="badge t">空芯光纤OFC 2026引爆</span>
+      <span class="badge">数据：2025年报 / 2026Q1</span>
+    </div>
+    <div class="timestamp">📅 数据截止：2026年6月15日 · 基于2025年报+2026年一季报 · 版本 V1.0</div>
+
+    <!-- 6格关键数字条 -->
+    <div class="statbar">
+      <div class="stat"><div class="l">当前市值</div><div class="v">3728亿</div><div class="s">A股8.28亿股</div></div>
+      <div class="stat"><div class="l">2026E PE</div><div class="v bear">30.6x</div><div class="s">机构E净利107.8亿</div></div>
+      <div class="stat"><div class="l">2026Q1毛利率</div><div class="v hl">41.51%</div><div class="s">历史新高</div></div>
+      <div class="stat"><div class="l">Q1净利增速</div><div class="v bull">+226%</div><div class="s">全板块领跑</div></div>
+      <div class="stat"><div class="l">光棒产能</div><div class="v">4000吨</div><div class="s">全球第一</div></div>
+      <div class="stat"><div class="l">当前价 vs 目标价</div><div class="v bear">+53%</div><div class="s">远超机构均价</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 结论卡 ===== -->
+  <div class="verdict">
+    <div class="top"><span class="dot"></span><span class="label">我想先告诉你一句话</span><span class="read">看懂这张卡，主线就抓住了</span></div>
+    <div class="body">
+      <div class="one-liner">我的判断是：<strong>长飞是全球光纤技术最深的护城河，但当前450元的价格，已经把"完美执行"两年后的利润，提前折现到了今天。</span><span class="mark">方向对了，但价位让我犹豫。</span></div>
+      <div class="grid">
+        <div class="vbox g"><div class="h">先说它是什么</div><div class="v">全球唯一掌握三大光棒工艺的公司，空芯光纤衰减仅传统光纤的<span class="hl">1/4</span>。<span class="tag g">技术垄断</span></div></div>
+        <div class="vbox r"><div class="h">现在贵不贵·我说实话</div><div class="v">30.6x PE，股价超机构目标价<span class="hl">53%</span>。<span class="tag r">很贵</span></div></div>
+        <div class="vbox y"><div class="h">我最担心的一点</div><div class="v">毛利率从41.5%稍有回落，PE就瞬间爆炸。<span class="tag y">盯死毛利率</span></div></div>
+        <div class="vbox"><div class="h">换我会怎么做</div><div class="v">等一季报确认毛利率≥35%再考虑，不在450元追。估值等回调。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 1 抓主线 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">1</span><span class="q">先抓主线 · 为什么它最近被重新定价？</span></div>
+    <h2>光纤价格400%暴涨 + AI需求 = 长飞的"利润弹性元年"</h2>
+    <div class="split2">
+      <div class="txt">
+        <p class="lead">我先用一句话给你点破：长飞不是"光纤涨价受益者"——它是<span class="hl">全球光棒产能最大、技术最深的垄断者</span>，涨价的每一分钱，几乎都能转化为毛利。</p>
+        <p>打个比方：光棒是光纤的"芯片"，占光纤成本的<span class="hl">70%</span>。长飞的光棒自给率超<span class="hl">95%</span>，单位成本几乎不变——光纤每涨1块钱，长飞毛利就涨接近1块钱。而同行还要外购光棒，利润空间被大幅压缩。</p>
+        <p>G.652.D裸纤从2025年初不到<span class="hl">20元/芯公里</span>，飙到2026年5月的<span class="hl">100-120元</span>，涨幅超过400%。这不是周期性反弹，是AI数据中心带来的结构性需求爆发——超算中心内部光纤用量是传统数据中心的<span class="hl">5-10倍</span>。</p>
+        <p>所以我想让你记住：<span class="pill-note">长飞 = 光棒垄断 × 涨价弹性 × AI需求</span></p>
+      </div>
+      <div class="chart" style="margin:0">
+        <div class="ct">📊 G.652.D光纤价格：一年暴涨400%+</div>
+        <div class="cs">单位：元/芯公里 · 来源：CRU / 行业研报</div>
+        <div class="vbars" style="height:170px">
+          <div class="vb">
+            <div class="bnum" style="color:var(--soft)">20</div>
+            <div class="bar" style="height:27px;background:var(--paper2)"></div>
+            <div class="blab">25年初</div>
+          </div>
+          <div class="vb">
+            <div class="bnum" style="color:var(--ink)">35</div>
+            <div class="bar" style="height:47px;background:#cdd3da"></div>
+            <div class="blab">26年1月</div>
+          </div>
+          <div class="vb">
+            <div class="bnum" style="color:#fff;background:var(--accent);padding:1px 8px;border-radius:3px;font-size:12px">83</div>
+            <div class="bar" style="height:111px;background:var(--accent)"></div>
+            <div class="blab">26年3月</div>
+          </div>
+          <div class="vb">
+            <div class="bnum" style="color:var(--hl);font-size:16px">110</div>
+            <div class="bar" style="height:147px;background:var(--hl)"></div>
+            <div class="blab" style="color:var(--hl);font-weight:700">26年5月</div>
+          </div>
+        </div>
+        <div class="takeaway">👉 光纤价格从20元→110元，<b>涨幅450%</b>。光棒自给率95%+的长飞，几乎吃到了全部利润弹性。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 2 十年时间线 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">2</span><span class="q">来龙去脉 · 这不是突然的故事</span></div>
+    <h2>一条主线：从"全球光棒之王"到利润爆发</h2>
+    <p>我帮你扒了它的历史——长飞不是一家"突然被AI带火"的公司。它用了十年时间，把自己做成了全球光棒技术最深的那个。</p>
+    <div class="tl">
+      <div class="row"><div class="yr">2017</div><div class="axis"></div><div class="node"><div class="ev">A股上市<span class="chip g">起点</span></div><div class="ds">上交所挂牌，开始资本市场征程</div></div></div>
+      <div class="row"><div class="yr">2018</div><div class="axis"></div><div class="node"><div class="ev">全球光棒产能跃升</div><div class="ds">持续扩产，巩固全球领先地位</div></div></div>
+      <div class="row big"><div class="yr">2020</div><div class="axis"></div><div class="node"><div class="ev">三大工艺全掌握<span class="chip h">里程碑</span></div><div class="ds">全球唯一一家同时掌握PCVD、VAD、OVD三大光棒制备工艺——这个护城河，至今没人能复制</div></div></div>
+      <div class="row bad"><div class="yr">2024</div><div class="axis"></div><div class="node"><div class="ev">行业底部：光纤价格跌至20元<span class="chip b">至暗时刻</span></div><div class="ds">毛利率跌至约27%，全年净利仅5.81亿——但这也是最大的"安全边际"</div></div></div>
+      <div class="row big"><div class="yr">2025</div><div class="axis"></div><div class="node"><div class="ev">拐点确认：Q4毛利率首破35%<span class="chip h">转折</span></div><div class="ds">光纤价格开始暴涨，全年归母净利8.14亿，Q4单季毛利率创历史新高</div></div></div>
+      <div class="row big"><div class="yr">2026Q1</div><div class="axis"></div><div class="node"><div class="ev">利润爆炸：毛利率冲到41.51%<span class="chip h">爆发</span></div><div class="ds">单季净利4.95亿，同比+226%；空芯光纤在OFC 2026引发行业震动</div></div></div>
+      <div class="row"><div class="yr">2026H2</div><div class="axis"></div><div class="node"><div class="ev">？市场赌的是"完美兑现"</div><div class="ds">Q2-Q4需要完成约103亿利润，才能撑住3728亿市值——这才是你现在真正要赌的事</div></div></div>
+    </div>
+    <p style="font-size:14px;color:var(--soft)">👉 长飞的故事不是"AI突然带火"——它是<b>十年技术壁垒 + 一年价格暴涨</b> 的叠加。但技术壁垒已经Price-in了，现在市场赌的是价格能维持多久。</p>
+  </div>
+
+  <!-- ===== 3 客户与护城河 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">3</span><span class="q">深度拆解 · 为什么别人抢不走？</span></div>
+    <h2>三道护城河：工艺垄断 + 技术代差 + 规模碾压</h2>
+    <p>我先夸一句硬——长飞的护城河，在A股科技公司里属于"教科书级"的。但我要拉你冷静看一件事：护城河深 ≠ 现在的价格就合理。</p>
+    <div class="chart">
+      <div class="ct">📊 全球光棒产能格局：长飞断层领先</div>
+      <div class="cs">单位：吨/年 · 来源：行业研报综合整理</div>
+      <div class="hb"><span class="nm">长飞光纤</span><div class="track"><div class="fill" style="width:100%;background:#ff7a00">4000吨 · NO.1</div></div><span class="val" style="color:var(--hl)">全球第一</span></div>
+      <div class="hb"><span class="nm">亨通光电</span><div class="track"><div class="fill" style="width:82%;background:#1f4e79">3300吨</div></div><span class="val">3300吨</span></div>
+      <div class="hb"><span class="nm">中天科技</span><div class="track"><div class="fill" style="width:75%;background:#cdd3da">3000吨</div></div><span class="val">3000吨</span></div>
+      <div class="hb"><span class="nm">烽火通信</span><div class="track"><div class="fill" style="width:15%;background:#b9b3a5;color:#0d1117">~600吨</div></div><span class="val">~600吨</span></div>
+      <div class="takeaway">👉 中国四家合计约1.09万吨，占全球~38%。<b>长飞一家占37%</b>，且是唯一掌握三大工艺的企业。</div>
+    </div>
+    <h3 style="font-size:15px;font-weight:800;margin:18px 0 4px">为什么别人抢不走？三道壁垒</h3>
+    <div class="moat">
+      <div class="m deep"><div class="ico">🔬</div><div class="mt">三大工艺全掌握</div><div class="md">PCVD+VAD+OVD，全球仅此一家。每种工艺对应不同规格的光棒，意味着长飞可以生产"任何客户需求"的光纤，而同行只能做标准品。</div><div class="depth">护城河：极深 · 专利壁垒</div></div>
+      <div class="m deep"><div class="ico">⚡</div><div class="mt">空芯光纤代差</div><div class="md">OFC 2026展示：衰减0.04dB/km，仅为传统G.652.D（0.17dB/km）的<b>1/4</b>。这不是"更好的光纤"，而是"解决AI集群时延瓶颈的唯一解"。</div><div class="depth">护城河：深 · 技术代差</div></div>
+      <div class="m mid"><div class="ico">🏭</div><div class="mt">4000吨规模</div><div class="md">全球最大光棒产能，扩产周期18-24个月意味着对手至少两年内无法追赶。但规模本身不是绝对壁垒——亨通3300吨、中天3000吨也在逼近。</div><div class="depth">护城河：中深 · 时间窗口</div></div>
+    </div>
+    <div class="chart">
+      <div class="ct">📊 长飞收入结构：光传输占58.6%，最"纯粹"的光纤标的</div>
+      <div class="cs">2025年年报数据 · 总营收142.5亿</div>
+      <div class="hb"><span class="nm">光传输</span><div class="track"><div class="fill" style="width:59%;background:#ff7a00">83.5亿</div></div><span class="val" style="color:var(--hl)">58.6%</span></div>
+      <div class="hb"><span class="nm">光互联</span><div class="track"><div class="fill" style="width:22%;background:#1f4e79">31.4亿</div></div><span class="val">22.1%</span></div>
+      <div class="hb"><span class="nm">其他</span><div class="track"><div class="fill" style="width:18%;background:#cdd3da;color:#0d1117">27.6亿</div></div><span class="val">19.4%</span></div>
+      <div class="takeaway">👉 光互联组件（MPO/光模块）增速<b>+48.6%</b>，是AI相关硬件放量的第一个信号。</div>
+    </div>
+  </div>
+
+  <!-- ===== 4 核心矛盾 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">4</span><span class="q">核心矛盾 · 这是全篇的灵魂</span></div>
+    <h2>说到底，是两种叙事在打架</h2>
+    <p>我帮你把噪音滤掉，本质只有一个矛盾：<span class="mark">长飞值不值3728亿？</span> 技术壁垒和市场定价之间，到底谁在撒谎？</p>
+    <div class="conflict">
+      <div class="side bullside"><div class="who">🟢 多头相信</div><div class="claim">"光纤英伟达"——AI光连接基础设施的绝对龙头</div><ul>
+        <li>全球唯一三大工艺全掌握，光棒自给率95%+，涨价利润弹性最大</li>
+        <li>空芯光纤衰减仅传统1/4，一旦大规模商用 = 品类跃迁，定价权不取决于成本而取决于算力集群对时延的容忍度</li>
+        <li>Q1毛利率从27%→41.5%，连续5个季度上涨，利润弹性正在验证</li>
+        <li>光互联组件+48.6%增速，已从"光纤公司"进化为"AI光连接平台"</li>
+        <li>大摩2026-27年净利预测上调343%/553%，机构在快速追赶股价</li>
+      </ul></div>
+      <div class="vs">VS</div>
+      <div class="side bearside"><div class="who">🔴 空头相信</div><div class="claim">"价格已经把两年后的完美预期打满了"</div><ul>
+        <li>30.6x PE意味着2026年必须赚到107.8亿——Q1只完成了4.95亿，Q2-Q4要赚102.9亿</li>
+        <li>当前价450元超机构目标均价377元19%，大摩A股直接给"减持"评级</li>
+        <li>光纤涨价是周期性还是结构性？光棒扩产18-24个月后供给跟上，价格可能回落</li>
+        <li>2025年投资收益-2.19亿，对联营企业亏损-3.43亿，投资收益质量堪忧</li>
+        <li>空芯光纤商业化时间表完全不确定——"技术领先 ≠ 商业变现"</li>
+      </ul></div>
+    </div>
+    <div class="chart">
+      <div class="ct">📊 同行毛利率对比：长飞的"垄断溢价"</div>
+      <div class="cs">2026Q1数据 · 长飞 vs 亨通 vs 中天</div>
+      <div class="hb"><span class="nm">长飞光纤</span><div class="track"><div class="fill" style="width:100%;background:#ff7a00">41.5%</div></div><span class="val" style="color:var(--hl)">41.5%</span></div>
+      <div class="hb"><span class="nm">亨通光电</span><div class="track"><div class="fill" style="width:38%;background:#1f4e79">16.0%</div></div><span class="val">16.0%</span></div>
+      <div class="hb"><span class="nm">中天科技</span><div class="track"><div class="fill" style="width:37%;background:#cdd3da;color:#0d1117">15.6%</div></div><span class="val">15.6%</span></div>
+      <div class="takeaway">👉 长飞毛利率是亨通/中天的<b>2.6倍</b>——这就是光棒自给+技术垄断带来的"结构性溢价"。</div>
+    </div>
+  </div>
+
+  <!-- ===== 5 必盯3指标 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">5</span><span class="q">只盯这3个 · 以后不用读整份研报</span></div>
+    <h2>真正决定股价的，就3个数字</h2>
+    <div class="gauge">
+      <div class="hd"><span class="num">指标 ①</span><span class="name">综合毛利率</span><span class="why">决定估值</span></div>
+      <p>这是长飞的生命线。Q1冲到41.5%，意味着只要光纤价格不崩，毛利率全年维持在35%以上是大概率事件。但如果Q2跌破35%，市场会瞬间从"AI光纤龙头"切换到"周期股见顶"模式，30x PE会变成杀估值的屠宰场。</p>
+      <div class="track-row"><span class="step">2024年均值 ~27%</span><span class="arrow">→</span><span class="step">2025Q4 35.7%</span><span class="arrow">→</span><span class="step now">现在 41.5%</span><span class="arrow">→</span><span class="step">全年目标 ≥35%</span></div>
+    </div>
+    <div class="gauge">
+      <div class="hd"><span class="num">指标 ②</span><span class="name">经营现金流 / 净利润</span><span class="why">决定身份</span></div>
+      <p>2025年经营现金流36.53亿，是净利润8.14亿的4.5倍——这看起来很好，但主要原因是大量应收账款尚未回款。如果收入爆发式增长但现金流跟不上，就是在"纸面富贵"。我真正担心的是：收入涨了，钱没收回来。</p>
+      <div class="track-row"><span class="step">2024年 17.8亿</span><span class="arrow">→</span><span class="step now">2025年 36.5亿</span><span class="arrow">→</span><span class="step">理想 >60亿</span><span class="good">现金流健康，但应收高企需警惕</span></div>
+    </div>
+    <div class="gauge" style="border-left-color:var(--bear)">
+      <div class="hd"><span class="num">指标 ③</span><span class="name">G.652.D光纤价格</span><span class="why" style="background:#fbeae7;color:var(--bear)">生死指标</span></div>
+      <p>长飞的整个投资逻辑建立在"光纤价格持续高位"之上。如果价格从110元跌回50元以下，41.5%的毛利率就会崩塌。这是所有风险中最致命的——因为光棒扩产18-24个月后，全球供给可能集中释放。</p>
+      <div class="track-row"><span class="step" style="background:var(--paper2)">2025年初 <20元</span><span class="arrow">→</span><span class="step now" style="background:var(--hl)">现在 100-120元</span><span class="arrow"> <b style="color:var(--bear)">跌破60元 = 危险</b></span></div>
+    </div>
+  </div>
+
+  <!-- ===== 6 利润弹性测算 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">6</span><span class="q">最值钱的推演 · 上限到底有多高</span></div>
+    <h2>如果空芯光纤+光互联放量，能赚多少？</h2>
+    <p>市场真正押的不是"光纤涨价"（这是一次性收益），而是"长飞从光纤公司变成AI光连接平台"的弹性。我把假设摊开：</p>
+    <div class="assume">
+      <div class="a">光传输产品毛利率 <b>≈ 35-45%</b>（取决于光纤价格）</div>
+      <div class="a">光互联组件增速 <b>≈ +40-60%</b>（AI相关硬件）</div>
+      <div class="a">空芯光纤商业化 = <b>最大未知数</b>（技术指标领先但无定价数据）</div>
+    </div>
+    <table class="elas">
+      <tr><th>情景</th><th>2026E 综合毛利率</th><th>营收(估)</th><th>归母净利(估)</th><th>对应PE</th></tr>
+      <tr class="bearrow"><td>悲观·价格回落</td><td>28-32%</td><td>~160亿</td><td>~65亿</td><td><span class="big" style="color:var(--bear)">57.4x</span><span class="sub">光纤价格跌回50元以下</span></td></tr>
+      <tr class="baserow"><td>中性·涨价维持</td><td>35-38%</td><td>~200亿</td><td>~108亿</td><td><span class="big">34.5x</span><span class="sub">机构共识预期，光纤维持80元+</span></td></tr>
+      <tr class="bullrow"><td>乐观·技术变现</td><td>38-42%</td><td>~250亿</td><td>~155亿</td><td><span class="big" style="color:var(--bull)">24.1x</span><span class="sub">空芯光纤开始贡献收入</span></td></tr>
+    </table>
+    <div class="mystery">
+      <div class="mh">⚠️ 说句掏心窝的话：这是情景测算，不是预测</div>
+      <p>毛利率区间取自2025Q4-2026Q1的实际趋势，营收增速参考了机构预测。空芯光纤商业化时间<b>未经公司确认</b>，价格贡献完全未知。这张表的真正价值不在"算出准数"，而在你看清：<b>如果中性情景成立，30x PE不算离谱；但如果悲观情景出现，57x PE就是屠杀。</b></p>
+    </div>
+  </div>
+
+  <!-- ===== 7 风险雷达 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">7</span><span class="q">风险分级 · 哪个先爆心里有数</span></div>
+    <h2>风险雷达：按危险程度排好了</h2>
+    <table class="risk">
+      <tr><th>风险</th><th>危险等级</th><th class="when">什么时候该真正警惕</th></tr>
+      <tr><td><strong>光纤价格暴跌</strong><br><span style="font-size:11px;color:var(--soft)">光棒扩产18-24个月后供给集中释放</span></td><td class="star s5">⭐⭐⭐⭐⭐</td><td class="when">G.652.D价格跌破60元/芯公里，且持续2个季度以上</td></tr>
+      <tr><td><strong>估值过高</strong><br><span style="font-size:11px;color:var(--soft)">30.6x PE要求"完美执行"</span></td><td class="star s5">⭐⭐⭐⭐⭐</td><td class="when">Q2毛利率低于35%，机构开始下调2026E盈利预测</td></tr>
+      <tr><td><strong>空芯光纤商业化不确定</strong><br><span style="font-size:11px;color:var(--soft)">技术领先 ≠ 商业变现</span></td><td class="star s4">⭐⭐⭐⭐</td><td class="when">2027年仍无明确量产时间表，市场失去耐心</td></tr>
+      <tr><td><strong>投资收益波动</strong><br><span style="font-size:11px;color:var(--soft)">2025年投资损失2.19亿</span></td><td class="star s3">⭐⭐⭐</td><td class="when">联营企业持续亏损，拖累表内利润</td></tr>
+      <tr><td><strong>应收账款高企</strong><br><span style="font-size:11px;color:var(--soft)">应收占营收41.8%</span></td><td class="star s3">⭐⭐⭐</td><td class="when">收入大增但经营现金流持续低于净利润</td></tr>
+    </table>
+  </div>
+
+  <!-- ===== 8 估值锚（透支分析核心） ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">8</span><span class="q">透支分析 · 现在到底贵不贵</span></div>
+    <h2>你的450元，赌的是两年后的完美执行</h2>
+    <p>这是我最想为你做的一步——直接算清楚：当前3728亿的市值，到底透支了多少未来的利润预期。说句掏心窝的话，看懂这张表，比读十份券商研报都管用。</p>
+
+    <div class="chart">
+      <div class="ct">📊 当前价格隐含的合理PE vs 机构预期</div>
+      <div class="cs">市值3728亿 · 不同PE假设下的盈利要求</div>
+      <div class="vbars" style="height:180px">
+        <div class="vb">
+          <div class="bnum" style="color:var(--bear);font-size:14px">186亿</div>
+          <div class="bar" style="height:164px;background:var(--bear-bg);border:2px solid var(--bear)"></div>
+          <div class="blab" style="color:var(--bear);font-weight:700">20x PE</div>
+        </div>
+        <div class="vb">
+          <div class="bnum" style="color:var(--warn);font-size:14px">149亿</div>
+          <div class="bar" style="height:131px;background:var(--warn-bg);border:2px solid var(--warn)"></div>
+          <div class="blab" style="color:var(--warn);font-weight:700">25x PE</div>
+        </div>
+        <div class="vb">
+          <div class="bnum" style="color:#fff;background:var(--hl);padding:1px 8px;border-radius:3px;font-size:12px">124亿</div>
+          <div class="bar" style="height:109px;background:var(--hl)"></div>
+          <div class="blab" style="color:var(--hl);font-weight:700">30x PE</div>
+        </div>
+        <div class="vb">
+          <div class="bnum" style="color:#fff;background:var(--bull);padding:1px 8px;border-radius:3px;font-size:12px">108亿</div>
+          <div class="bar" style="height:95px;background:var(--bull)"></div>
+          <div class="blab" style="color:var(--bull);font-weight:700">机构共识</div>
+        </div>
+        <div class="vb">
+          <div class="bnum" style="color:var(--ink);font-size:14px">8.1亿</div>
+          <div class="bar" style="height:8px;background:#cdd3da"></div>
+          <div class="blab">2025实际</div>
+        </div>
+      </div>
+      <div class="takeaway">👉 当前3728亿市值在25x合理PE下需要<b>149亿净利</b>，比机构共识108亿高出<b>38%</b>。这意味着<b>股价已经透支了"超预期"的利润。</b></div>
+    </div>
+
+    <div class="qtarget">
+      <div class="qt q-safe">
+        <div class="ql s">⚠️ 安全线 · 给25x PE</div>
+        <div class="qv"><span class="hl">2026年净利 ≥149亿</span></div>
+        <div class="qd">Q2-Q4需完成144亿<br>当前价才算"不算贵"</div>
+      </div>
+      <div class="qt q-req">
+        <div class="ql r">📋 达标线 · 机构共识</div>
+        <div class="qv"><span class="hl">2026年净利 ≥108亿</span></div>
+        <div class="qd">Q2-Q4需完成103亿<br>但30x PE仍有回调风险</div>
+      </div>
+      <div class="qt q-beat">
+        <div class="ql b">🚀 超预期 · 给20x PE</div>
+        <div class="qv"><span class="hl">2026年净利 ≥186亿</span></div>
+        <div class="qd">Q2-Q4需完成181亿<br>才能让当前价"变便宜"</div>
+      </div>
+    </div>
+
+    <div class="chart">
+      <div class="ct">📊 每个季度至少要交出多少利润？</div>
+      <div class="cs">基于机构共识108亿的季度拆解 · 2026年</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0">
+        <div style="background:var(--hl-bg);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--soft);font-weight:700">Q1 已完成</div>
+          <div style="font-size:22px;font-weight:800;color:var(--hl)">4.95亿</div>
+          <div style="font-size:11px;color:var(--bull);font-weight:600">同比+226%</div>
+        </div>
+        <div style="background:#fff;border:2px solid var(--line);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--soft);font-weight:700">Q2 至少需要</div>
+          <div style="font-size:22px;font-weight:800;color:var(--ink)">≥28亿</div>
+          <div style="font-size:11px;color:var(--warn);font-weight:600">毛利率≥35%</div>
+        </div>
+        <div style="background:#fff;border:2px solid var(--line);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--soft);font-weight:700">Q3 至少需要</div>
+          <div style="font-size:22px;font-weight:800;color:var(--ink)">≥35亿</div>
+          <div style="font-size:11px;color:var(--warn);font-weight:600">毛利率≥35%</div>
+        </div>
+        <div style="background:#fff;border:2px solid var(--line);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--soft);font-weight:700">Q4 至少需要</div>
+          <div style="font-size:22px;font-weight:800;color:var(--ink)">≥40亿</div>
+          <div style="font-size:11px;color:var(--warn);font-weight:600">光纤价维持80+</div>
+        </div>
+      </div>
+      <div class="takeaway">👉 Q1只完成了全年的<b>4.6%</b>。Q2-Q4需要赚到Q1的<b>20倍</b>——这就是"透支"的量化含义。</div>
+    </div>
+
+    <div class="mystery">
+      <div class="mh">🌫️ 我为什么老实说"它是个迷"</div>
+      <p>公司没有给出2026年量化指引。所有"108亿"、"155亿"的预测，都是券商用模型推的。光纤价格在100-120元高位能维持多久？空芯光纤什么时候能量产贡献收入？<span class="mark">这些问题的答案，决定了3728亿是"合理定价"还是"泡沫顶部"。</span>我不敢在450元告诉你"买"——但我会告诉你：<b>盯紧Q2毛利率和光纤价格，这两个数字一出来，你就知道该不该动了。</b></p>
+    </div>
+
+    <!-- 三情景估值卡 -->
+    <h3 style="font-size:16px;font-weight:800;margin:24px 0 4px">三情景估值：现在交易的是哪个未来？</h3>
+    <div class="scenarios">
+      <div class="scn bear"><div class="lab">悲观·证伪</div><div class="profit">净利 ~65亿</div><div class="mv">~1300亿</div><div class="delta dn">-65%</div><div class="cs2" style="font-size:11px;color:var(--soft)">光纤跌回50元以下</div></div>
+      <div class="scn base"><div class="lab">中性·兑现</div><div class="profit">净利 ~108亿</div><div class="mv">~2700亿</div><div class="delta dn">-28%</div><div class="cs2" style="font-size:11px;color:var(--soft)">涨价维持，机构预期兑现</div></div>
+      <div class="scn bull"><div class="lab">乐观·完美</div><div class="profit">净利 ~155亿</div><div class="mv">~3875亿</div><div class="delta up">+4%</div><div class="cs2" style="font-size:11px;color:var(--bull)">空芯光纤开始变现</div></div>
+    </div>
+    <div class="anchor-now">当前市值 <b>3728亿</b>——基本已经Price-in了"乐观情景"。</div>
+
+    <!-- 量产时间线 -->
+    <h3 style="font-size:16px;font-weight:800;margin:24px 0 4px">那"完美执行"靠什么兑现？看关键节点</h3>
+    <p>乐观能不能成立，全看这几个时间点的验证：</p>
+    <div class="tl">
+      <div class="row"><div class="yr">2026Q2</div><div class="axis"></div><div class="node"><div class="ev">中报披露<span class="chip g">相对确定</span></div><div class="ds">毛利率能否维持35%+？这是第一个验证点</div></div></div>
+      <div class="row big"><div class="yr">2026H2</div><div class="axis"></div><div class="node"><div class="ev">光纤价格趋势<span class="chip h">关键</span></div><div class="ds">G.652.D能否维持在80元以上？供给端是否有新产能释放？</div></div></div>
+      <div class="row big"><div class="yr">2027</div><div class="axis"></div><div class="node"><div class="ev">空芯光纤商业化<span class="chip h">迷·待确认</span></div><div class="ds">OFC 2026展示的0.04dB/km何时能量产？定价多少？这是从"光纤公司"到"AI光连接平台"的跃迁点</div></div></div>
+    </div>
+  </div>
+
+  <!-- ===== 9 机构预期与目标价 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">9</span><span class="q">专业的人怎么看 · 但我要先泼盆冷水</span></div>
+    <h2>机构目标价：在追着股价跑，而不是领着走</h2>
+    <p>我先泼盆冷水：长飞当前的A股价格450元，已经大幅超过了几乎所有机构的目标价。这不是"机构保守"——这是"A股给了太多信任溢价"。让我用数据说话。</p>
+
+    <!-- 3共识数据卡 -->
+    <div class="consensus">
+      <div class="cons"><div class="cl">覆盖机构</div><div class="cv">10+家</div><div class="cs2">以国内券商为主</div></div>
+      <div class="cons"><div class="cl">目标均价(A股)</div><div class="cv hl">~294-378元</div><div class="cs2">国泰海通377.90元最高</div></div>
+      <div class="cons"><div class="cl">当前股价</div><div class="cv bear">450.30元</div><div class="cs2">超均价约53%</div></div>
+    </div>
+
+    <div class="mystery" style="border-color:var(--accent);background:#eef3f8">
+      <div class="mh" style="color:var(--accent)">🧐 我必须提醒你的一件事</div>
+      <p>长飞的目标价变化路径非常典型：<b>追着股价改。</b> 大摩2025年9月给的目标价才115元，随着光纤价格暴涨和Q1利润爆发，2026年6月才上修到202元（但还是"减持"评级）。<b>机构永远在追，股价永远在跑。</b> 但问题是：这次机构能追上吗？还是股价已经跑得太远了？</p>
+    </div>
+
+    <table class="inst">
+      <tr><th>机构</th><th class="c">评级</th><th class="c">目标价</th><th>关键观点</th></tr>
+      <tr><td>国泰海通</td><td class="c"><span class="rate buy">增持</span></td><td class="c"><span class="tp">377.90元</span></td><td>给予2026年35x PE，Q4毛利率创历史新高35.67%</td></tr>
+      <tr><td>中原证券</td><td class="c"><span class="rate buy">增持</span></td><td class="c">—</td><td>2026年4月覆盖，看好AI光纤需求</td></tr>
+      <tr><td>摩根士丹利<span class="foreign">外资</span></td><td class="c"><span class="rate sell">减持</span></td><td class="c"><span class="tp">202.25元</span></td><td>A股估值偏高，H股目标价230港元"与大市同步"</td></tr>
+      <tr><td>瑞银<span class="foreign">外资</span></td><td class="c"><span class="rate hold">中性</span></td><td class="c"><span class="tp">310元(A) / 290港元(H)</span></td><td>看好长期逻辑但A股估值偏高</td></tr>
+      <tr><td>高盛<span class="foreign">外资</span></td><td class="c"><span class="rate hold">中性</span></td><td class="c">—</td><td>看好行业逻辑但A股估值偏高</td></tr>
+      <tr><td>野村<span class="foreign">外资</span></td><td class="c"><span class="rate hold">中性</span></td><td class="c">52港元(H股)</td><td>从"买入"下调，股价已涨295%，风险收益比趋平</td></tr>
+      <tr><td>星展银行<span class="foreign">外资</span></td><td class="c"><span class="rate hold">中性</span></td><td class="c">40.3港元(H股)</td><td>估值已完全反映上行空间</td></tr>
+    </table>
+
+    <div class="callout">
+      <div class="ct">💡 关于长飞A/H股巨大价差，我得跟你说实话</div>
+      <p>外资对长飞A股整体维持<b>中性至减持</b>，但对H股集中给予买入/增持（瑞银290港元，隐含较大上行空间）。这说明<b>A股估值已大幅领先H股</b>——两市的价差达到历史极值。A股投资者在为"AI光纤龙头"的故事付溢价，H股投资者在等利润真正落地。这个溢价，你需要自己判断值不值得付。</p>
+    </div>
+  </div>
+
+  <!-- ===== 10 行动框架 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">10</span><span class="q">所以接下来怎么办 · 这才是关键</span></div>
+    <h2>投资者行动框架</h2>
+    <p>我不会替你做决定。但如果是我，我会按照下面三档来操作——你可以直接抄进自选股备注里。</p>
+    <div class="action">
+      <div class="act keep"><div class="at">这些发生，我会更有信心</div><ul>
+        <li>中报（Q2）毛利率维持35%以上，净利≥28亿——证明涨价不是昙花一现</li>
+        <li>G.652.D光纤价格维持在80元/芯公里以上，且运营商集采限价继续上调</li>
+        <li>空芯光纤获得运营商或数据中心客户的实质性订单（不是试点，是批量采购）</li>
+        <li>光互联组件收入增速维持40%+，证明"AI光连接平台"转型成立</li>
+      </ul></div>
+      <div class="act watch"><div class="at">这些出现，我会开始警惕</div><ul>
+        <li>Q2毛利率跌破33%——说明涨价效应开始衰减，或者低毛利业务占比回升</li>
+        <li>光纤价格从100元区间跌回60元以下——供给端可能已经开始扩产</li>
+        <li>机构开始下调2026年盈利预测——大摩的343%上调变成下调</li>
+        <li>应收账款持续攀升但经营现金流没有跟上——"纸面富贵"的危险信号</li>
+      </ul></div>
+      <div class="act exit"><div class="at">这些坐实，我会认为自己赌错了</div><ul>
+        <li>光纤价格跌回30元/芯公里以下——涨价逻辑证伪，30x PE变60x+ PE</li>
+        <li>空芯光纤在2027年仍无商业化时间表——"技术领先"只是实验室成果</li>
+        <li>联营企业投资损失扩大，吞噬主营业务利润——公司治理红灯</li>
+        <li>外资大行（大摩/瑞银）进一步下调评级至"卖出"——聪明钱开始离场</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- ===== 11 差异化 ===== -->
+  <div class="sec">
+    <div class="eyebrow"><span class="n">11</span><span class="q">我想多为你做的一步</span></div>
+    <h2>我不想只给你"一份研报"，而是给你"一个跟踪系统"</h2>
+
+    <div class="callout">
+      <div class="ct">🛡️ 我替你避开的一个坑</div>
+      <p>网上有些文章拿长飞的"动态PE 188x"说事，那是算法失真——Q1利润同比暴增226%，动态年化把短期爆发放大了。<b>正确的估值锚应该是2026E PE，而不是动态PE。</b> 也有人拿亨通光电2449亿市值来跟长飞3728亿比"谁更贵"——但亨通光纤只占8%营收，两家公司本质上不是同一种生意，直接比PE是不公平的。</p>
+    </div>
+
+    <p>每个财报季跟我看这几格红绿灯——这是我给你留的跟踪仪表盘：</p>
+    <table class="dash">
+      <tr><th>跟踪指标</th><th>本期信号</th><th>含义</th></tr>
+      <tr><td>综合毛利率（2026Q1）</td><td class="up">↑ 41.51%</td><td>利好 · 连续5个季度上涨，但已接近历史极值</td></tr>
+      <tr><td>G.652.D光纤价格</td><td class="up">↑ 100-120元</td><td>利好 · 但需警惕扩产周期后的供给释放</td></tr>
+      <tr><td>光互联组件收入增速</td><td class="up">↑ +48.6%</td><td>利好 · AI硬件放量信号确认</td></tr>
+      <tr><td>应收账款/营收</td><td class="dn">↑ 41.8%</td><td>风险 · 收入增长但回款速度跟不上</td></tr>
+      <tr><td>空芯光纤商业化</td><td class="fl">→ OFC展示阶段</td><td>中性 · 技术领先但尚未变现，2027年是关键窗口</td></tr>
+      <tr><td>机构评级（外资）</td><td class="dn">偏中性/减持</td><td>风险 · A/H分化严重，外资对A股溢价不买账</td></tr>
+    </table>
+    <p style="font-size:13.5px;color:var(--soft)">我的原则：绿灯多于4个，我继续持有；出现2个红灯，我开始减仓；光纤价格+毛利率双杀，我走人。</p>
+  </div>
+
+  <!-- ===== 收尾 ===== -->
+  <div class="close">
+    <div class="q">说句心里话：长飞确实是全球光纤技术最深的公司，空芯光纤如果能量产，它有可能从"卖光纤的"变成"AI算力基础设施的卖水人"。<br><br>但在<em>450元、3728亿市值、30.6x PE</em>的位置，我的判断是：<em>所有好的东西，已经被定价了。</em><br><br>我不是看空——我是在等一个更好的价格。如果Q2毛利率确认35%+、光纤价格没有崩，300元以下的长飞，才是我想重仓的位置。</div>
+    <p>我不想做那种把信息一股脑倒给你的研报。我想做的，是像朋友一样替你抓主线、标重点、画红线、给条件——然后把最后的决定，老老实实交回你手里。怎么选，你说了算。</p>
+    <div class="sign">我的结论：好公司，好方向，但不是好价位。等回调，别追高。</div>
+  </div>
+
+  <div class="disclaimer">本报告基于长飞光纤公开年报/季报、券商研报及市场资料整理，观点为研究探讨，多空并列仅供参考，<strong>不构成任何投资建议</strong>。市场有风险，决策需独立。数据截止2026年6月15日，后续可能根据最新公告更新。</div>
+
+</div>
+</body>
+</html>

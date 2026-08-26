@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 
 
-AMA_STATE_ALGORITHM_VERSION = "ama_recursive_v1"
+# v5 使用价格相对 AMA 的滚动残差波动构造连续轨道，避免窄轨导致分数饱和。
+AMA_STATE_ALGORITHM_VERSION = "ama_recursive_v5_residual_band"
 AMA_STATE_TAIL_ROWS = 20
 DEFAULT_AMA_STATE_CACHE_PATH = Path(
     r"D:\database\signal_daily\_state\ama_latest_state.parquet"
@@ -65,15 +66,21 @@ class AMA:
             "high_efficiency": 0.3,       # 高效率比：趋势强劲
             "low_efficiency": -0.3,       # 低效率比：震荡市场
             # 突破信号
-            "upper_breakthrough": 0.5,    # 突破上轨：看涨
-            "lower_breakdown": -0.5,      # 跌破下轨：看跌
+            "upper_breakthrough": 1.0,    # 接近/突破上轨的连续强度
+            "lower_breakdown": -1.0,      # 接近/跌破下轨的连续强度
             # 动量信号
             "momentum_acceleration": 0.4, # 动量加速
             "momentum_deceleration": -0.4 # 动量减速
         }
 
         # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 连续因子不使用固定信号强度，直接保留原始的归一化幅度。
+        self.continuous_signal_names = [
+            "efficiency_ratio",
+            "price_bias",
+            "slope_rate",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_ama_components(self, close_prices, period=10, fast_sc=2, slow_sc=30):
         """
@@ -118,7 +125,7 @@ class AMA:
         # AMA斜率: 当前AMA值与前一期AMA值的差值
         ama_slope = ama_line.diff()
         # AMA动量: 当前AMA值相对前一期的变化百分比
-        ama_momentum = ama_line.pct_change()
+        ama_momentum = ama_line.pct_change(fill_method=None)
         # AMA波动率: 一定周期内AMA动量的标准差
         ama_volatility = ama_momentum.rolling(window=10).std()
         
@@ -135,6 +142,23 @@ class AMA:
             'ama_slope': ama_slope,
             'ama_momentum': ama_momentum,
             'ama_volatility': ama_volatility
+        }
+
+    def continuous_signals(self, close_prices, components):
+        """返回可直接用于排序/回归的连续 AMA 特征。
+
+        三个特征均只依赖当前及历史数据：效率比衡量趋势有效性，价格偏离衡量
+        收盘价相对 AMA 的方向和幅度，斜率速率衡量 AMA 的归一化变化速度。
+        """
+        ama_line = components["ama_line"]
+        efficiency_ratio = components["efficiency_ratio"].clip(lower=0.0, upper=1.0).fillna(0.0)
+        denominator = ama_line.abs().replace(0.0, np.nan)
+        price_bias = ((close_prices - ama_line) / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        slope_rate = (components["ama_slope"] / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        return {
+            "efficiency_ratio": efficiency_ratio,
+            "price_bias": price_bias,
+            "slope_rate": slope_rate,
         }
 
     # 交叉信号 (价格与AMA线)
@@ -230,19 +254,42 @@ class AMA:
         }
 
     # 轨道突破信号 (AMA线 +/- 波动率 * 乘数)
+    @staticmethod
+    def _continuous_boundary_score(
+        directional_gap,
+        scale,
+        touch_weight=0.25,
+        pre_width=0.5,
+        post_width=0.75,
+    ):
+        """将边界距离映射为单调连续分数，负侧预热、正侧突破后饱和。"""
+        safe_scale = scale.abs().replace(0.0, np.nan)
+        normalized_gap = directional_gap / safe_scale
+        pre_score = touch_weight * np.exp(
+            -0.5 * (normalized_gap / pre_width) ** 2
+        )
+        post_score = touch_weight + (1.0 - touch_weight) * (
+            1.0 - np.exp(-normalized_gap.clip(lower=0.0) / post_width)
+        )
+        score = pre_score.where(normalized_gap < 0.0, post_score)
+        return score.clip(lower=0.0, upper=1.0).fillna(0.0)
+
     def band_signals(self, close_prices, ama_line, ama_volatility, multiplier=2):
         """生成轨道突破信号"""
-        # 计算上下轨 (AMA线 +/- 乘数 * AMA波动率 * AMA线)
-        upper_band = ama_line + multiplier * ama_volatility * ama_line
-        lower_band = ama_line - multiplier * ama_volatility * ama_line
-        
-        # 突破上轨
-        upper_breakthrough = ((close_prices.shift(1) <= upper_band.shift(1)) & 
-                             (close_prices > upper_band)).astype(float) * self.signal_strength["upper_breakthrough"]
-        
-        # 跌破下轨
-        lower_breakdown = ((close_prices.shift(1) >= lower_band.shift(1)) & 
-                          (close_prices < lower_band)).astype(float) * self.signal_strength["lower_breakdown"]
+        # AMA 自身动量的波动率远小于价格相对均线的实际摆动，直接用它构造
+        # 轨道会让连续分数大面积饱和。改用价格残差的 20 根滚动标准差。
+        del ama_volatility
+        boundary_scale = (close_prices - ama_line).rolling(window=20).std()
+        upper_band = ama_line + multiplier * boundary_scale
+        lower_band = ama_line - multiplier * boundary_scale
+        upper_breakthrough = self._continuous_boundary_score(
+            close_prices - upper_band,
+            boundary_scale,
+        )
+        lower_breakdown = -self._continuous_boundary_score(
+            lower_band - close_prices,
+            boundary_scale,
+        )
         
         return {
             "upper_breakthrough": upper_breakthrough,
@@ -276,7 +323,8 @@ class AMA:
             self.divergence_signals(Close_data, components['ama_line'], divergence_threshold),
             self.efficiency_signals(components['efficiency_ratio']),
             self.momentum_signals(components['ama_momentum']),
-            self.band_signals(Close_data, components['ama_line'], components['ama_volatility'])
+            self.band_signals(Close_data, components['ama_line'], components['ama_volatility']),
+            self.continuous_signals(Close_data, components),
         ]
         
         # 4. 合并所有信号
@@ -333,7 +381,8 @@ class AMA:
             (self.divergence_signals(Close_data, components['ama_line'], divergence_threshold), "背离信号"),
             (self.efficiency_signals(components['efficiency_ratio']), "效率比信号"),
             (self.momentum_signals(components['ama_momentum']), "动量信号"),
-            (self.band_signals(Close_data, components['ama_line'], components['ama_volatility']), "轨道信号")
+            (self.band_signals(Close_data, components['ama_line'], components['ama_volatility']), "轨道信号"),
+            (self.continuous_signals(Close_data, components), "连续特征"),
         ]
         
         # 转换为记录并合并
@@ -403,6 +452,7 @@ class AMA:
         efficiency_sigs = self.efficiency_signals(components['efficiency_ratio'])
         momentum_sigs = self.momentum_signals(components['ama_momentum'])
         band_sigs = self.band_signals(Close_data, components['ama_line'], components['ama_volatility'])
+        continuous_sigs = self.continuous_signals(Close_data, components)
         
         # 3. 合并所有信号字典
         all_signals_dict = {
@@ -411,7 +461,8 @@ class AMA:
             **divergence_sigs, 
             **efficiency_sigs, 
             **momentum_sigs, 
-            **band_sigs
+            **band_sigs,
+            **continuous_sigs,
         }
         
         # 4. 过滤信号
@@ -521,6 +572,38 @@ class AMA:
             """
             完全拆分AMA的交叉、趋势增强、效率比等信号。
             """
+            # 宽表中较晚上市的标的在开头存在 NaN，不能用全局第 period 行
+            # 初始化该列。按每列有效 K 线压缩计算，再映射回原交易日轴。
+            if Close_data.isna().any().any():
+                result = {
+                    name: pd.DataFrame(np.nan, index=Close_data.index, columns=Close_data.columns)
+                    for name in self.all_signals
+                }
+                for raw_code in Close_data.columns:
+                    valid_close = Close_data[raw_code].dropna().astype(float)
+                    if valid_close.empty:
+                        continue
+                    code = str(raw_code)
+                    compact_close = pd.DataFrame(
+                        {code: valid_close.to_numpy(dtype=float)},
+                        index=pd.RangeIndex(len(valid_close)),
+                    )
+                    compact_components = _bootstrap_ama_components(
+                        compact_close,
+                        period=period,
+                        fast_sc=fast_sc,
+                        slow_sc=slow_sc,
+                    )
+                    compact_factors = _ama_signal_frames(
+                        self,
+                        compact_close,
+                        compact_components,
+                        period=period,
+                    )
+                    for name, frame in compact_factors.items():
+                        result[name].loc[valid_close.index, raw_code] = frame[code].to_numpy()
+                return result
+
             comp = self.get_ama_components(Close_data, period, fast_sc, slow_sc)
             
             cross = self.cross_signals(Close_data, comp['ama_line'])
@@ -529,8 +612,9 @@ class AMA:
             eff = self.efficiency_signals(comp['efficiency_ratio'])
             mom = self.momentum_signals(comp['ama_momentum'])
             band = self.band_signals(Close_data, comp['ama_line'], comp['ama_volatility'])
+            continuous = self.continuous_signals(Close_data, comp)
 
-            all_factors = {**cross, **trend, **div, **eff, **mom, **band}
+            all_factors = {**cross, **trend, **div, **eff, **mom, **band, **continuous}
             
             for name in all_factors:
                 all_factors[name].iloc[:period * 2] = 0.0
@@ -591,6 +675,12 @@ def load_ama_state_cache(
             ama_tail = _decode_float_array(row["ama_tail_bytes"])
             if not (len(tail_dates) == len(close_tail) == len(ama_tail)):
                 continue
+            # 旧状态或异常写入可能包含同一交易日的重复尾部值；三组数组必须整体对齐去重。
+            tail_dates = pd.DatetimeIndex(tail_dates).floor("D")
+            keep = ~tail_dates.duplicated(keep="last")
+            tail_dates = tail_dates[keep]
+            close_tail = close_tail[keep]
+            ama_tail = ama_tail[keep]
             code = str(row["htsc_code"]).strip().upper()
             states[code] = {
                 "htsc_code": code,
@@ -685,6 +775,7 @@ def _ama_signal_frames(
             components["ama_line"],
             components["ama_volatility"],
         ),
+        **analyzer.continuous_signals(close_prices, components),
     }
     for frame in factors.values():
         frame.iloc[: period * 2] = 0.0
@@ -762,7 +853,7 @@ def _bootstrap_ama_components(
             )
     ama_line = pd.DataFrame(ama_np, index=close_prices.index, columns=close_prices.columns)
     ama_slope = ama_line.diff()
-    ama_momentum = ama_line.pct_change()
+    ama_momentum = ama_line.pct_change(fill_method=None)
     ama_volatility = ama_momentum.rolling(window=10).std()
     return {
         "ama_line": ama_line.ffill().fillna(0.0),
@@ -914,13 +1005,20 @@ def build_ama_factor_matrices_with_state(
             continue
 
         tail_dates = pd.DatetimeIndex(state["tail_dates"]).floor("D")
+        keep = ~tail_dates.duplicated(keep="last")
+        tail_dates = tail_dates[keep]
+        close_tail_values = np.asarray(state["close_tail"], dtype=float)[keep]
+        ama_tail_values = np.asarray(state["ama_tail"], dtype=float)[keep]
+        if len(tail_dates) < period + 1:
+            bootstrap_columns.append(raw_code)
+            continue
         tail_close = pd.Series(
-            np.asarray(state["close_tail"], dtype=float) * scale,
+            close_tail_values * scale,
             index=tail_dates,
             name=code,
         )
         tail_ama = pd.Series(
-            np.asarray(state["ama_tail"], dtype=float) * scale,
+            ama_tail_values * scale,
             index=tail_dates,
             name=code,
         )

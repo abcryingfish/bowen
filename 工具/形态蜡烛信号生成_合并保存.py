@@ -547,11 +547,9 @@ def _backward_factor_series(xdy_series: pd.Series) -> pd.Series:
     if values.empty:
         return pd.Series(dtype=np.float64)
     raw_values = values.to_numpy(dtype=np.float64)
-    segment_start = np.ones(len(raw_values), dtype=bool)
-    if len(raw_values) > 1:
-        segment_start[1:] = raw_values[1:] != raw_values[:-1]
-    segment_factors = np.where(segment_start, raw_values, 1.0)
-    return pd.Series(np.cumprod(segment_factors), index=values.index, dtype=np.float64)
+    # Equal adjacent values can be distinct dated events; accumulate every
+    # event multiplier rather than deduplicating by numeric value.
+    return pd.Series(np.cumprod(raw_values), index=values.index, dtype=np.float64)
 
 
 def load_wide_xdy_series(

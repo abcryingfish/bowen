@@ -327,6 +327,40 @@ def test_load_adjusted_close_falls_back_to_wide_xdy(tmp_path) -> None:
     assert result.loc[pd.Timestamp("2026-01-02"), "A.SZ"] == pytest.approx(22.0)
 
 
+def test_load_adjusted_close_does_not_reaccumulate_wide_xdy(tmp_path) -> None:
+    market_dir = tmp_path / "market"
+    wide_dir = tmp_path / "wide_xdy"
+    month_market = market_dir / "year=2026" / "month=01"
+    month_wide = wide_dir / "year=2026" / "month=01"
+    month_market.mkdir(parents=True)
+    month_wide.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "time": pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-03"]),
+            "htsc_code": ["A.SZ", "A.SZ", "A.SZ"],
+            "close": [10.0, 11.0, 12.0],
+        }
+    ).to_parquet(month_market / "merged.parquet")
+    pd.DataFrame(
+        {
+            "htsc_code": ["A.SZ"],
+            "2026/01/01": [2.0],
+            "2026/01/02": [2.0],
+            "2026/01/03": [2.0],
+        }
+    ).to_parquet(month_wide / "merged.parquet")
+
+    result = load_adjusted_close(
+        market_base_dir=market_dir,
+        adj_factor_daily_dir=tmp_path / "missing-fast",
+        wide_xdy_dir=wide_dir,
+        start_date="2026-01-01",
+        end_date="2026-01-03",
+    )
+
+    assert result["A.SZ"].tolist() == pytest.approx([20.0, 22.0, 24.0])
+
+
 def test_load_adjusted_close_fills_identity_for_missing_factor_rows(tmp_path) -> None:
     market_dir = tmp_path / "market"
     factor_dir = tmp_path / "adj_factor_daily"

@@ -53,6 +53,11 @@ index.html     ->  组合图表/index.html
 | 舆情面 | `/舆情面/index.html` | 舆情相关视图 |
 | 基本面 | `/基本面/index.html` | 基本面/公司数据相关视图 |
 | 实盘面 | `/实盘面/index.html` | 实盘或实时观察页面 |
+| 市场研究 | `/市场研究/index.html` | 沪、深、科创、全 A 集中度与 RSI 比值 |
+| 板块轮动 | `/板块轮动/index.html` | 同花顺板块收益曲线、排序、搜索和成分查看 |
+| 模型有效性 | `/模型有效性/index.html` | 个股风格模型高低分组合表现、持仓和交易 |
+| 多维度分析 | `/多维度分析/index.html` | 板块研究正式报告读取与全展开视图 |
+| 量化因子有效性检验 | `/量化因子有效性检验/dashboard.html` | 因子收益检验、异步任务和历史记录 |
 | 结果展示 | `/结果展示/index.html` | 回测历史列表、结果跳转、删除等 |
 | 组合结果 | `/组合结果/index.html` | 组合回测结果外壳，内部嵌入组合图表 |
 | 组合图表 | `/组合图表/index.html` | 组合曲线图表内嵌页，一般不直接作为主入口打开 |
@@ -139,6 +144,14 @@ http://127.0.0.1:8086/量化因子.html
 
 用于和实时行情、实时因子、实盘状态类模块对接。这个页面与历史回测页面职责不同，修改前要确认数据来源和刷新逻辑。
 
+### 独立研究与检验页面
+
+- `市场研究/`：四类 A 股市场集中度和 RSI 比值，详见 [`市场研究/README.md`](市场研究/README.md)。
+- `板块轮动/`：同花顺 881/882/885/886 指数与成分，详见 [`板块轮动/README.md`](板块轮动/README.md)。
+- `模型有效性/`：风格模型组合账本，详见 [`模型有效性/README.md`](模型有效性/README.md)。
+- `多维度分析/`：板块研究报告页，详见 [`多维度分析/README.md`](多维度分析/README.md)。
+- `量化因子有效性检验/`：因子检验任务和记录，详见 [`量化因子有效性检验/README.md`](量化因子有效性检验/README.md)。
+
 ### `结果展示/`
 
 回测结果列表页。
@@ -218,6 +231,9 @@ result.html
 舆情面.html
 基本面.html
 实盘面.html
+市场研究.html
+板块轮动.html
+模型有效性.html
 结果展示.html
 ```
 
@@ -296,6 +312,8 @@ HTTP API 入口，提供前端页面需要的数据接口。
 - 回测模型列表。
 - 回测任务触发。
 - 基本面/公司数据接口转发。
+- 市场研究、板块指数、成分和风格模型接口。
+- 因子有效性检验异步任务与记录接口。
 
 修改前端请求路径时，通常要同步看这里。
 
@@ -333,6 +351,14 @@ HTTP API 入口，提供前端页面需要的数据接口。
 
 如果页面显示前复权、后复权或价格调整相关逻辑异常，需要检查这里和对应数据路径。
 
+### 独立研究服务
+
+- `market_research_service.py`：市场集中度和 RSI 比值。
+- `style_monitor_service.py`：风格模型组合曲线、摘要、持仓和交易查询。
+- `style_monitor_job_service.py`：风格组合账本更新任务。
+- `sector_research_service.py`：板块研究实体、报告和看板数据。
+- `量化因子有效性检验/factor_validation_service.py`：因子检验计算、异步任务与记录。
+
 ---
 
 ## 页面之间的关系
@@ -344,6 +370,11 @@ HTTP API 入口，提供前端页面需要的数据接口。
   -> 形态面/index.html
   -> 舆情面/index.html
   -> 基本面/index.html
+  -> 市场研究/index.html
+  -> 板块轮动/index.html
+  -> 模型有效性/index.html
+  -> 多维度分析/index.html
+  -> 量化因子有效性检验/dashboard.html
 
 量化因子/index.html
   -> 发起回测
@@ -474,6 +505,11 @@ cd C:\Users\Administrator\Desktop\python_venv
 | 基本面视图 | `基本面/index.html`、`基本面/board_fundamental.js`、`fundamental_data_service.py` |
 | 舆情视图 | `舆情面/index.html`、`shared/chart_board_info_core.js` |
 | 实盘视图 | `实盘面/index.html`、`实盘面/live_board.js` |
+| 市场研究 | `市场研究/`、`market_research_service.py`、`api_server.py` |
+| 板块轮动 | `板块轮动/`、`market_data_service.py`、`api_server.py` |
+| 模型有效性 | `模型有效性/`、`style_monitor_service.py`、`style_monitor_job_service.py` |
+| 多维度分析 | `多维度分析/index.html`、`sector_research_service.py` |
+| 因子有效性检验 | `量化因子有效性检验/`、其 `factor_validation_service.py`、`api_server.py` |
 | API 路由 | `api_server.py` |
 | Parquet 行情/因子读取 | `market_data_service.py` |
 
@@ -509,6 +545,11 @@ rg -n "量化因子\.html|量化因子/index\.html" C:\Users\Administrator\Deskt
   舆情面/
   基本面/
   实盘面/
+  市场研究/
+  板块轮动/
+  模型有效性/
+  多维度分析/
+  量化因子有效性检验/
   结果展示/
   组合结果/
   组合图表/
@@ -517,6 +558,9 @@ rg -n "量化因子\.html|量化因子/index\.html" C:\Users\Administrator\Deskt
   舆情面.html
   基本面.html
   实盘面.html
+  市场研究.html
+  板块轮动.html
+  模型有效性.html
   结果展示.html
   result.html
   index.html

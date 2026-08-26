@@ -66,7 +66,13 @@ class WILLR:
             # 将原文件中的"粘合"、"发散"等重复/模糊信号简化为上述已定义的信号，避免重复定义。
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "normalized_value",
+            "slope_rate",
+            "range_position",
+        ]
+
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_willr_components(self, High_data, Low_data, Close_data, willr_period=14, willr_smooth=3):
         """计算WILLR核心组件（willr_raw, willr_smooth）"""
@@ -77,8 +83,8 @@ class WILLR:
         
         # WILLR = (Highest High - Close) / (Highest High - Lowest Low) * (-100)
         range_diff = highest_high - lowest_low
-        # 避免除以零，将分母为零的地方替换为1（此时分子也为0，WILLR结果为0）
-        range_diff_safe = range_diff.replace(0, 1) 
+        # 无价格区间时 WILLR 未定义，保留 NaN 以避免误判为极端超买。
+        range_diff_safe = range_diff.replace(0, np.nan)
         
         willr_raw = ((highest_high - Close_data) / range_diff_safe) * (-100)
         
@@ -121,12 +127,41 @@ class WILLR:
         signals["turn_positive"] = turn_positive.astype(float) * self.signal_strength["turn_positive"]
         signals["turn_negative"] = turn_negative.astype(float) * self.signal_strength["turn_negative"]
         
-        # 极值反转 (-10以上向下 或 -90以下向上)
-        extreme_reversal = ((willr_smooth > -10) & (willr_smooth < prev_willr)) | \
-                           ((willr_smooth < -90) & (willr_smooth > prev_willr))
-        signals["extreme_reversal"] = extreme_reversal.astype(float) * self.signal_strength["extreme_reversal"]
-
+        # 极值反转：超卖区向上为正，超买区向下为负。
+        extreme_reversal_bull = (willr_smooth < -90) & (willr_smooth > prev_willr)
+        extreme_reversal_bear = (willr_smooth > -10) & (willr_smooth < prev_willr)
+        signals["extreme_reversal"] = pd.DataFrame(
+            np.select(
+                [extreme_reversal_bull, extreme_reversal_bear],
+                [self.signal_strength["extreme_reversal"], -self.signal_strength["extreme_reversal"]],
+                default=0.0,
+            ),
+            index=willr_smooth.index,
+            columns=willr_smooth.columns,
+        )
         return signals
+
+    def continuous_signals(self, willr_smooth, lookback_period=20):
+        """返回可用于排序/回归的连续 WILLR 特征。"""
+        normalized_value = ((willr_smooth + 50.0) / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        slope_rate = (willr_smooth.diff() / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+
+        willr_min = willr_smooth.rolling(window=lookback_period, min_periods=1).min()
+        willr_max = willr_smooth.rolling(window=lookback_period, min_periods=1).max()
+        willr_range = (willr_max - willr_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (willr_smooth - willr_min) / willr_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "normalized_value": normalized_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
+        }
 
     def get_divergence_signals(self, close_prices, willr_smooth, lookback_period=10):
         """生成顶底背离信号（简化向量化实现）"""
@@ -399,9 +434,10 @@ class WILLR:
             cross_zone = self.get_cross_and_zone_signals(willr_smooth_line)
             div = self.get_divergence_signals(Close_data, willr_smooth_line)
             trend = self.get_trend_and_form_signals(willr_smooth_line)
+            continuous = self.continuous_signals(willr_smooth_line)
 
             # 3. 合并所有字典
-            all_factors = {**cross_zone, **div, **trend}
+            all_factors = {**cross_zone, **div, **trend, **continuous}
             
             # 4. 清洗数据 (去除前N个无效数据, fillna)
             # 计算需要跳过的行数 (保守估计)

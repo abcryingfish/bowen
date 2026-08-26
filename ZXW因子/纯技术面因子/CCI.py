@@ -95,8 +95,9 @@ class CCI:
             "bull_bear_transition": 0.5,
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 连续特征保留 CCI 幅度、变化速度和历史区间位置。
+        self.continuous_signal_names = ["normalized_value", "slope_rate", "range_position"]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
         
         # 复杂形态信号列表（未在主要函数中实现，仅用于内部管理）
         self.complex_patterns = [
@@ -127,7 +128,7 @@ class CCI:
         cci_line = (typical_price - sma_tp) / divisor
         
         # 填充初始NaN值 (由于rolling计算)
-        cci_line = cci_line.fillna(method='ffill').fillna(0)
+        cci_line = cci_line.ffill().fillna(0)
         
         return cci_line
 
@@ -237,6 +238,22 @@ class CCI:
             "bottom_divergence": is_bottom_divergence.fillna(0)
         }
 
+    def continuous_signals(self, cci_line, lookback_period=20):
+        """返回可直接用于排序/回归的连续 CCI 特征。"""
+        normalized_value = (cci_line / 200.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        slope_rate = (cci_line.diff() / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        rolling_min = cci_line.rolling(lookback_period, min_periods=lookback_period).min()
+        rolling_max = cci_line.rolling(lookback_period, min_periods=lookback_period).max()
+        span = (rolling_max - rolling_min).replace(0.0, np.nan)
+        range_position = (2.0 * (cci_line - rolling_min) / span - 1.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        return {
+            "normalized_value": normalized_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
+        }
+
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, enabled_signals=None, cci_period=20):
         """
         整合启用的信号，生成最终的CCI信号强度矩阵
@@ -264,10 +281,11 @@ class CCI:
         zero_cross = self.zero_cross_signals(cci_line)
         extreme = self.extreme_signals(cci_line)
         momentum_rev = self.momentum_reversal_signals(cci_line)
-        divergence = self.divergence_signals(cci_line, Close_data) 
+        divergence = self.divergence_signals(cci_line, Close_data)
+        continuous = self.continuous_signals(cci_line, cci_period)
 
         # 合并所有信号字典
-        all_signals_dict = {**zero_cross, **extreme, **momentum_rev, **divergence}
+        all_signals_dict = {**zero_cross, **extreme, **momentum_rev, **divergence, **continuous}
 
         # 3. 累加启用的信号强度
         for signal_name, signal_matrix in all_signals_dict.items():
@@ -335,7 +353,8 @@ class CCI:
             self.zero_cross_signals(cci_line),
             self.extreme_signals(cci_line),
             self.momentum_reversal_signals(cci_line),
-            self.divergence_signals(cci_line, Close_data)
+            self.divergence_signals(cci_line, Close_data),
+            self.continuous_signals(cci_line, cci_period),
         ]
         
         # 3. 统一处理所有信号记录
@@ -391,9 +410,10 @@ class CCI:
         extreme = self.extreme_signals(cci_line)
         momentum_rev = self.momentum_reversal_signals(cci_line)
         divergence = self.divergence_signals(cci_line, Close_data)
+        continuous = self.continuous_signals(cci_line, cci_period)
         
         # 3. 合并所有信号字典
-        all_signals_dict = {**zero_cross, **extreme, **momentum_rev, **divergence}
+        all_signals_dict = {**zero_cross, **extreme, **momentum_rev, **divergence, **continuous}
         
         # 4. 过滤信号
         if exclude_complex_patterns:
@@ -475,8 +495,9 @@ class CCI:
         extreme = self.extreme_signals(cci_line)
         mom = self.momentum_reversal_signals(cci_line)
         div = self.divergence_signals(cci_line, Close_data)
+        continuous = self.continuous_signals(cci_line, cci_period)
 
-        all_factors = {**zero, **extreme, **mom, **div}
+        all_factors = {**zero, **extreme, **mom, **div, **continuous}
         
         for name in all_factors:
             all_factors[name].iloc[:cci_period * 2] = 0.0
@@ -494,9 +515,10 @@ class CCI:
         extreme = self.extreme_signals(cci_line)
         mom = self.momentum_reversal_signals(cci_line)
         div = self.divergence_signals(cci_line, Close_data)
+        continuous = self.continuous_signals(cci_line, cci_period)
 
         # 字典解包合并，确保每个Key（如 zero_line_breakthrough）都是独立矩阵
-        all_factors = {**zero, **extreme, **mom, **div}
+        all_factors = {**zero, **extreme, **mom, **div, **continuous}
         
         for name in all_factors:
             all_factors[name].iloc[:cci_period * 2] = 0.0

@@ -95,7 +95,7 @@ def load_ln_free_float_market_value(
             f"start_date 不能晚于 end_date: {start_dt.date()} > {end_dt.date()}"
         )
 
-    factor_dir = Path(base_dir) / f"factor={INPUT_FACTOR_NAME}"
+    factor_dir = Path(base_dir) / f"factor={INPUT_FACTOR_KEY}"
     files: list[Path] = []
     missing_months: list[str] = []
     for month_start in _month_starts(start_dt, end_dt):

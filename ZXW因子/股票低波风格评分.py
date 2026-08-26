@@ -133,7 +133,7 @@ def load_low_volatility_source_frames(
         for month_start in _month_starts(start_dt, end_dt):
             month_dir = (
                 Path(base_dir)
-                / f"factor={factor_name}"
+                / f"factor={factor_key}"
                 / f"year={month_start.year}"
                 / f"month={month_start.month:02d}"
             )

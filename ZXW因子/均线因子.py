@@ -19,15 +19,33 @@ def _cross_down_price(price: pd.DataFrame, ma_line: pd.DataFrame) -> pd.DataFram
 def build_moving_average_factor_bundle(
     C: pd.DataFrame,
     windows: Iterable[int] = (5, 10, 15, 20, 30, 40, 50, 60, 70, 120),
+    selected_factors: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     index, columns = C.index, C.columns
+    selected = (
+        {str(key).strip() for key in selected_factors if str(key).strip()}
+        if selected_factors is not None
+        else None
+    )
+
+    def _want(key: str) -> bool:
+        return selected is None or key in selected
 
     win_list = sorted({int(w) for w in windows if int(w) > 0})
     if len(win_list) < 2:
         raise ValueError("windows 至少需要包含两个正整数。")
 
+    needed_windows: set[int] = set()
+    for w in win_list:
+        if _want(f"ma_{w}") or _want(f"dead_cross_price_ma{w}"):
+            needed_windows.add(w)
+    extra_pairs = [(5, 10), (5, 15), (15, 20)]
+    for short_w, long_w in extra_pairs:
+        if _want(f"dead_cross_ma{short_w}_ma{long_w}"):
+            needed_windows.update((short_w, long_w))
+
     ma_map: dict[int, pd.DataFrame] = {
-        w: C.rolling(window=w, min_periods=1).mean() for w in win_list
+        w: C.rolling(window=w, min_periods=1).mean() for w in sorted(needed_windows)
     }
 
     factor_dfs: dict[str, pd.DataFrame] = {}
@@ -35,34 +53,40 @@ def build_moving_average_factor_bundle(
 
     for w in win_list:
         eng_name = f"ma_{w}"
+        if not _want(eng_name):
+            continue
         ch_name = f"MA{w}"
         factor_dfs[eng_name] = ma_map[w].reindex(index=index, columns=columns).astype(float)
         factor_name_map[ch_name] = eng_name
 
     close_price = C.reindex(index=index, columns=columns).astype(float)
     for w in win_list:
-        signal_down = _cross_down_price(close_price, ma_map[w]).reindex(index=index, columns=columns)
         eng_name_down = f"dead_cross_price_ma{w}"
+        if not _want(eng_name_down):
+            continue
+        signal_down = _cross_down_price(close_price, ma_map[w]).reindex(index=index, columns=columns)
         ch_name_down = f"价格下穿MA{w}"
         factor_dfs[eng_name_down] = signal_down.astype(float)
         factor_name_map[ch_name_down] = eng_name_down
 
     # 额外保留指定的均线下穿均线信号
-    extra_pairs = [(5, 10), (5, 15), (15, 20)]
     for short_w, long_w in extra_pairs:
+        eng_name_down = f"dead_cross_ma{short_w}_ma{long_w}"
+        if not _want(eng_name_down):
+            continue
         if short_w not in ma_map or long_w not in ma_map:
             continue
         signal_down = (ma_map[short_w] <= ma_map[long_w]) & (
             ma_map[short_w].shift(1) > ma_map[long_w].shift(1)
         )
-        eng_name_down = f"dead_cross_ma{short_w}_ma{long_w}"
         ch_name_down = f"MA{short_w}下穿MA{long_w}"
         factor_dfs[eng_name_down] = signal_down.reindex(index=index, columns=columns).astype(float)
         factor_name_map[ch_name_down] = eng_name_down
 
-    zxw_ma = build_ma_class_zxw_bundle(C)
-    factor_dfs.update(zxw_ma["factor_dfs"])
-    factor_name_map.update(zxw_ma["factor_name_map"])
+    if selected is None or bool(selected & set(_ZXW_MA_CLASS_FACTOR_KEYS)):
+        zxw_ma = build_ma_class_zxw_bundle(C, selected_factors=selected)
+        factor_dfs.update(zxw_ma["factor_dfs"])
+        factor_name_map.update(zxw_ma["factor_name_map"])
 
     return {
         "factor_dfs": factor_dfs,
@@ -70,13 +94,21 @@ def build_moving_average_factor_bundle(
     }
 
 
-def build_ma_class_zxw_bundle(C: pd.DataFrame) -> dict[str, Any]:
+def build_ma_class_zxw_bundle(
+    C: pd.DataFrame,
+    selected_factors: Iterable[str] | None = None,
+) -> dict[str, Any]:
     """
     通达信「均线类」0～6、全套中间量与 MA13/20/21/30/34/60/120/180/250。
     MA/STD 满窗（min_periods=周期）；无效值落盘为 0。
     """
     index, columns = C.index, C.columns
     C = C.reindex(index=index, columns=columns).astype(float)
+    selected = (
+        {str(key).strip() for key in selected_factors if str(key).strip()}
+        if selected_factors is not None
+        else None
+    )
 
     def _ma(n: int) -> pd.DataFrame:
         return C.rolling(window=n, min_periods=n).mean()
@@ -203,44 +235,49 @@ def build_ma_class_zxw_bundle(C: pd.DataFrame) -> dict[str, Any]:
     )
     ma_lei_df = pd.DataFrame(ma_lei, index=index, columns=columns).fillna(0.0)
 
-    factor_dfs: dict[str, pd.DataFrame] = {
-        "ma_13_zxw": _f(ma13),
-        "ma_20_zxw": _f(ma20),
-        "ma_21_zxw": _f(ma21),
-        "ma_30_zxw": _f(ma30),
-        "ma_34_zxw": _f(ma34),
-        "ma_60_zxw": _f(ma60),
-        "ma_120_zxw": _f(ma120),
-        "ma_180_zxw": _f(ma180),
-        "ma_250_zxw": _f(ma250),
-        "ma_min_zxw": _f(ma_min),
-        "ma_max_zxw": _f(ma_max),
-        "ma_second_max_zxw": _f(ma_second_max),
-        "chu_jun_bo_dong_max_zxw": _f(chu_jun_bo_dong),
-        "duo_tou_a_jia_zxw": _sig(duo_tou_a_jia),
-        "duo_a_zxw": _sig(duo_a),
-        "zhi_you_250_ya1_zxw": _sig(zhi_you_250_ya1),
-        "zhi_you_250_ya21_zxw": _sig(zhi_you_250_ya21),
-        "zhi_250_ya1_zhi_ping_zxw": _sig(zhi_250_ya1_zhi_ping),
-        "zhi_you_250_ya22_zxw": _sig(zhi_you_250_ya22),
-        "zhi_you_250_ya23_zxw": _sig(zhi_you_250_ya23),
-        "xiao_60_duo_zxw": _sig(xiao_60_duo),
-        "xiao_60_kong_zxw": _sig(xiao_60_kong),
-        "xiao_30_duo_zxw": _sig(xiao_30_duo),
-        "nian_ban_shuang_ya31_zxw": _sig(nian_ban_shuang_ya31),
-        "zhi_cheng1_zxw": _sig(zhi_cheng1),
-        "zhi_cheng2_zxw": _sig(zhi_cheng2),
-        "zhi_cheng3_zxw": _sig(zhi_cheng3),
-        "zhi_cheng4_zxw": _sig(zhi_cheng4),
-        "zhi_cheng5_zxw": _sig(zhi_cheng5),
-        "zhi_cheng6_zxw": _sig(zhi_cheng6),
-        "zhi_cheng_shu_zxw": _f(zhi_cheng_shu),
-        "quan_kong_tou_zxw": _sig(quan_kong_tou),
-        "da2_jun_zhi_cheng_zxw": _sig(da2_jun_zhi_cheng),
-        "zhong_duo_zhi_zxw": _sig(zhong_duo_zhi),
-        "xiao_zhi_zxw": _sig(xiao_zhi),
-        "fei_quan_po_zxw": _sig(fei_quan_po),
-        "ma_class_zxw": _f(ma_lei_df),
+    factor_values: dict[str, tuple[pd.DataFrame, Any]] = {
+        "ma_13_zxw": (ma13, _f),
+        "ma_20_zxw": (ma20, _f),
+        "ma_21_zxw": (ma21, _f),
+        "ma_30_zxw": (ma30, _f),
+        "ma_34_zxw": (ma34, _f),
+        "ma_60_zxw": (ma60, _f),
+        "ma_120_zxw": (ma120, _f),
+        "ma_180_zxw": (ma180, _f),
+        "ma_250_zxw": (ma250, _f),
+        "ma_min_zxw": (ma_min, _f),
+        "ma_max_zxw": (ma_max, _f),
+        "ma_second_max_zxw": (ma_second_max, _f),
+        "chu_jun_bo_dong_max_zxw": (chu_jun_bo_dong, _f),
+        "duo_tou_a_jia_zxw": (duo_tou_a_jia, _sig),
+        "duo_a_zxw": (duo_a, _sig),
+        "zhi_you_250_ya1_zxw": (zhi_you_250_ya1, _sig),
+        "zhi_you_250_ya21_zxw": (zhi_you_250_ya21, _sig),
+        "zhi_250_ya1_zhi_ping_zxw": (zhi_250_ya1_zhi_ping, _sig),
+        "zhi_you_250_ya22_zxw": (zhi_you_250_ya22, _sig),
+        "zhi_you_250_ya23_zxw": (zhi_you_250_ya23, _sig),
+        "xiao_60_duo_zxw": (xiao_60_duo, _sig),
+        "xiao_60_kong_zxw": (xiao_60_kong, _sig),
+        "xiao_30_duo_zxw": (xiao_30_duo, _sig),
+        "nian_ban_shuang_ya31_zxw": (nian_ban_shuang_ya31, _sig),
+        "zhi_cheng1_zxw": (zhi_cheng1, _sig),
+        "zhi_cheng2_zxw": (zhi_cheng2, _sig),
+        "zhi_cheng3_zxw": (zhi_cheng3, _sig),
+        "zhi_cheng4_zxw": (zhi_cheng4, _sig),
+        "zhi_cheng5_zxw": (zhi_cheng5, _sig),
+        "zhi_cheng6_zxw": (zhi_cheng6, _sig),
+        "zhi_cheng_shu_zxw": (zhi_cheng_shu, _f),
+        "quan_kong_tou_zxw": (quan_kong_tou, _sig),
+        "da2_jun_zhi_cheng_zxw": (da2_jun_zhi_cheng, _sig),
+        "zhong_duo_zhi_zxw": (zhong_duo_zhi, _sig),
+        "xiao_zhi_zxw": (xiao_zhi, _sig),
+        "fei_quan_po_zxw": (fei_quan_po, _sig),
+        "ma_class_zxw": (ma_lei_df, _f),
+    }
+    factor_dfs = {
+        key: converter(value)
+        for key, (value, converter) in factor_values.items()
+        if selected is None or key in selected
     }
     factor_name_map: dict[str, str] = {
         "MA13": "ma_13_zxw",
@@ -281,21 +318,31 @@ def build_ma_class_zxw_bundle(C: pd.DataFrame) -> dict[str, Any]:
         "非全破": "fei_quan_po_zxw",
         "均线类": "ma_class_zxw",
     }
+    factor_name_map = {
+        display_name: factor_key
+        for display_name, factor_key in factor_name_map.items()
+        if selected is None or factor_key in selected
+    }
     return {"factor_dfs": factor_dfs, "factor_name_map": factor_name_map}
 
 
 BUNDLE_ID = "moving_average"
 _DEFAULT_LOOKBACK_DAYS = 60
 
+
+def _calendar_lookback_days(required_bars: int) -> int:
+    """将交易日窗口转换为保守的自然日回看长度。"""
+    return (int(required_bars) * 3 + 1) // 2
+
 _DEFAULT_WINDOWS = (5, 10, 15, 20, 30, 40, 50, 60, 70, 120)
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {}
 for _w in _DEFAULT_WINDOWS:
-    FACTOR_LOOKBACK_DAYS[f"ma_{_w}"] = int(_w)
+    FACTOR_LOOKBACK_DAYS[f"ma_{_w}"] = _calendar_lookback_days(_w)
 for _w in _DEFAULT_WINDOWS:
-    FACTOR_LOOKBACK_DAYS[f"dead_cross_price_ma{_w}"] = int(_w) + 1
-FACTOR_LOOKBACK_DAYS["dead_cross_ma5_ma10"] = 11
-FACTOR_LOOKBACK_DAYS["dead_cross_ma5_ma15"] = 16
-FACTOR_LOOKBACK_DAYS["dead_cross_ma15_ma20"] = 21
+    FACTOR_LOOKBACK_DAYS[f"dead_cross_price_ma{_w}"] = _calendar_lookback_days(_w + 1)
+FACTOR_LOOKBACK_DAYS["dead_cross_ma5_ma10"] = _calendar_lookback_days(11)
+FACTOR_LOOKBACK_DAYS["dead_cross_ma5_ma15"] = _calendar_lookback_days(16)
+FACTOR_LOOKBACK_DAYS["dead_cross_ma15_ma20"] = _calendar_lookback_days(21)
 # 通达信满窗：MA250；STD(MA60,20) 约需 60+20-1=79 根
 _ZXW_CHUJUN_LOOKBACK = 79
 _ZXW_MA_CLASS_LOOKBACK = 280
@@ -357,18 +404,18 @@ _ZXW_MA_CLASS_FACTOR_KEYS = (
 )
 
 for _k, _days in _ZXW_MA_LINE_LOOKBACK.items():
-    FACTOR_LOOKBACK_DAYS[_k] = int(_days)
+    FACTOR_LOOKBACK_DAYS[_k] = _calendar_lookback_days(_days)
 for _k in _ZXW_MA_CLASS_FACTOR_KEYS:
     if _k not in FACTOR_LOOKBACK_DAYS:
-        FACTOR_LOOKBACK_DAYS[_k] = _ZXW_MA_CLASS_LOOKBACK
+        FACTOR_LOOKBACK_DAYS[_k] = _calendar_lookback_days(_ZXW_MA_CLASS_LOOKBACK)
 
 
 def get_factor_lookback_config() -> dict[str, Any]:
     return {
         "bundle_id": BUNDLE_ID,
         "bundle_lookback_days": max(
-            _DEFAULT_LOOKBACK_DAYS,
-            _ZXW_MA_CLASS_LOOKBACK,
+            _calendar_lookback_days(_DEFAULT_LOOKBACK_DAYS),
+            _calendar_lookback_days(_ZXW_MA_CLASS_LOOKBACK),
             max(FACTOR_LOOKBACK_DAYS.values(), default=0),
         ),
         "factor_lookback_days": dict(FACTOR_LOOKBACK_DAYS),

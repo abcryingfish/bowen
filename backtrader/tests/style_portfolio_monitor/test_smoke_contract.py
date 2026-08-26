@@ -12,3 +12,14 @@ def test_smoke_validation_requires_successful_theoretical_index_output():
     assert validate_smoke_result(valid)["ok"] is True
     valid["failed_models"] = [{"model_id": "growth_raw", "message": "失败"}]
     assert validate_smoke_result(valid)["ok"] is False
+
+
+def test_smoke_validation_accepts_model_already_at_target_date():
+    result = {
+        "completed_models": ["growth_raw"],
+        "skipped_models": ["growth_raw"],
+        "failed_models": [],
+        "processed_days": {"growth_raw": 0},
+    }
+
+    assert validate_smoke_result(result)["ok"] is True

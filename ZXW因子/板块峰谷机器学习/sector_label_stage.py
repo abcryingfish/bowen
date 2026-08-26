@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import duckdb
 import numpy as np
@@ -112,11 +113,29 @@ def build_sector_labels(market: pd.DataFrame) -> pd.DataFrame:
     return labels.sort_values(["time", "htsc_code"]).reset_index(drop=True)
 
 
-def write_partitioned_labels(labels: pd.DataFrame, output_path: Path) -> int:
+def write_partitioned_labels(
+    labels: pd.DataFrame,
+    output_path: Path,
+    *,
+    write_start_date: str | None = None,
+    write_end_date: str | None = None,
+) -> int:
     """覆盖式写入年月 merged.parquet，避免追加 part 导致重复。"""
 
     output_path.mkdir(parents=True, exist_ok=True)
     values = labels.copy()
+    periods = values["time"].dt.to_period("M")
+    if write_start_date:
+        start_period = pd.Timestamp(write_start_date).to_period("M")
+        values = values.loc[periods >= start_period].copy()
+        periods = periods.loc[values.index]
+    if write_end_date:
+        end_period = pd.Timestamp(write_end_date).to_period("M")
+        values = values.loc[periods <= end_period].copy()
+    if values.empty:
+        raise ValueError(
+            f"指定写入日期范围没有标签数据: {write_start_date} - {write_end_date}"
+        )
     values["year"] = values["time"].dt.year.astype(int)
     values["month"] = values["time"].dt.month.astype(int)
     written = 0
@@ -124,8 +143,17 @@ def write_partitioned_labels(labels: pd.DataFrame, output_path: Path) -> int:
         target = output_path / f"year={year}" / f"month={month:02d}"
         target.mkdir(parents=True, exist_ok=True)
         out = target / "merged.parquet"
+        temporary = target / f".merged.parquet.{uuid4().hex}.tmp"
         payload = group.drop(columns=["year", "month"])
-        pl.from_pandas(payload, include_index=False).write_parquet(out, compression="zstd")
+        temporary.unlink(missing_ok=True)
+        try:
+            pl.from_pandas(payload, include_index=False).write_parquet(
+                temporary,
+                compression="zstd",
+            )
+            temporary.replace(out)
+        finally:
+            temporary.unlink(missing_ok=True)
         written += len(payload)
     return written
 
@@ -201,13 +229,22 @@ def run_stage(
     report_path: Path,
     start_date: str,
     end_date: str,
+    write_start_date: str | None = None,
+    write_end_date: str | None = None,
 ) -> dict:
     market = load_sector_market(market_path, start_date=start_date, end_date=end_date)
     print(f"[阶段A] 行情行数={len(market):,}，板块数={market['htsc_code'].nunique()}")
     labels = build_sector_labels(market)
-    written = write_partitioned_labels(labels, output_path)
+    written = write_partitioned_labels(
+        labels,
+        output_path,
+        write_start_date=write_start_date,
+        write_end_date=write_end_date,
+    )
     report, coverage = audit_sector_labels(market, labels)
     report["written_rows"] = written
+    report["write_start_date"] = write_start_date
+    report["write_end_date"] = write_end_date
     report_path.mkdir(parents=True, exist_ok=True)
     (report_path / "label_audit.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -229,10 +266,19 @@ def main() -> None:
     parser.add_argument("--report-path", type=Path, default=DEFAULT_REPORT_PATH)
     parser.add_argument("--start-date", default="2016-01-01")
     parser.add_argument("--end-date", default=pd.Timestamp.today().strftime("%Y-%m-%d"))
+    parser.add_argument(
+        "--write-start-date",
+        default=None,
+        help="仅覆盖该日期起涉及的年月分区；标签计算仍使用完整起止区间",
+    )
+    parser.add_argument(
+        "--write-end-date",
+        default=None,
+        help="仅覆盖该日期止涉及的年月分区；标签计算仍使用完整起止区间",
+    )
     args = parser.parse_args()
     run_stage(**vars(args))
 
 
 if __name__ == "__main__":
     main()
-

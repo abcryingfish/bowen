@@ -292,7 +292,7 @@ def load_raw_value_factor_dfs(
     output: dict[str, pd.DataFrame] = {}
     for factor_name, factor_key in RAW_FACTOR_NAME_MAP.items():
         files: list[Path] = []
-        for month_dir in _month_directories(root / f"factor={factor_name}", start_dt, end_dt):
+        for month_dir in _month_directories(root / f"factor={factor_key}", start_dt, end_dt):
             merged = month_dir / "merged.parquet"
             if merged.is_file():
                 files.append(merged)

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>板块预测</title>
+  <link rel="icon" type="image/png" href="../shared/assets/bothwin-logo.png">
+  <link rel="stylesheet" href="./styles.css?v=20260825-2">
+</head>
+<body>
+  <header class="topbar">
+    <div class="eyebrow">BOWEN INVESTMENT · RESEARCH BOARD</div>
+    <div class="title-row"><div><h1>板块预测</h1><p>881行业 · 最近20日走势 · 资金占比 · 多周期参考预测</p></div><div class="asof"><span>数据状态</span><strong>正在读取实时数据</strong><small>更新时间以接口为准</small></div></div>
+  </header>
+  <main class="page-shell">
+    <section class="toolbar" aria-label="看板筛选">
+      <div class="toolbar-label">板块观察清单</div>
+      <div class="filters"><a class="filter-back" href="../板块轮动/index.html" aria-label="返回板块轮动" title="返回板块轮动"><span aria-hidden="true">&larr;</span>返回板块轮动</a><button class="filter active" data-filter="all">全部 881 行业</button></div>
+      <div class="probability-scale" aria-label="方向概率颜色刻度"><span>看涨</span><i></i><span>看跌</span></div>
+    </section>
+    <section id="sector-grid" class="sector-grid" aria-label="全部881行业卡片"></section>
+  </main>
+  <footer class="footer-brand"><img src="../shared/assets/bothwin-logo.png" alt="博闻投资 logo"><span>博闻投资</span><em>研究看板 · 内容仅供研究参考</em></footer>
+  <script src="./app.js"></script>
+</body>
+</html>

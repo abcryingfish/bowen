@@ -53,7 +53,12 @@ class MOM:
             "channel_pullback": 0.1,
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "momentum_rate",
+            "momentum_strength",
+            "volume_ratio",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_mom_components(self, close_prices, volume, mom_period=10):
         """向量化计算MOM核心组件"""
@@ -268,6 +273,18 @@ class MOM:
         # 复杂形态（头肩顶/底、楔形、三角形、通道等）在原代码中缺乏明确的向量化定义，故不实现。
 
         return signals
+
+    def continuous_signals(self, mom_line, mom_rate, mom_volatility, volume_ratio):
+        """返回可直接用于排序/回归的连续 MOM 特征。"""
+        momentum_rate_value = (mom_rate / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        volatility_denominator = mom_volatility.replace(0.0, np.nan)
+        momentum_strength = (mom_line / volatility_denominator).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        volume_ratio_value = (volume_ratio - 1.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        return {
+            "momentum_rate": momentum_rate_value,
+            "momentum_strength": momentum_strength,
+            "volume_ratio": volume_ratio_value,
+        }
     
     def volume_surge_signal(self, volume_ratio, volume_surge_threshold=1.5):
         """向量化检测放量信号"""
@@ -489,8 +506,10 @@ class MOM:
         divergence = self.divergence_signals(mom_line, Close_data)
         patterns = self.pattern_signals(mom_line, Close_data)
         vol_surge = self.volume_surge_signal(volume_ratio, volume_surge_threshold)
+        mom_rate = (mom_line / Close_data.shift(mom_period).replace(0.0, np.nan)) * 100.0
+        continuous = self.continuous_signals(mom_line, mom_rate, mom_volatility, volume_ratio)
 
-        all_factors = {**single_bar, **multi_bar, **divergence, **patterns, **vol_surge}
+        all_factors = {**single_bar, **multi_bar, **divergence, **patterns, **vol_surge, **continuous}
 
         for name, df in all_factors.items():
             if df is not None:

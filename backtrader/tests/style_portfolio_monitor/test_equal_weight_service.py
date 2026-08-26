@@ -3,6 +3,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+import models.style_portfolio_monitor.equal_weight_service as service_module
 from models.style_portfolio_monitor.equal_weight_service import build_index_day_payloads
 
 
@@ -71,3 +72,30 @@ def test_build_index_day_payloads_keeps_target_rank_and_marks_old_effective_code
 
     assert by_code["A.SZ"]["rank"] == 1
     assert by_code["B.SZ"]["rank"] is None
+
+
+def test_persist_equal_weight_index_only_writes_dates_at_or_after_watermark(monkeypatch) -> None:
+    payloads = [
+        type("Payload", (), {"trade_date": day})()
+        for day in (date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3))
+    ]
+    written = []
+    repo = type("Repo", (), {"write_index_model_days": lambda self, values: written.extend(values)})()
+    monkeypatch.setattr(service_module, "build_equal_weight_index", lambda *args, **kwargs: {})
+    monkeypatch.setattr(service_module, "build_index_day_payloads", lambda **kwargs: payloads)
+
+    result = service_module.build_and_persist_equal_weight_index(
+        repo=repo,
+        model_version="m-v1",
+        model_id="m",
+        config_hash="hash",
+        score_frame=pd.DataFrame(),
+        adjusted_open=pd.DataFrame(),
+        adjusted_close=pd.DataFrame(),
+        valid_bar=pd.DataFrame(),
+        rebalance_dates=set(),
+        persist_start_date=date(2026, 1, 2),
+    )
+
+    assert [payload.trade_date for payload in written] == [date(2026, 1, 2), date(2026, 1, 3)]
+    assert result["payload_count"] == 2

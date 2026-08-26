@@ -20,7 +20,14 @@ import duckdb
 
 
 BUNDLE_ID = "momentum_common"
-_DEFAULT_LOOKBACK_DAYS = 240
+
+
+def _calendar_lookback_days(required_bars: int) -> int:
+    """将交易日窗口转换为保守的自然日回看长度。"""
+    return (int(required_bars) * 3 + 1) // 2
+
+
+_DEFAULT_LOOKBACK_DAYS = _calendar_lookback_days(240)
 _SECTOR_VOLATILITY_WINDOW = 20
 _SECTOR_VOLATILITY_ZSCORE_WINDOW = 252
 _SECTOR_VOLATILITY_ZSCORE_MIN_PERIODS = 120
@@ -44,16 +51,16 @@ _VALUATION_GLOB = (
 )
 
 FACTOR_LOOKBACK_DAYS: dict[str, int] = {
-    "momentum_5d": 5,
-    "momentum_20d": 20,
-    "momentum_60d": 60,
-    "momentum_120d": 120,
-    "momentum_252d": 252,
-    "pure_momentum": 120,
-    "pure_momentum_60d": 60,
-    "pure_momentum_252d": 252,
-    "close_above_ma60": 60,
-    "annual_vol_60d": 60,
+    "momentum_5d": _calendar_lookback_days(6),
+    "momentum_20d": _calendar_lookback_days(21),
+    "momentum_60d": _calendar_lookback_days(61),
+    "momentum_120d": _calendar_lookback_days(121),
+    "momentum_252d": _calendar_lookback_days(253),
+    "pure_momentum": _calendar_lookback_days(121),
+    "pure_momentum_60d": _calendar_lookback_days(61),
+    "pure_momentum_252d": _calendar_lookback_days(253),
+    "close_above_ma60": _calendar_lookback_days(60),
+    "annual_vol_60d": _calendar_lookback_days(61),
     "sector_volatility_zscore_20d_252d": _SECTOR_VOLATILITY_ZSCORE_HISTORY_CALENDAR_DAYS,
     "sector_return_zscore_8d_252d": _SECTOR_SHORT_HISTORY_CALENDAR_DAYS,
     "sector_ewma_rms_zscore_252d": _SECTOR_SHORT_HISTORY_CALENDAR_DAYS,
@@ -128,7 +135,12 @@ def build_momentum_factor_bundle(C: pd.DataFrame) -> dict[str, dict[str, pd.Data
     pure_momentum_252d = momentum_252d - momentum_20d
     ma60 = close.rolling(window=60, min_periods=60).mean()
     close_above_ma60 = (close > ma60).astype(float)
-    annual_vol_60d = close.pct_change().rolling(window=60, min_periods=60).std() * np.sqrt(252.0)
+    annual_vol_60d = (
+        close.pct_change(fill_method=None)
+        .rolling(window=60, min_periods=60)
+        .std()
+        * np.sqrt(252.0)
+    )
     sector_close = close.loc[:, select_ths_columns(close.columns)]
     annual_vol_20d = (
         sector_close.pct_change()

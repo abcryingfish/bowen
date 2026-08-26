@@ -36,7 +36,7 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
     repo.initialize_schema()
     definitions = _definition_map()
     selected = [definitions[item] for item in (model_ids or list(definitions))]
-    latest_dates = {item.model_id: source.latest_common_date(item.factor_name) for item in selected}
+    latest_dates = {item.model_id: source.latest_common_date(item.factor_key) for item in selected}
     upper = through_date or max((value for value in latest_dates.values() if value), default=None)
     if upper is None:
         return {"completed_models": [], "paused_models": [], "failed_models": [], "latest_dates": {}, "processed_days": {}}
@@ -46,7 +46,7 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
     for definition in selected:
         version = repo.ensure_model_version(definition, build_config_hash(definition))
         state = repo.get_run_state(version)
-        start = (state.last_success_date + timedelta(days=1)) if state.last_success_date else source.first_usable_date(definition.factor_name, INITIAL_DATE, MIN_FACTOR_COVERAGE)
+        start = (state.last_success_date + timedelta(days=1)) if state.last_success_date else source.first_usable_date(definition.factor_key, INITIAL_DATE, MIN_FACTOR_COVERAGE)
         model_upper = min(upper, latest_dates[definition.model_id]) if latest_dates[definition.model_id] else None
         if start is None or model_upper is None or start > model_upper:
             continue
@@ -79,7 +79,7 @@ def run_incremental_update(*, model_ids=None, through_date: date | None = None, 
         calendar = meta["dates"]
         try:
             due = is_rebalance_day(trade_date, rebalance_dates[model_id], definition.rebalance_frequency, calendar)
-            snapshot = source.build_eligible_snapshot(trade_date, definition.factor_name) if due else None
+            snapshot = source.build_eligible_snapshot(trade_date, definition.factor_key) if due else None
             if due and float(snapshot.attrs.get("factor_coverage", 0.0)) < MIN_FACTOR_COVERAGE:
                 message = f"因子覆盖率 {float(snapshot.attrs.get('factor_coverage', 0.0)):.2%} 低于 80.00%"
                 blocked.add(model_id)

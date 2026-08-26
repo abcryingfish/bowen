@@ -93,6 +93,8 @@ from qmt_company_data_service import (
     query_qmt_company_tables,
 )
 from market_research_service import query_market_research_concentration
+from sector_concentration_service import query_sector_fund_shares
+from sector_model_signal_service import query_sector_model_signal_history, query_sector_model_signals
 from sector_research_service import dashboard as sector_dashboard, list_entities as sector_entities, report as sector_report
 from 量化因子有效性检验.factor_validation_service import (
     FactorValidationError,
@@ -292,6 +294,18 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/market/research/concentration":
             self._handle_market_research_concentration(query)
+            return
+
+        if parsed.path == "/api/market/sector-fund-shares":
+            self._handle_sector_fund_shares(query)
+            return
+
+        if parsed.path == "/api/market/sector-model-signals":
+            self._handle_sector_model_signals(query)
+            return
+
+        if parsed.path == "/api/market/sector-model-signal-history":
+            self._handle_sector_model_signal_history(query)
             return
 
         if parsed.path == "/api/market/factors":
@@ -703,6 +717,58 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.INTERNAL_SERVER_ERROR,
                 {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}},
             )
+
+    def _handle_sector_fund_shares(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_sector_fund_shares(
+                prefix=self._first_query_value(query, "prefix"),
+                from_ts=self._first_query_value(query, "from"),
+                to_ts=self._first_query_value(query, "to"),
+                limit=self._first_query_value(query, "limit"),
+                refresh=self._first_query_value(query, "refresh") in ("1", "true", "True"),
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except MarketDataValidationError as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}})
+        except MarketDataNotFoundError as exc:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}})
+        except MarketDataError as exc:
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "MARKET_DATA_ERROR", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}})
+
+    def _handle_sector_model_signals(self, query: dict[str, list[str]]) -> None:
+        try:
+            result = query_sector_model_signals(
+                sector_code=self._first_query_value(query, "sector_code"),
+                prefix=self._first_query_value(query, "prefix"),
+                analysis_date=self._first_query_value(query, "time"),
+                include_diagnostics=self._first_query_value(query, "include_diagnostics") in ("1", "true", "True"),
+                include_history=self._first_query_value(query, "include_history") in ("1", "true", "True"),
+                history_limit=self._first_query_value(query, "history_limit") or 120,
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except ValueError as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}})
+        except FileNotFoundError as exc:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}})
+
+    def _handle_sector_model_signal_history(self, query: dict[str, list[str]]) -> None:
+        try:
+            code = self._first_query_value(query, "sector_code")
+            result = query_sector_model_signal_history(
+                sector_code=code,
+                limit=self._first_query_value(query, "limit") or 400,
+            )
+            self._send_json(HTTPStatus.OK, result)
+        except ValueError as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": {"code": "INVALID_ARGUMENT", "message": str(exc)}})
+        except FileNotFoundError as exc:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": {"code": "DATA_NOT_FOUND", "message": str(exc)}})
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"code": "INTERNAL_ERROR", "message": "服务内部错误", "detail": str(exc)}})
 
     def _handle_sector_memberships(self, query: dict[str, list[str]]) -> None:
         try:

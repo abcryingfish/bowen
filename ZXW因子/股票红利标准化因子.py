@@ -237,7 +237,7 @@ def load_raw_dividend_factor_dfs(
     missing_factors: list[str] = []
 
     for factor_name, factor_key in RAW_FACTOR_NAME_MAP.items():
-        factor_dir = root / f"factor={factor_name}"
+        factor_dir = root / f"factor={factor_key}"
         files: list[Path] = []
         for month_dir in _month_directories(factor_dir, start_dt, end_dt):
             merged_path = month_dir / "merged.parquet"

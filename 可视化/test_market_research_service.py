@@ -28,8 +28,12 @@ def synthetic_market_data(tmp_path, monkeypatch):
     month_dir = daily_base / "year=2026" / "month=01"
     month_dir.mkdir(parents=True)
     pd.DataFrame(rows).to_parquet(month_dir / "merged.parquet", index=False)
+    pd.DataFrame(columns=["htsc_code", "begin_date", "end_date", "xdy"]).to_parquet(
+        tmp_path / "segments.parquet", index=False
+    )
 
     monkeypatch.setattr(service, "DAILY_BASE_PATH", daily_base)
+    monkeypatch.setattr(service, "ADJ_FACTOR_DAILY_BASE_PATH", tmp_path / "adj_factor_daily")
     monkeypatch.setattr(service, "ADJ_SEGMENT_PATH", tmp_path / "segments.parquet")
     service.clear_market_research_cache()
     yield dates
@@ -44,6 +48,9 @@ def test_concentration_uses_dynamic_daily_pool_and_keeps_rsi_separate(synthetic_
         points=30,
     )
     all_a = payload["markets"]["all-a"]["points"]
+    assert payload["markets"]["all-a"]["price_label"] == "全A等权价格（归一化）"
+    assert all_a[0]["price_index"] == pytest.approx(100.0)
+    assert all_a[-1]["price_index"] is not None
 
     previous = all_a[-2]
     latest = all_a[-1]
@@ -95,6 +102,37 @@ def test_segment_adjustment_uses_cumulative_backward_factor(tmp_path, monkeypatc
         }
     ).to_parquet(segment_path, index=False)
     monkeypatch.setattr(service, "DAILY_BASE_PATH", daily_base)
+    monkeypatch.setattr(service, "ADJ_FACTOR_DAILY_BASE_PATH", tmp_path / "adj_factor_daily")
+    monkeypatch.setattr(service, "ADJ_SEGMENT_PATH", segment_path)
+
+    frame, _ = service._load_market_frame(dates[0].date(), dates[-1].date())
+    assert frame["adjusted_close"].tolist() == pytest.approx([10.0, 10.0, 10.0])
+
+
+def test_segment_adjustment_keeps_same_multiplier_events(tmp_path, monkeypatch):
+    dates = pd.date_range("2026-01-01", periods=3, freq="D")
+    daily_base = tmp_path / "daily"
+    month_dir = daily_base / "year=2026" / "month=01"
+    month_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "htsc_code": ["600415.SH"] * 3,
+            "time": dates,
+            "close": [10.0, 5.0, 2.5],
+            "value": [100.0] * 3,
+        }
+    ).to_parquet(month_dir / "merged.parquet", index=False)
+    segment_path = tmp_path / "segments.parquet"
+    pd.DataFrame(
+        {
+            "htsc_code": ["600415.SH", "600415.SH"],
+            "begin_date": dates[1:],
+            "end_date": dates[1:],
+            "xdy": [2.0, 2.0],
+        }
+    ).to_parquet(segment_path, index=False)
+    monkeypatch.setattr(service, "DAILY_BASE_PATH", daily_base)
+    monkeypatch.setattr(service, "ADJ_FACTOR_DAILY_BASE_PATH", tmp_path / "adj_factor_daily")
     monkeypatch.setattr(service, "ADJ_SEGMENT_PATH", segment_path)
 
     frame, _ = service._load_market_frame(dates[0].date(), dates[-1].date())

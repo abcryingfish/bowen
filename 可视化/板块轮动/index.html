@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>板块轮动</title>
+    <link rel="icon" type="image/png" href="../shared/assets/bothwin-logo.png">
     <link rel="stylesheet" href="../shared/edge_float.css">
-    <link rel="stylesheet" href="./sector_rotation.css">
+    <link rel="stylesheet" href="./sector_rotation.css?v=20260825-1">
 </head>
 
 <body class="page-sector-rotation">
@@ -33,8 +34,17 @@
                 <div class="custom-range" role="group" aria-label="自定义走势天数">
                     <input id="custom-range-days" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="天数" aria-label="自定义走势天数">
                     <button id="custom-range-apply" type="button">应用</button>
-                    <button type="button" class="sort-button active" data-sort="desc">收益率降低</button>
+                    <button type="button" class="sort-button" data-sort="desc">收益率降低</button>
                     <button type="button" class="sort-button" data-sort="asc">收益率提高</button>
+                    <div class="model-sort-menu" tabindex="0">
+                        <button type="button" class="model-sort-trigger active" aria-haspopup="true" aria-expanded="false">峰谷模型：超短·波谷看涨</button>
+                        <div class="model-sort-list" role="menu" aria-label="峰谷模型排序">
+                            <div class="model-sort-group"><strong>超短（3日内）</strong><button type="button" class="model-sort-option active" data-model-period="ultra_short" data-model-event="valley_bullish">波谷看涨</button><button type="button" class="model-sort-option" data-model-period="ultra_short" data-model-event="peak_bearish">波峰看跌</button></div>
+                            <div class="model-sort-group"><strong>短期（5天）</strong><button type="button" class="model-sort-option" data-model-period="5d" data-model-event="valley_bullish">波谷看涨</button><button type="button" class="model-sort-option" data-model-period="5d" data-model-event="peak_bearish">波峰看跌</button></div>
+                            <div class="model-sort-group"><strong>中期（20天）</strong><button type="button" class="model-sort-option" data-model-period="20d" data-model-event="valley_bullish">波谷看涨</button><button type="button" class="model-sort-option" data-model-period="20d" data-model-event="peak_bearish">波峰看跌</button></div>
+                        </div>
+                    </div>
+                    <a class="sector-prediction-link" href="../板块预测Demo/index.html">板块预测</a>
                 </div>
                 <div class="sector-search"><span class="search-icon" aria-hidden="true"></span><input id="sector-search" type="search" placeholder="股票名称、首字母、代码或板块" autocomplete="off" aria-controls="sector-search-suggestions" aria-expanded="false"><ul id="sector-search-suggestions" class="sector-search-suggestions" role="listbox"></ul></div>
                 <button id="refresh-sectors" class="refresh-button" type="button" title="刷新板块清单" aria-label="刷新板块清单">↻</button>
@@ -44,6 +54,8 @@
         <div id="sector-state" class="page-state" role="status">正在读取板块清单...</div>
         <section id="sector-grid" class="sector-grid" aria-label="板块走势列表"></section>
     </main>
+
+    <div id="sector-global-event-detail" class="sector-global-event-detail" role="status" aria-hidden="true"></div>
 
     <div id="edge-float-cluster" class="edge-float-cluster" data-dock="right">
         <div id="edge-float-hud" class="edge-float-hud" role="note" aria-label="侧边浮标">
@@ -59,17 +71,34 @@
                 <div><h2 id="constituent-title">板块成分股 · 20天曲线</h2><span id="constituent-meta"></span></div>
                 <button id="constituent-close" type="button" title="关闭" aria-label="关闭">×</button>
             </header>
+            <section class="constituent-history" aria-label="板块历史日K线">
+                <div id="constituent-chart" class="constituent-chart"></div>
+                <div class="constituent-chart-legend" aria-hidden="true">BOLL(20, 2)</div>
+                <div id="constituent-chart-state" class="constituent-chart-state" role="status">正在读取板块历史行情...</div>
+            </section>
             <div id="constituent-state" class="constituent-state">正在读取成分股...</div>
             <div id="constituent-list" class="constituent-list"></div>
         </section>
     </div>
 
+    <div id="model-signal-dialog" class="model-signal-dialog" role="dialog" aria-modal="true" aria-labelledby="model-signal-title" aria-hidden="true">
+        <div class="model-signal-dialog-backdrop" data-close-model-signal></div>
+        <section class="model-signal-panel">
+            <header class="model-signal-head">
+                <div><h2 id="model-signal-title">板块峰谷模型信号</h2><span id="model-signal-meta"></span></div>
+                <button id="model-signal-close" type="button" title="关闭" aria-label="关闭">×</button>
+            </header>
+            <div id="model-signal-state" class="model-signal-state">正在读取模型信号...</div>
+            <div id="model-signal-content" class="model-signal-content"></div>
+        </section>
+    </div>
+
     <script>window.PAGE_VIEW = "sector-rotation";</script>
     <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
-    <script defer src="../shared/edge_float_nav.js"></script>
+    <script defer src="../shared/edge_float_nav.js?v=20260825-1"></script>
     <script defer src="../shared/edge_float_mangekyo_canvas.js"></script>
     <script defer src="../shared/edge_float_hud.js"></script>
-    <script defer src="./sector_rotation.js"></script>
+    <script defer src="./sector_rotation.js?v=20260821-6"></script>
 </body>
 
 </html>

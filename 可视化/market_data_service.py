@@ -83,6 +83,24 @@ SIGNAL_DAILY_BASE_PATH = r"D:\database\signal_daily"
 SIGNAL_DAILY_LABEL_BASE_PATH = r"D:\database\signal_daily_label"
 INTRADAY_SIGNAL_SNAPSHOT_BASE_PATH = r"D:\database\intraday_signal_snapshot"
 SIGNAL_DAILY_MORPH_BASE_PATH = r"D:\database\signal_daily_形态"
+SECTOR_MODEL_SIGNAL_BASE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "outputs"
+    / "sector_peak_valley_ml"
+    / "stage_ax_daily_signal"
+)
+SECTOR_MODEL_PROBABILITY_HISTORY_PATH = (
+    SECTOR_MODEL_SIGNAL_BASE_PATH / "sector_probability_history_15.parquet"
+)
+SECTOR_MODEL_DIAGNOSTICS_HISTORY_PATH = (
+    SECTOR_MODEL_SIGNAL_BASE_PATH / "sector_signal_diagnostics_history.parquet"
+)
+SECTOR_MODEL_PROBABILITY_PARTITION_ROOT = (
+    SECTOR_MODEL_SIGNAL_BASE_PATH / "sector_probability_history_15"
+)
+SECTOR_MODEL_DIAGNOSTICS_PARTITION_ROOT = (
+    SECTOR_MODEL_SIGNAL_BASE_PATH / "sector_signal_diagnostics_history"
+)
 MORPH_CANDLESTICK_SOURCE_DIR = "candlestick_no_vol"
 MORPH_CANDLESTICK_MANIFEST_FILE = "morph_candlestick_manifest.json"
 MORPH_CANDLESTICK_LEVELS = frozenset({"level1", "level2", "level3"})
@@ -437,6 +455,8 @@ _factor_index_cache_by_path: dict[str, list[str]] = {}
 _factor_index_cache_ts_by_path: dict[str, float] = {}
 _factor_catalog_lock = Lock()
 _factor_catalog_cache: dict[str, Any] = {"data": None, "loaded_at": 0.0}
+_sector_model_factor_lock = Lock()
+_sector_model_factor_cache: dict[str, Any] = {"data": None, "loaded_at": 0.0}
 
 _stock_universe_lock = Lock()
 _stock_universe_cache: list[dict[str, str]] = []
@@ -2964,6 +2984,156 @@ def _get_cached_factor_names(base_path: str, force_refresh: bool = False) -> lis
         return list(_factor_index_cache_by_path.get(base_path, []))
 
 
+def _sector_model_factor_label(name: str) -> str:
+    """将峰谷模型英文列名转换为可搜索、可读的中文因子名。"""
+    raw = str(name or "").strip()
+    if not raw:
+        return ""
+    period_map = {
+        "ultra_short": "超短",
+        "5d": "短期5日",
+        "20d": "中期20日",
+    }
+    event_map = {
+        "valley_bullish": "波谷看涨",
+        "peak_bearish": "波峰看跌",
+        "two_sided_high_volatility": "双向高波",
+        "sideways_bullish": "横盘看涨",
+        "sideways_bearish": "横盘看跌",
+        "peak": "波峰",
+        "valley": "波谷",
+    }
+    group_map = {
+        "technical": "技术组",
+        "sideways_volatility": "横盘波动组",
+        "relative_strength": "相对强弱组",
+        "constituent_breadth": "成分股广度组",
+        "leader_diffusion": "龙头扩散组",
+        "market_state_conditioned": "市场状态组",
+    }
+    period = next(
+        (
+            label
+            for key, label in period_map.items()
+            if raw.startswith(key + "_")
+            or ("_" + key + "_") in raw
+            or raw.endswith("_" + key)
+        ),
+        "",
+    )
+    if raw.startswith("score_"):
+        body = raw[len("score_") :]
+        for key, label in group_map.items():
+            if body.startswith(key + "_delta_"):
+                target = body[len(key + "_delta_") :]
+                target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+                return f"峰谷模型_{period}_{label}_{target_name}预测分"
+    if raw.startswith("rank_"):
+        body = raw[len("rank_") :]
+        for key, label in group_map.items():
+            if body.startswith(key + "_delta_"):
+                target = body[len(key + "_delta_") :]
+                target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+                return f"峰谷模型_{period}_{label}_{target_name}横截面排名"
+    if raw.startswith("contrib_"):
+        body = raw[len("contrib_") :]
+        for key, label in group_map.items():
+            if body.startswith(key + "_delta_"):
+                target = body[len(key + "_delta_") :]
+                target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+                return f"峰谷模型_{period}_{label}_{target_name}贡献"
+    if raw.startswith("blend_intercept_delta_"):
+        target = raw[len("blend_intercept_delta_") :]
+        target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+        return f"峰谷模型_{period}_顶层截距_{target_name}"
+    if raw.startswith("blend_rank_sum_delta_"):
+        target = raw[len("blend_rank_sum_delta_") :]
+        target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+        return f"峰谷模型_{period}_因子组排名合计_{target_name}"
+    if raw.startswith("pred_delta_"):
+        target = raw[len("pred_delta_") :]
+        target_name = next((v for k, v in event_map.items() if target.startswith(k)), target)
+        return f"峰谷模型_{period}_连续{target_name}预测分"
+    if raw.startswith("peak_rank_"):
+        return f"峰谷模型_{period}_波峰排名"
+    if raw.startswith("valley_rank_"):
+        return f"峰谷模型_{period}_波谷排名"
+    if raw.startswith("direction_strength_"):
+        return f"峰谷模型_{period}_方向强度"
+    if raw.startswith("direction_"):
+        return f"峰谷模型_{period}_方向分"
+    if raw.startswith("level_"):
+        return f"峰谷模型_{period}_方向等级"
+    if raw.endswith("_event_strength"):
+        return f"峰谷模型_{period}_最大概率事件强度"
+    if raw.endswith("_most_likely_state"):
+        return f"峰谷模型_{period}_最大概率事件"
+    for key, label in event_map.items():
+        if raw.endswith("_prob_" + key):
+            return f"峰谷模型_{period}_{label}概率"
+    return f"峰谷模型_{raw}"
+
+
+def _get_sector_model_factor_map(force_refresh: bool = False) -> dict[str, str]:
+    """返回峰谷模型字段到宽表文件的映射，只暴露可绘制的数值列。"""
+    now_ts = time.time()
+    with _sector_model_factor_lock:
+        cached = _sector_model_factor_cache.get("data")
+        cache_is_fresh = (
+            isinstance(cached, dict)
+            and (now_ts - float(_sector_model_factor_cache.get("loaded_at", 0.0)))
+            < CODE_SEARCH_REFRESH_INTERVAL_SECONDS
+        )
+        if cached is not None and cache_is_fresh and not force_refresh:
+            return dict(cached)
+
+        result: dict[str, str] = {}
+        for legacy_path, partition_root in (
+            (SECTOR_MODEL_PROBABILITY_HISTORY_PATH, SECTOR_MODEL_PROBABILITY_PARTITION_ROOT),
+            (SECTOR_MODEL_DIAGNOSTICS_HISTORY_PATH, SECTOR_MODEL_DIAGNOSTICS_PARTITION_ROOT),
+        ):
+            partition_files = sorted(partition_root.glob("year=*/month=*/merged.parquet"))
+            path = partition_files[0] if partition_files else legacy_path
+            if not path.is_file():
+                continue
+            source_path = str(partition_root / "year=*/month=*/merged.parquet") if partition_files else str(path)
+            conn = duckdb.connect(database=":memory:")
+            try:
+                for row in conn.execute("DESCRIBE SELECT * FROM read_parquet(?)", [source_path]).fetchall():
+                    name = str(row[0]).strip()
+                    dtype = str(row[1]).upper()
+                    if name in {"htsc_code", "time", "sector_family"}:
+                        continue
+                    # 字符串事件名不能作为数值副图；概率、评分、排名、贡献等数值列全部保留。
+                    if any(token in dtype for token in ("INT", "DOUBLE", "FLOAT", "DECIMAL", "NUMERIC")):
+                        result.setdefault(name, source_path)
+            finally:
+                conn.close()
+        _sector_model_factor_cache["data"] = dict(result)
+        _sector_model_factor_cache["loaded_at"] = now_ts
+        return result
+
+
+def _sector_model_catalog(model_factors: list[str]) -> dict[str, Any]:
+    if not model_factors:
+        return {"groups": [], "factor_labels": {}}
+    ordered = sorted(model_factors)
+    probability_names = [
+        name for name in ordered
+        if "_prob_" in name
+    ]
+    return {
+        "groups": [{
+            "group_id": "sector_peak_valley_model",
+            "group_name": "板块峰谷模型",
+            "core_factors": probability_names[:5],
+            "core_factor_labels": [_sector_model_factor_label(name) for name in probability_names[:5]],
+            "children": ordered,
+        }],
+        "factor_labels": {name: _sector_model_factor_label(name) for name in ordered},
+    }
+
+
 def _build_default_factor_catalog(available_factors: list[str]) -> dict[str, Any]:
     core_candidates = ["MAC总", "mac_total", "DIF", "DEA", "MAC"]
     core_factors = [f for f in core_candidates if f in available_factors]
@@ -3164,6 +3334,9 @@ def _load_factor_catalog(
             if stable_id not in current:
                 _FACTOR_DISPLAY_TO_INTERNAL[display_name] = (*current, stable_id)
     dynamic_groups = pure_metadata["groups"]
+    sector_model_meta = _sector_model_catalog(list(_get_sector_model_factor_map(force_refresh=force_refresh).keys()))
+    if sector_model_meta["groups"]:
+        dynamic_groups = [*dynamic_groups, *sector_model_meta["groups"]]
     if isinstance(raw_catalog, dict) and isinstance(raw_catalog.get("groups"), list):
         merged_raw_catalog = {
             **raw_catalog,
@@ -3186,7 +3359,31 @@ def _load_factor_catalog(
         for factor_id, label in pure_metadata["factor_labels"].items()
         if str(factor_id) in available_set and str(label).strip()
     }
-    normalized["factor_labels"] = {**identity_labels, **pure_labels}
+    normalized["factor_labels"] = {
+        **identity_labels,
+        **pure_labels,
+        **{
+            name: label
+            for name, label in sector_model_meta.get("factor_labels", {}).items()
+            if name in available_set
+        },
+    }
+    # 峰谷模型的 15 个事件概率是板块模型的主输出。将其加入默认核心快照，
+    # 这样量化因子页首次打开时即可看到“峰谷”相关因子，无需先触发分组筛选。
+    sector_probability_factors = [
+        name
+        for name in available_factors
+        if "_prob_" in name and name.startswith(("ultra_short_", "5d_", "20d_"))
+    ]
+    if sector_probability_factors:
+        existing_core = list(normalized.get("core_factors", []))
+        existing_labels = list(normalized.get("core_factor_labels", []))
+        for name in sorted(sector_probability_factors):
+            if name not in existing_core:
+                existing_core.append(name)
+                existing_labels.append(normalized["factor_labels"].get(name, _sector_model_factor_label(name)))
+        normalized["core_factors"] = existing_core
+        normalized["core_factor_labels"] = existing_labels
     return normalized
 
 
@@ -3377,15 +3574,18 @@ def list_signal_factors(
         raise MarketDataValidationError("因子接口暂仅支持 interval=1day")
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
-    if not os.path.exists(resolved_base_path):
+    sector_model_factor_map = _get_sector_model_factor_map(force_refresh=(str(refresh).strip().lower() in {"1", "true", "yes", "y"}))
+    if not os.path.exists(resolved_base_path) and not sector_model_factor_map:
         raise MarketDataNotFoundError(f"因子数据根目录不存在: {resolved_base_path}")
 
     force_refresh = str(refresh).strip().lower() in {"1", "true", "yes", "y"} if refresh is not None else False
-    factors = _get_cached_factor_names(resolved_base_path, force_refresh=force_refresh)
+    factors = _get_cached_factor_names(resolved_base_path, force_refresh=force_refresh) if os.path.exists(resolved_base_path) else []
     if not base_path and os.path.exists(SIGNAL_DAILY_LABEL_BASE_PATH):
         factors = sorted(set(factors) | set(
             _get_cached_factor_names(SIGNAL_DAILY_LABEL_BASE_PATH, force_refresh=force_refresh)
         ))
+    if not base_path:
+        factors = sorted(set(factors) | set(sector_model_factor_map))
     if not factors:
         raise MarketDataNotFoundError("未找到可用因子字段")
 
@@ -3717,6 +3917,74 @@ def query_market_bars(
     return {"bars": bars, "meta": meta}
 
 
+def _query_sector_model_signal(
+    params: QueryParams,
+    factor_name: str,
+    factor_map: dict[str, str] | None = None,
+) -> dict[str, Any] | None:
+    """读取板块峰谷模型宽表，并转换成量化因子页使用的 signals 结构。"""
+    mapping = factor_map if factor_map is not None else _get_sector_model_factor_map()
+    source_path = mapping.get(factor_name)
+    if not source_path:
+        return None
+
+    # 字段名来自 Parquet schema，仍进行双引号转义，避免把列名拼接成 SQL 语法。
+    quoted_factor = '"' + factor_name.replace('"', '""') + '"'
+    sql = f"""
+        SELECT
+            CAST(FLOOR(EPOCH(TRY_CAST(time AS TIMESTAMP)) / 86400.0) AS BIGINT) * 86400 AS day_time,
+            TRY_CAST({quoted_factor} AS DOUBLE) AS factor_value
+        FROM read_parquet(?)
+        WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) = UPPER(?)
+          AND EPOCH(TRY_CAST(time AS TIMESTAMP)) BETWEEN ? AND ?
+        ORDER BY time ASC
+    """
+    conn = duckdb.connect(database=":memory:")
+    try:
+        rows = conn.execute(
+            sql,
+            [source_path, params.code, params.from_ts, params.to_ts],
+        ).fetchall()
+    except duckdb.Error as exc:
+        raise MarketDataError(f"峰谷模型因子查询失败({factor_name}): {exc}") from exc
+    finally:
+        conn.close()
+
+    dedup: dict[int, dict[str, Any]] = {}
+    for day_time, value in rows:
+        if day_time is None:
+            continue
+        try:
+            numeric = float(value) if value is not None else 0.0
+        except (TypeError, ValueError):
+            numeric = 0.0
+        if not math.isfinite(numeric):
+            numeric = 0.0
+        dedup[int(day_time)] = {"time": int(day_time), "value": numeric}
+    signals = [dedup[key] for key in sorted(dedup)][-params.limit :]
+    if not signals:
+        raise MarketDataNotFoundError("目标时间范围内未找到对应板块峰谷模型数据")
+    latest_time = int(signals[-1]["time"])
+    return {
+        "signals": signals,
+        "meta": {
+            "code": params.code,
+            "interval": params.interval,
+            "factor": factor_name,
+            "resolved_factor": factor_name,
+            "server_time": int(time.time()),
+            "last_signal_time": latest_time,
+            "has_new_data": params.last_seen_bar_time is None or latest_time > params.last_seen_bar_time,
+            "row_count": len(signals),
+            "from": params.from_ts,
+            "to": params.to_ts,
+            "base_path": str(SECTOR_MODEL_SIGNAL_BASE_PATH),
+            "source": "sector_peak_valley_model",
+            "display_name": _sector_model_factor_label(factor_name),
+        },
+    }
+
+
 def query_market_signal(
     code: Any,
     interval: Any,
@@ -3734,6 +4002,13 @@ def query_market_signal(
     factor_name = str(factor).strip() if factor is not None else ""
     if not factor_name:
         raise MarketDataValidationError("factor 不能为空")
+
+    sector_model_factor_map = _get_sector_model_factor_map()
+    if factor_name not in sector_model_factor_map:
+        sector_model_factor_map = _get_sector_model_factor_map(force_refresh=True)
+    sector_model_result = _query_sector_model_signal(params, factor_name, sector_model_factor_map)
+    if sector_model_result is not None:
+        return sector_model_result
 
     resolved_base_path = base_path or SIGNAL_DAILY_BASE_PATH
     signal_storage_paths = [resolved_base_path] if base_path else [
@@ -4090,6 +4365,50 @@ def query_morph_candlestick_signals(
     }
 
 
+def _query_sector_model_snapshot_values(
+    code: str,
+    time_ts: int,
+    factor_names: list[str],
+    factor_map: dict[str, str],
+) -> dict[str, float]:
+    """按宽表文件批量读取峰谷模型在某个交易日的因子值。"""
+    by_path: dict[str, list[str]] = {}
+    for name in factor_names:
+        source = factor_map.get(name)
+        if source:
+            by_path.setdefault(source, []).append(name)
+    result: dict[str, float] = {}
+    conn = duckdb.connect(database=":memory:")
+    try:
+        for source_path, names in by_path.items():
+            select_items = []
+            for name in names:
+                quoted = '"' + name.replace('"', '""') + '"'
+                select_items.append(f"TRY_CAST({quoted} AS DOUBLE)")
+            sql = f"""
+                SELECT {', '.join(select_items)}
+                FROM read_parquet(?)
+                WHERE UPPER(TRIM(CAST(htsc_code AS VARCHAR))) = UPPER(?)
+                  AND CAST(FLOOR(EPOCH(TRY_CAST(time AS TIMESTAMP)) / 86400.0) AS BIGINT)
+                      = CAST(FLOOR(? / 86400.0) AS BIGINT)
+                ORDER BY time DESC
+                LIMIT 1
+            """
+            row = conn.execute(sql, [source_path, code, time_ts]).fetchone()
+            for idx, name in enumerate(names):
+                raw_value = row[idx] if row is not None and idx < len(row) else None
+                try:
+                    value = float(raw_value) if raw_value is not None else 0.0
+                except (TypeError, ValueError):
+                    value = 0.0
+                result[name] = value if math.isfinite(value) else 0.0
+    except duckdb.Error as exc:
+        raise MarketDataError(f"峰谷模型因子快照查询失败: {exc}") from exc
+    finally:
+        conn.close()
+    return result
+
+
 def query_market_factor_snapshot(
     code: Any,
     interval: Any,
@@ -4139,6 +4458,8 @@ def query_market_factor_snapshot(
         for signal_base_path in signal_base_paths
         for factor_name in _get_cached_factor_names(signal_base_path)
     })
+    sector_model_factor_map = _get_sector_model_factor_map()
+    available_factors = sorted(set(available_factors) | set(sector_model_factor_map))
     catalog = _load_factor_catalog(
         available_factors,
         force_refresh=False,
@@ -4221,9 +4542,21 @@ def query_market_factor_snapshot(
             return intraday_fallback
 
     factors: dict[str, float] = {}
+    sector_model_names = [name for name in selected_factors if name in sector_model_factor_map]
+    if sector_model_names:
+        factors.update(
+            _query_sector_model_snapshot_values(
+                parsed_code,
+                parsed_time,
+                sector_model_names,
+                sector_model_factor_map,
+            )
+        )
     conn = duckdb.connect(database=":memory:")
     try:
         for factor_name in selected_factors:
+            if factor_name in sector_model_factor_map:
+                continue
             factor_base_path, _ = _resolve_signal_factor_storage(factor_name, base_path)
             partition_paths = _build_factor_partition_paths(
                 factor_base_path,

@@ -96,8 +96,13 @@ class AROON:
             "trend_weakening": -0.4,                            # 趋势弱化
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 所有信号名称列表；连续特征保留归一化后的 Aroon 线幅度。
+        self.continuous_signal_names = [
+            "up_strength",
+            "down_strength",
+            "oscillator_value",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
         
         # 复杂形态信号列表（未在主要函数中实现，仅用于内部管理）
         self.complex_patterns = [
@@ -128,9 +133,9 @@ class AROON:
         aroon_oscillator = aroon_up - aroon_down
         
         # 填充初始NaN值（通常由周期不足引起）
-        aroon_up = aroon_up.fillna(method='ffill').fillna(0)
-        aroon_down = aroon_down.fillna(method='ffill').fillna(0)
-        aroon_oscillator = aroon_oscillator.fillna(method='ffill').fillna(0)
+        aroon_up = aroon_up.ffill().fillna(0)
+        aroon_down = aroon_down.ffill().fillna(0)
+        aroon_oscillator = aroon_oscillator.ffill().fillna(0)
         
         return aroon_up, aroon_down, aroon_oscillator
 
@@ -226,15 +231,11 @@ class AROON:
             "double_top": is_double_top.fillna(0)
         }
 
-    def divergence_signals(self, aroon_line, close_prices_matrix, lookback_period=20, divergence_threshold=0.02):
-        """AROON顶底背离信号 (使用AROON Up/Down线与价格收盘价)"""
-        
-        # 使用 Aroon Up 线来判断顶背离，Aroon Down 线来判断底背离
-        aroon_up = aroon_line
-        aroon_down = aroon_line.shift(-1) # 简易处理，实际应使用AROON Down线，此处为震荡器
-        
-        # 使用震荡器简化背离检测
-        aroon_osc = aroon_line
+    def divergence_signals(self, aroon_up, aroon_down, close_prices_matrix, lookback_period=20, divergence_threshold=0.02):
+        """AROON 顶底背离信号，只使用当前及历史 Aroon 数据。"""
+
+        # 正确使用 Aroon Up/Down 的差值；不再通过 shift(-1) 读取未来数据。
+        aroon_osc = aroon_up - aroon_down
         
         # 最近 lookback_period 内的最高价/最低价和AROON的最大值/最小值
         price_high = close_prices_matrix.rolling(lookback_period).max()
@@ -247,17 +248,25 @@ class AROON:
         
         # 1. 顶背离 (Top Divergence): 价格创新高，震荡器未创新高 (且在正值区)
         price_peak = (current_price > price_high.shift(1))
-        osc_not_peak = (current_osc < osc_max.shift(1) * (1 - divergence_threshold))
+        osc_not_peak = (current_osc < osc_max.shift(1) - 100.0 * divergence_threshold)
         is_top_divergence = (price_peak & osc_not_peak & (current_osc > 0)).astype(float) * self.signal_strength["top_divergence"]
         
         # 2. 底背离 (Bottom Divergence): 价格创新低，震荡器未创新低 (且在负值区)
         price_trough = (current_price < price_low.shift(1))
-        osc_not_trough = (current_osc > osc_min.shift(1) * (1 + divergence_threshold))
+        osc_not_trough = (current_osc > osc_min.shift(1) + 100.0 * divergence_threshold)
         is_bottom_divergence = (price_trough & osc_not_trough & (current_osc < 0)).astype(float) * self.signal_strength["bottom_divergence"]
         
         return {
             "top_divergence": is_top_divergence.fillna(0),
             "bottom_divergence": is_bottom_divergence.fillna(0)
+        }
+
+    def continuous_signals(self, aroon_up, aroon_down, aroon_oscillator):
+        """返回 [0,1]/[-1,1] 的连续 Aroon 特征。"""
+        return {
+            "up_strength": (aroon_up / 100.0).clip(lower=0.0, upper=1.0).fillna(0.0),
+            "down_strength": (aroon_down / 100.0).clip(lower=0.0, upper=1.0).fillna(0.0),
+            "oscillator_value": (aroon_oscillator / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0),
         }
 
 
@@ -292,10 +301,11 @@ class AROON:
         extreme = self.extreme_zone_signals(aroon_up, aroon_down)
         patterns = self.pattern_signals(aroon_oscillator)
         # 注意: 此处使用 aroon_oscillator 作为 aroon_line 传入背离函数进行简化计算
-        divergence = self.divergence_signals(aroon_oscillator, Close_data) 
+        divergence = self.divergence_signals(aroon_up, aroon_down, Close_data)
+        continuous = self.continuous_signals(aroon_up, aroon_down, aroon_oscillator)
 
         # 合并所有信号字典
-        all_signals_dict = {**trend, **extreme, **patterns, **divergence}
+        all_signals_dict = {**trend, **extreme, **patterns, **divergence, **continuous}
 
         # 5. 累加启用的信号强度
         for signal_name, signal_matrix in all_signals_dict.items():
@@ -370,7 +380,8 @@ class AROON:
             self.trend_signals(aroon_up, aroon_down, aroon_oscillator),
             self.extreme_zone_signals(aroon_up, aroon_down),
             self.pattern_signals(aroon_oscillator),
-            self.divergence_signals(aroon_oscillator, Close_data)
+            self.divergence_signals(aroon_up, aroon_down, Close_data),
+            self.continuous_signals(aroon_up, aroon_down, aroon_oscillator),
         ]
         
         # 统一处理所有信号记录
@@ -436,7 +447,8 @@ class AROON:
             'extreme_zone_signals': lambda: self.extreme_zone_signals(aroon_up, aroon_down),
             'pattern_signals': lambda: self.pattern_signals(aroon_oscillator),
             # 注意: divergence_signals 需要 close_prices
-            'divergence_signals': lambda: self.divergence_signals(aroon_oscillator, close_prices)
+            'divergence_signals': lambda: self.divergence_signals(aroon_up, aroon_down, close_prices),
+            'continuous_signals': lambda: self.continuous_signals(aroon_up, aroon_down, aroon_oscillator),
         }
         
         # 3. 如果没有指定启用的信号，使用所有信号组合
@@ -570,9 +582,10 @@ class AROON:
         trend = self.trend_signals(up, down, osc)
         extreme = self.extreme_zone_signals(up, down)
         patterns = self.pattern_signals(osc)
-        div = self.divergence_signals(osc, Close_data)
+        div = self.divergence_signals(up, down, Close_data)
+        continuous = self.continuous_signals(up, down, osc)
 
-        all_factors = {**trend, **extreme, **patterns, **div}
+        all_factors = {**trend, **extreme, **patterns, **div, **continuous}
         
         for name in all_factors:
             all_factors[name].iloc[:aroon_period * 2] = 0.0

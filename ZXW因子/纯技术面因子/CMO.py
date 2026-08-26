@@ -93,8 +93,13 @@ class CMO:
             "bull_bear_transition": 0.5,
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 所有信号名称列表；连续特征保留 CMO 的方向、区间位置和变化速度。
+        self.continuous_signal_names = [
+            "normalized_value",
+            "range_position",
+            "slope_rate",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_cmo_components(self, price_matrix, cmo_period=14, sma_period=5):
         """计算CMO核心组件 (上涨总和, 下跌总和, CMO线, CMO SMA)"""
@@ -119,8 +124,8 @@ class CMO:
         cmo_sma = cmo_line.rolling(window=sma_period).mean()
 
         # 填充初始NaN值 (由于rolling计算)
-        cmo_line = cmo_line.fillna(method='ffill').fillna(0)
-        cmo_sma = cmo_sma.fillna(method='ffill').fillna(0)
+        cmo_line = cmo_line.ffill().fillna(0)
+        cmo_sma = cmo_sma.ffill().fillna(0)
 
         return cmo_line, cmo_sma
 
@@ -240,8 +245,9 @@ class CMO:
         """双顶和双底形态识别"""
         
         # 使用滚动窗口寻找局部极值
-        local_max = cmo_line.rolling(5, center=True).max()
-        local_min = cmo_line.rolling(5, center=True).min()
+        # 只使用当前及历史窗口，避免 center=True 引入未来数据。
+        local_max = cmo_line.rolling(5).max()
+        local_min = cmo_line.rolling(5).min()
         
         # 是否为局部高点/低点
         is_peak = (cmo_line == local_max)
@@ -278,8 +284,8 @@ class CMO:
         """三重顶和三重底形态识别"""
         
         # 使用滚动窗口寻找局部极值
-        local_max = cmo_line.rolling(5, center=True).max()
-        local_min = cmo_line.rolling(5, center=True).min()
+        local_max = cmo_line.rolling(5).max()
+        local_min = cmo_line.rolling(5).min()
         
         is_peak = (cmo_line == local_max)
         is_trough = (cmo_line == local_min)
@@ -324,8 +330,8 @@ class CMO:
     def head_shoulders_signals(self, cmo_line, lookback=20):
         """头肩顶和头肩底形态识别"""
         
-        local_max = cmo_line.rolling(5, center=True).max()
-        local_min = cmo_line.rolling(5, center=True).min()
+        local_max = cmo_line.rolling(5).max()
+        local_min = cmo_line.rolling(5).min()
         
         is_peak = (cmo_line == local_max)
         is_trough = (cmo_line == local_min)
@@ -514,6 +520,22 @@ class CMO:
             "bull_bear_transition": bull_bear_transition.fillna(0)
         }
 
+    def continuous_signals(self, cmo_line, lookback_period=20):
+        """返回不依赖固定信号强度的连续 CMO 特征。"""
+        normalized_value = (cmo_line / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        rolling_min = cmo_line.rolling(lookback_period, min_periods=lookback_period).min()
+        rolling_max = cmo_line.rolling(lookback_period, min_periods=lookback_period).max()
+        span = (rolling_max - rolling_min).replace(0.0, np.nan)
+        range_position = (2.0 * (cmo_line - rolling_min) / span - 1.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        slope_rate = (cmo_line.diff() / 100.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        return {
+            "normalized_value": normalized_value,
+            "range_position": range_position,
+            "slope_rate": slope_rate,
+        }
+
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, enabled_signals=None, cmo_period=14, sma_period=5):
         """
         整合启用的信号，生成最终的CMO信号强度矩阵
@@ -551,12 +573,13 @@ class CMO:
         channel = self.channel_signals(cmo_line)
         confirmation = self.confirmation_signals(cmo_line, Close_data)
         transition = self.transition_signals(cmo_line)
+        continuous = self.continuous_signals(cmo_line)
 
         # 合并所有信号字典
         all_signals_dict = {
             **cross, **extreme, **momentum_rev, **divergence,
             **double_patterns, **triple_patterns, **head_shoulders,
-            **wedge, **triangle, **channel, **confirmation, **transition
+            **wedge, **triangle, **channel, **confirmation, **transition, **continuous
         }
 
         # 3. 累加启用的信号强度
@@ -632,7 +655,8 @@ class CMO:
             self.triangle_signals(cmo_line),
             self.channel_signals(cmo_line),
             self.confirmation_signals(cmo_line, Close_data),
-            self.transition_signals(cmo_line)
+            self.transition_signals(cmo_line),
+            self.continuous_signals(cmo_line)
         ]
         
         # 3. 统一处理所有信号记录
@@ -717,12 +741,13 @@ class CMO:
         channel = self.channel_signals(cmo_line)
         confirmation = self.confirmation_signals(cmo_line, Close_data)
         transition = self.transition_signals(cmo_line)
+        continuous = self.continuous_signals(cmo_line)
         
         # 3. 合并所有信号字典
         all_signals_dict = {
             **cross, **extreme, **momentum_rev, **divergence,
             **double_patterns, **triple_patterns, **head_shoulders,
-            **wedge, **triangle, **channel, **confirmation, **transition
+            **wedge, **triangle, **channel, **confirmation, **transition, **continuous
         }
         
         # 4. 过滤信号
@@ -832,7 +857,7 @@ class CMO:
 
     def get_factor_matrices(self, Open_data, High_data, Low_data, Close_data, Volume, cmo_period=14, sma_period=5):
         """
-        完全拆分CMO的头肩顶、楔形、三角形等所有形态信号。
+        拆分 CMO 的有效信号；固定间隔伪形态不再作为因子产出。
         """
         line, sma = self.get_cmo_components(Close_data, cmo_period, sma_period)
         
@@ -841,16 +866,26 @@ class CMO:
         mom_rev = self.momentum_reversal_signals(line)
         div = self.divergence_signals(line, Close_data)
         double_p = self.double_pattern_signals(line)
-        triple_p = self.triple_pattern_signals(line)
-        hs = self.head_shoulders_signals(line)
         wedge = self.wedge_signals(line)
         triangle = self.triangle_signals(line)
         channel = self.channel_signals(line)
         conf = self.confirmation_signals(line, Close_data)
         trans = self.transition_signals(line)
+        continuous = self.continuous_signals(line)
 
-        all_factors = {**cross, **extreme, **mom_rev, **div, **double_p, **triple_p, 
-                       **hs, **wedge, **triangle, **channel, **conf, **trans}
+        all_factors = {
+            **cross,
+            **extreme,
+            **mom_rev,
+            **div,
+            **double_p,
+            **wedge,
+            **triangle,
+            **channel,
+            **conf,
+            **trans,
+            **continuous,
+        }
         
         for name in all_factors:
             all_factors[name].iloc[:cmo_period * 2] = 0.0

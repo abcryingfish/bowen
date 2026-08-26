@@ -87,9 +87,10 @@ def load_saved_factor_frame(
 def _rebalance_dates(
     dates: list[date],
     frequency: str,
+    last_rebalance_date: date | None = None,
 ) -> list[date]:
     selected: list[date] = []
-    last: date | None = None
+    last: date | None = last_rebalance_date
     for day in dates:
         if is_rebalance_day(day, last, frequency, dates):
             selected.append(day)
@@ -104,16 +105,19 @@ def _build_model_inputs(
     start: date,
     end: date,
     progress: Callable[[str, int, str], None] | None = None,
+    adjusted_price_cache: dict[tuple[date, date], tuple[pd.DataFrame, pd.DataFrame]] | None = None,
+    last_rebalance_date: date | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, set[pd.Timestamp], dict[date, float]]:
+    factor_key = definition.factor_key
     dates = source.available_market_dates(start, end)
     if not dates:
         raise StyleDataError(f"{definition.model_id} 没有可用行情日期")
-    rebalance_days = _rebalance_dates(dates, definition.rebalance_frequency)
+    rebalance_days = _rebalance_dates(dates, definition.rebalance_frequency, last_rebalance_date)
     score_rows: dict[pd.Timestamp, dict[str, float]] = {}
     coverage: dict[date, float] = {}
     accepted: set[pd.Timestamp] = set()
     for index, day in enumerate(rebalance_days, start=1):
-        snapshot = source.build_eligible_snapshot(day, definition.factor_name)
+        snapshot = source.build_eligible_snapshot(day, factor_key)
         coverage[day] = float(snapshot.attrs.get("factor_coverage", 0.0))
         if coverage[day] < MIN_FACTOR_COVERAGE:
             raise StyleDataError(f"{definition.model_id} {day} 因子覆盖率 {coverage[day]:.2%} 低于 80.00%")
@@ -127,13 +131,19 @@ def _build_model_inputs(
     score = pd.DataFrame.from_dict(score_rows, orient="index")
     score.index = pd.DatetimeIndex(score.index)
     score = score.reindex(pd.DatetimeIndex(dates))
-    adjusted_open, adjusted_close = load_adjusted_open_close(
-        market_base_dir=source.market_root,
-        adj_factor_daily_dir=DEFAULT_ADJ_FACTOR_DAILY_DIR,
-        wide_xdy_dir=DEFAULT_WIDE_XDY_DIR,
-        start_date=start,
-        end_date=end,
-    )
+    cache_key = (start, end)
+    adjusted_prices = adjusted_price_cache.get(cache_key) if adjusted_price_cache is not None else None
+    if adjusted_prices is None:
+        adjusted_prices = load_adjusted_open_close(
+            market_base_dir=source.market_root,
+            adj_factor_daily_dir=DEFAULT_ADJ_FACTOR_DAILY_DIR,
+            wide_xdy_dir=DEFAULT_WIDE_XDY_DIR,
+            start_date=start,
+            end_date=end,
+        )
+        if adjusted_price_cache is not None:
+            adjusted_price_cache[cache_key] = adjusted_prices
+    adjusted_open, adjusted_close = adjusted_prices
     adjusted_open = adjusted_open.reindex(index=pd.DatetimeIndex(dates))
     adjusted_close = adjusted_close.reindex(index=pd.DatetimeIndex(dates))
     valid_bar = adjusted_close.gt(0)
@@ -157,32 +167,51 @@ def run_equal_weight_update(
     source = StyleDataSource(market_root=market_base_dir, signal_root=signal_base_dir)
     definitions = {item.model_id: item for item in MODEL_DEFINITIONS}
     selected = [definitions[item] for item in (model_ids or list(definitions))]
-    result: dict[str, Any] = {"completed_models": [], "failed_models": [], "paused_models": [], "latest_dates": {}, "processed_days": {}}
+    result: dict[str, Any] = {"completed_models": [], "skipped_models": [], "failed_models": [], "paused_models": [], "latest_dates": {}, "processed_days": {}}
+    adjusted_price_cache: dict[tuple[date, date], tuple[pd.DataFrame, pd.DataFrame]] = {}
     for model_index, definition in enumerate(selected, start=1):
         try:
-            latest = source.latest_common_date(definition.factor_name)
+            latest = source.latest_common_date(definition.factor_key)
             if latest is None:
                 raise StyleDataError(f"{definition.model_id} 没有因子与行情共同日期")
             end = min(latest, through_date) if through_date else latest
-            first = source.first_usable_date(definition.factor_name, INITIAL_DATE, MIN_FACTOR_COVERAGE)
+            version = repo.ensure_model_version(definition, build_config_hash(definition))
+            existing_start, existing_end = repo.index_date_bounds(version)
+            if existing_end is not None and existing_end == end and not rebuild:
+                result["completed_models"].append(definition.model_id)
+                result["skipped_models"].append(definition.model_id)
+                result["latest_dates"][definition.model_id] = end.isoformat()
+                result["processed_days"][definition.model_id] = 0
+                if progress:
+                    progress("模型已是最新", int(model_index / len(selected) * 100), f"{definition.model_id} {end}")
+                continue
+            run_state = repo.get_run_state(version)
+            reset_required = bool(rebuild or (existing_end is not None and existing_end > end))
+            incremental = existing_end is not None and not reset_required
+            first = (
+                existing_end
+                if incremental
+                else source.first_usable_date(definition.factor_key, INITIAL_DATE, MIN_FACTOR_COVERAGE)
+            )
             if first is None:
                 raise StyleDataError(f"{definition.model_id} 从 {INITIAL_DATE} 起没有达到 80% 因子覆盖率的可用日期")
             if first > end:
                 continue
-            version = repo.ensure_model_version(definition, build_config_hash(definition))
-            existing_start, existing_end = repo.index_date_bounds(version)
-            reset_required = bool(
-                rebuild
-                or (existing_start is not None and existing_start < first)
-                or (existing_end is not None and existing_end > end)
-            )
             score, open_prices, prices, valid_bar, rebalance_dates, coverage = _build_model_inputs(
                 definition=definition,
                 source=source,
                 start=first,
                 end=end,
                 progress=progress,
+                adjusted_price_cache=adjusted_price_cache,
+                last_rebalance_date=None if reset_required else run_state.last_rebalance_date,
             )
+            initial_values: dict[str, float] | None = None
+            initial_weights: dict[str, dict[str, float]] | None = None
+            initial_last_rebalance: date | None = None
+            if not reset_required and existing_end is not None:
+                _, initial_values, initial_weights = repo.load_index_state(version)
+                initial_last_rebalance = run_state.last_rebalance_date
             if reset_required:
                 repo.clear_index_model(version)
             build_and_persist_equal_weight_index(
@@ -196,12 +225,16 @@ def run_equal_weight_update(
                 valid_bar=valid_bar,
                 rebalance_dates=rebalance_dates,
                 factor_coverage=coverage,
+                persist_start_date=(existing_end + timedelta(days=1)) if existing_end is not None and not reset_required else None,
                 ratio=SELECTION_RATIO,
                 max_count=MAX_SELECTION_COUNT,
+                initial_last_rebalance=initial_last_rebalance,
+                initial_index_values=initial_values,
+                initial_weights=initial_weights,
             )
             result["completed_models"].append(definition.model_id)
             result["latest_dates"][definition.model_id] = end.isoformat()
-            result["processed_days"][definition.model_id] = len(prices.index)
+            result["processed_days"][definition.model_id] = len(prices.index) if reset_required or existing_end is None else int(sum(day > existing_end for day in prices.index.date))
             if progress:
                 progress("模型完成", int(model_index / len(selected) * 100), f"{definition.model_id} {end}")
         except Exception as exc:  # noqa: BLE001

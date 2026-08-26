@@ -18,11 +18,11 @@
 4. **资金与路径**：初始资金、手续费、落盘路径等**优先**使用 [`settings.py`](settings.py) 中的 `run_zxw_backtest` / `create_cerebro`（或现有 ZXW 管线），避免在模型目录再复制一份 `INITIAL_CASH`。
 5. **列表顺序**：在 `model_registry.list_models_public` 的 `order` 列表中加入新 `id`（如需固定排序）。
 6. **自测**：在 `backtrader` 已加入 `PYTHONPATH` 且能 `import backtrader`（第三方库）的环境中，调用一次 `run_registered_model(...)` 或走网页回测 smoke test。
-7. **前端离线兜底**：若改了各模型的 `description_html`，请同步 `可视化/index.html` 中的常量 `BACKTEST_MODEL_FALLBACK`（与 `list_models_public()` 返回的 `models` 条目字段一致），否则 API 不可用时悬停说明会过期。
+7. **前端离线兜底**：模型列表正常以 `/api/backtest/models` 为准。若启用或修改离线兜底，请同步 `可视化/shared/chart_board_core.js` 中的 `BACKTEST_MODEL_FALLBACK`（与 `list_models_public()` 返回的 `models` 条目字段一致）。
 
 ## 不要做的事
 
-- 不要改计划外的 `可视化/index.html` **POST** 负载字段名（除非你有意做全链路迁移）。
+- 不要改计划外的 `可视化/shared/chart_board_backtest.js` **POST** 负载字段名（除非你有意做全链路迁移）。
 - 不要把「仅线下」的长任务注册为 `web_runnable=True`，否则会拖死线程池或让用户误以为失败。
 
 ## 相关文件

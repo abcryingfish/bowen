@@ -150,7 +150,12 @@ def scan_latest_downloaded_times(base_dir: str) -> dict[str, datetime]:
     if not os.path.exists(base_dir):
         return latest_time_map
 
-    parquet_pattern = os.path.join(base_dir, "**", "*.parquet").replace("\\", "/")
+    parquet_pattern = os.path.join(
+        base_dir,
+        "year=*",
+        "month=*",
+        MERGED_FILE_NAME,
+    ).replace("\\", "/")
     try:
         print("正在扫描已下载的数据，请稍候...")
         query = f"""
@@ -171,8 +176,8 @@ def scan_latest_downloaded_times(base_dir: str) -> dict[str, datetime]:
             latest_time_map[normalize_code(row["htsc_code"])] = row["latest_time"].to_pydatetime()
 
         print(f"发现已下载 {len(latest_time_map)} 个指数的历史数据。")
-    except Exception:
-        print("未发现有效历史数据或读取异常，将按全量起始日处理。")
+    except Exception as exc:
+        print(f"未发现有效历史数据或读取异常，将按全量起始日处理: {exc}")
 
     return latest_time_map
 

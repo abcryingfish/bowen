@@ -171,7 +171,7 @@ def load_value_percentile_factor_dfs(
     for factor_name, factor_key in INPUT_FACTOR_NAME_MAP.items():
         files: list[Path] = []
         missing_months: list[str] = []
-        factor_dir = root / f"factor={factor_name}"
+        factor_dir = root / f"factor={factor_key}"
         for month_start in _month_starts(start_dt, end_dt):
             month_dir = (
                 factor_dir

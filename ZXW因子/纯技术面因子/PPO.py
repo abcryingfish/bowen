@@ -66,7 +66,14 @@ class PPO:
             "cycle_divergence": -0.2,
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        # 原子事件信号保留给规则策略；PPO 本身、柱状图相对强度和区间位置
+        # 另外提供连续值，便于排序/回归，避免只能依赖穿越事件。
+        self.continuous_signal_names = [
+            "relative_value",
+            "histogram_relative",
+            "range_position",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_ppo_components(self, close_prices, volume, fast_period=12, slow_period=26, signal_period=9):
         """向量化计算PPO核心组件（PPO线、信号线、柱状图）"""
@@ -107,8 +114,18 @@ class PPO:
         death_cross = ((ppo_line_prev >= signal_line_prev) & (ppo_line < signal_line)).astype(float) * self.signal_strength["death_cross"]
         
         # 2. PPO零轴上方金叉 / 零轴下方死叉 (复合信号)
-        signals["above_zero_golden_cross"] = (golden_cross.abs() > 0) & above_zero.astype(float) * self.signal_strength["above_zero_golden_cross"]
-        signals["below_zero_death_cross"] = (death_cross.abs() > 0) & below_zero.astype(float) * self.signal_strength["below_zero_death_cross"]
+        # 先构造布尔掩码，再显式转数值；原写法受 `&` 与 `*` 优先级影响，
+        # 返回了 bool（强度丢失），且下方死叉可能被错误编码为正值。
+        signals["above_zero_golden_cross"] = (
+            (golden_cross.abs() > 0).astype(float)
+            * above_zero.astype(float)
+            * self.signal_strength["above_zero_golden_cross"]
+        )
+        signals["below_zero_death_cross"] = (
+            (death_cross.abs() > 0).astype(float)
+            * below_zero.astype(float)
+            * self.signal_strength["below_zero_death_cross"]
+        )
 
         # 3. PPO零轴突破 / 零轴回踩
         signals["zero_line_breakthrough"] = ((ppo_line_prev <= 0) & above_zero).astype(float) * self.signal_strength["zero_line_breakthrough"]
@@ -314,6 +331,25 @@ class PPO:
         is_volume_surge = (volume_ratio > volume_surge_threshold).astype(float) * self.signal_strength["volume_surge"]
         return {"volume_surge": is_volume_surge}
 
+    def continuous_signals(self, ppo_line, signal_line, histogram, lookback_period=20):
+        """返回可用于排序/回归的连续 PPO 特征。"""
+        denominator = (ppo_line.abs() + signal_line.abs()).replace(0.0, np.nan)
+        relative_value = (ppo_line / 10.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        histogram_relative = (histogram / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        ppo_min = ppo_line.rolling(window=lookback_period, min_periods=1).min()
+        ppo_max = ppo_line.rolling(window=lookback_period, min_periods=1).max()
+        ppo_range = (ppo_max - ppo_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (ppo_line - ppo_min) / ppo_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "relative_value": relative_value,
+            "histogram_relative": histogram_relative,
+            "range_position": range_position,
+        }
+
 
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume,
                                 fast_period=12, slow_period=26, signal_period=9, 
@@ -510,12 +546,13 @@ class PPO:
         divergence = self.divergence_signals(ppo_line, Close_data)
         patterns = self.trend_and_pattern_signals(ppo_line, Close_data)
         vol_surge = self.volume_surge_signal(volume_ratio, volume_surge_threshold)
+        continuous = self.continuous_signals(ppo_line, signal_line, histogram)
 
-        all_factors = {**single_bar, **multi_bar, **divergence, **patterns, **vol_surge}
+        all_factors = {**single_bar, **multi_bar, **divergence, **patterns, **vol_surge, **continuous}
         min_period = max(fast_period, slow_period)
         for name, df in all_factors.items():
             if df is not None:
-                df = df.reindex_like(Close_data).fillna(0.0)
+                df = df.reindex_like(Close_data).astype(float).fillna(0.0)
                 df.iloc[:min_period * 2] = 0.0
                 all_factors[name] = df
             else:

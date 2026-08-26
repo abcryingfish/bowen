@@ -216,6 +216,26 @@ class ADX:
             "triple_top": triple_top
         }
 
+    def continuous_signals(self, adx_line, plus_di, minus_di):
+        """生成可横向比较的 ADX 连续状态因子。
+
+        ADX 只表示趋势强度，方向由 +DI/-DI 的差值提供。三者均归一化到
+        [-1, 1] 或 [0, 1]，避免把价格绝对值带入跨标的比较。
+        """
+        adx_strength = (adx_line / 100.0).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        adx_strength = adx_strength.clip(lower=0.0, upper=1.0)
+
+        directional_bias = ((plus_di - minus_di) / 100.0).replace(
+            [np.inf, -np.inf], np.nan
+        ).fillna(0.0).clip(lower=-1.0, upper=1.0)
+        trend_score = (adx_strength * directional_bias).clip(lower=-1.0, upper=1.0)
+
+        return {
+            "trend_strength": adx_strength,
+            "directional_bias": directional_bias,
+            "trend_score": trend_score,
+        }
+
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, adx_period=14, divergence_threshold=0.02, enabled_signals=None):
         """
         整合所有ADX信号，生成买卖信号强度矩阵
@@ -516,6 +536,9 @@ class ADX:
         trend_strength_sigs = self.trend_strength_signals(comp['adx_line'], comp['adx_slope'])
         divergence_sigs = self.divergence_signals(comp['adx_line'], Close_data, divergence_threshold)
         pattern_sigs = self.pattern_signals(comp['adx_line'])
+        continuous_sigs = self.continuous_signals(
+            comp['adx_line'], comp['plus_di'], comp['minus_di']
+        )
 
         # 3. 合并所有信号到一个大字典中
         # 使用 ** 语法合并多个字典
@@ -523,7 +546,8 @@ class ADX:
             **cross_sigs,
             **trend_strength_sigs,
             **divergence_sigs,
-            **pattern_sigs
+            **pattern_sigs,
+            **continuous_sigs,
         }
 
         # 4. 统一处理：去除计算初期的不稳定数据

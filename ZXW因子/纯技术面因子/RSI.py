@@ -39,7 +39,12 @@ class RSI:
             "channel_breakthrough": 0.2, "channel_pullback": 0.1,
             "breakthrough_confirmation": 0.4, "pullback_confirmation": -0.4,
         }
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "normalized_value",
+            "slope_rate",
+            "range_position",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_rsi_components(self, close_adj, high_adj, low_adj, volume, rsi_period=14, signal_period=5):
         """
@@ -163,6 +168,26 @@ class RSI:
         is_volume_surge = (volume_ratio > volume_surge_threshold).astype(float) * self.signal_strength["volume_surge"]
         return {"volume_surge": is_volume_surge}
 
+    def continuous_signals(self, rsi_line, rsi_slope, lookback_period=20):
+        """返回可用于排序/回归的连续 RSI 特征。"""
+        normalized_value = ((rsi_line - 50.0) / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        slope_rate = (rsi_slope / 50.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        rsi_min = rsi_line.rolling(window=lookback_period, min_periods=1).min()
+        rsi_max = rsi_line.rolling(window=lookback_period, min_periods=1).max()
+        rsi_range = (rsi_max - rsi_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (rsi_line - rsi_min) / rsi_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "normalized_value": normalized_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
+        }
+
     def get_total_signal_matrix(self, Open, High, Low, Close, Volume, 
                                 HighAdj, LowAdj, CloseAdj, # 必需 Adj
                                 rsi_period=14, signal_period=5, 
@@ -216,10 +241,13 @@ class RSI:
         div = self.divergence_signals(rsi_line, CloseAdj, atr)
         patterns = self.pattern_signals(rsi_line, CloseAdj, atr)
         vol_surge = self.volume_surge_signal(vol_ratio)
+        continuous = self.continuous_signals(rsi_line, rsi_slope)
 
-        all_factors = {**single, **div, **patterns, **vol_surge}
-        
-        for name in all_factors:
-            all_factors[name].iloc[:rsi_period * 2] = 0.0
-                
+        all_factors = {**single, **div, **patterns, **vol_surge, **continuous}
+
+        for name, df in all_factors.items():
+            df = df.reindex_like(CloseAdj).astype(float).fillna(0.0)
+            df.iloc[:rsi_period * 2] = 0.0
+            all_factors[name] = df
+
         return all_factors

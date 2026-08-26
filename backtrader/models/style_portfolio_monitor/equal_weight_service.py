@@ -18,6 +18,8 @@ def build_index_day_payloads(
     config_hash: str,
     result: dict[str, Any],
     score_frame: pd.DataFrame,
+    initial_last_rebalance: date | None = None,
+    initial_index_values: dict[str, float] | None = None,
 ) -> list[IndexModelDayPayload]:
     """将纯指数结果转换为每日双腿权重账本。"""
     dates = pd.DatetimeIndex(result["index_dfs"]["high"].index)
@@ -25,14 +27,14 @@ def build_index_day_payloads(
     scores.index = pd.DatetimeIndex(pd.to_datetime(scores.index)).floor("D")
     scores.columns = scores.columns.astype(str).str.strip().str.upper()
     payloads: list[IndexModelDayPayload] = []
-    last_rebalance: date | None = None
+    last_rebalance: date | None = initial_last_rebalance
     for position, day in enumerate(dates):
         day_date = day.date()
         signal_date = result.get("signal_dates", {}).get(day_date)
         day_payloads: dict[str, IndexLegDayPayload] = {}
         for leg in ("high", "low"):
             value = float(result["index_dfs"][leg].loc[day])
-            previous = float(result["index_dfs"][leg].iloc[position - 1]) if position else None
+            previous = float(result["index_dfs"][leg].iloc[position - 1]) if position else (initial_index_values or {}).get(leg)
             daily_return = value / previous - 1.0 if previous not in (None, 0.0) else None
             target = result.get("target_weights", {}).get(leg, {}).get(day_date, {})
             effective = result.get("weights", {}).get(leg, {}).get(day_date, {})
@@ -91,8 +93,12 @@ def build_and_persist_equal_weight_index(
     valid_bar: pd.DataFrame,
     rebalance_dates: set[pd.Timestamp | date],
     factor_coverage: dict[date, float] | None = None,
+    persist_start_date: date | None = None,
     ratio: float = 0.20,
     max_count: int = 200,
+    initial_last_rebalance: date | None = None,
+    initial_index_values: dict[str, float] | None = None,
+    initial_weights: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, Any]:
     result = build_equal_weight_index(
         score_frame,
@@ -102,6 +108,8 @@ def build_and_persist_equal_weight_index(
         rebalance_dates=rebalance_dates,
         ratio=ratio,
         max_count=max_count,
+        initial_index_values=initial_index_values,
+        initial_weights=initial_weights,
     )
     if factor_coverage:
         result["factor_coverage"] = factor_coverage
@@ -111,6 +119,14 @@ def build_and_persist_equal_weight_index(
         config_hash=config_hash,
         result=result,
         score_frame=score_frame,
+        initial_last_rebalance=initial_last_rebalance,
+        initial_index_values=initial_index_values,
     )
+    if persist_start_date is not None:
+        payloads = [
+            payload
+            for payload in payloads
+            if payload.trade_date >= persist_start_date
+        ]
     repo.write_index_model_days(payloads)
     return {"result": result, "payload_count": len(payloads)}

@@ -48,6 +48,32 @@ FACTOR_WHITELIST = (
     "量比20",
 )
 
+# signal_daily 已逐步统一为英文因子 ID；保留训练面板中的中文列名，
+# 通过此映射兼容旧模型特征名并读取最新分区数据。
+FACTOR_SOURCE_MAP = {
+    "120日动量": "momentum_120d",
+    "60日动量": "momentum_60d",
+    "20日动量": "momentum_20d",
+    "14日ATR波动率": "atr_volatility_14d",
+    "20日年化波动率": "annual_vol_20d",
+    "60日年化波动率": "annual_vol_60d",
+    "20_60日波动率比": "volatility_ratio_20_60d",
+    "60日最大回撤": "max_drawdown_60d",
+    "20日新高占比": "new_high_ratio_20d",
+    "20日新低占比": "new_low_ratio_20d",
+    "MAC总": "mac_total",
+    "K值": "k_value",
+    "D值": "d_value",
+    "J值": "j_raw",
+    "RSI6": "rsi_6",
+    "RSI12": "rsi_12",
+    "RSI24": "rsi_24",
+    "OBV斜率20": "obv_slope_20",
+    "OBV动量20": "obv_mom_20",
+    "OBV价共振": "obv_price_combo",
+    "量比20": "volume_ratio_20",
+}
+
 TARGET_COLUMNS = ("peak_strength_ex_post", "valley_strength_ex_post")
 FORBIDDEN_TOKENS = ("label", "未来", "事后", "peak_strength", "valley_strength", "confirm_delay")
 
@@ -56,16 +82,16 @@ def _partition_glob(path: Path) -> str:
     return str(path / "year=*" / "month=*" / "merged.parquet").replace("\\", "/")
 
 
-def load_complete_labels(label_path: Path) -> pd.DataFrame:
+def load_complete_labels(label_path: Path, *, include_incomplete: bool = False) -> pd.DataFrame:
     with duckdb.connect() as con:
         labels = con.execute(
             """
             SELECT * EXCLUDE (year, month)
             FROM read_parquet(?, hive_partitioning=true, union_by_name=true)
-            WHERE label_complete = true
+            WHERE (? OR label_complete = true)
             ORDER BY time, htsc_code
             """,
-            [_partition_glob(label_path)],
+            [_partition_glob(label_path), include_incomplete],
         ).df()
     labels["time"] = pd.to_datetime(labels["time"]).dt.floor("D")
     if labels.duplicated(["htsc_code", "time"]).any():
@@ -121,7 +147,8 @@ def load_factor_values(
     start_date: str,
     end_date: str,
 ) -> pd.DataFrame:
-    factor_path = signal_path / f"factor={factor_name}"
+    source_name = FACTOR_SOURCE_MAP.get(factor_name, factor_name)
+    factor_path = signal_path / f"factor={source_name}"
     if not factor_path.exists() or not any(factor_path.glob("year=*/month=*/merged.parquet")):
         return pd.DataFrame(columns=["htsc_code", "time", factor_name])
     with duckdb.connect() as con:
@@ -212,8 +239,9 @@ def build_panel(
     panel_path: Path,
     report_path: Path,
     factor_names: tuple[str, ...] = FACTOR_WHITELIST,
+    include_incomplete: bool = False,
 ) -> dict:
-    labels = load_complete_labels(label_path)
+    labels = load_complete_labels(label_path, include_incomplete=include_incomplete)
     start_date = labels["time"].min().strftime("%Y-%m-%d")
     end_date = labels["time"].max().strftime("%Y-%m-%d")
     market = load_sector_market(market_path, start_date=start_date, end_date=end_date)
@@ -246,7 +274,13 @@ def build_panel(
     audit = pd.DataFrame(audit_rows).sort_values(
         ["eligible", "coverage", "feature"], ascending=[False, False, True]
     )
-    selected = audit.loc[audit["eligible"], "feature"].tolist()
+    # 训练面板仍按审计结果筛选；部署面板必须保留模型所需的固定特征，
+    # 即使最近日期尚未形成完整事后标签，也不能因为标签状态丢掉特征列。
+    selected = (
+        list(feature_columns)
+        if include_incomplete
+        else audit.loc[audit["eligible"], "feature"].tolist()
+    )
     if not selected:
         raise RuntimeError("没有因子通过阶段 B 审计")
     final_columns = [
@@ -277,6 +311,7 @@ def build_panel(
         "missing_factor_dirs_or_sector_rows": missing_factor_dirs,
         "duplicate_keys": 0,
         "target_leakage_name_check": True,
+        "include_incomplete_labels": include_incomplete,
         "passed": True,
     }
     (report_path / "panel_audit.json").write_text(
@@ -293,6 +328,7 @@ def main() -> None:
     parser.add_argument("--label-path", type=Path, default=DEFAULT_LABEL_PATH)
     parser.add_argument("--panel-path", type=Path, default=DEFAULT_PANEL_PATH)
     parser.add_argument("--report-path", type=Path, default=DEFAULT_REPORT_PATH)
+    parser.add_argument("--include-incomplete", action="store_true", help="部署因子计算时包含最近尚未完成40日确认的标签行；不用于训练")
     args = parser.parse_args()
     build_panel(**vars(args))
 

@@ -1,0 +1,162 @@
+{
+  "version": "v2_rank_change_features",
+  "description": "板块三周期六组峰谷变化模型配置。V2相关字段仅作为y，禁止进入任何因子组X；热点组同时保留排名水平和短期排名变动。",
+  "groups": {
+    "technical_trend": {
+      "name": "技术趋势组",
+      "priority": "最高",
+      "status": "ready",
+      "factors": [
+        "120日动量",
+        "60日动量",
+        "mkt_momentum_5d",
+        "mkt_momentum_20d",
+        "mkt_momentum_60d",
+        "mkt_return_1d",
+        "DEA",
+        "DIF",
+        "MAC",
+        "D值",
+        "J值",
+        "K值",
+        "RSV",
+        "RSI6",
+        "RSI12",
+        "RSI24",
+        "OBV动量20",
+        "OBV斜率20",
+        "量比20"
+      ]
+    },
+    "sideways_volatility": {
+      "name": "横盘波动组",
+      "priority": "最高",
+      "status": "ready",
+      "factors": [
+        "60日年化波动率",
+        "mkt_volatility_20d",
+        "mkt_volatility_60d",
+        "mkt_range_atr_20d",
+        "mkt_high_position_20d",
+        "mkt_low_position_20d",
+        "mkt_high_position_60d",
+        "mkt_low_position_60d",
+        "20日新高占比",
+        "20日新低占比"
+      ]
+    },
+    "relative_strength": {
+      "name": "相对强弱组",
+      "priority": "最高",
+      "status": "ready",
+      "factors": [
+        "rs_vs_all_5d",
+        "rs_vs_all_20d",
+        "rs_vs_all_60d",
+        "rs_vs_family_5d",
+        "rs_vs_family_20d",
+        "rs_vs_family_60d",
+        "strength_pct_all_20d",
+        "strength_pct_family_20d",
+        "strength_pct_change_5d",
+        "residual_strength_20d"
+      ]
+    },
+    "constituent_breadth": {
+      "name": "成分股广度组",
+      "priority": "最高",
+      "status": "ready_latest_membership_proxy",
+      "factors": [
+        "constituent_up_ratio_1d",
+        "constituent_down_ratio_1d",
+        "constituent_positive_return_ratio_5d",
+        "constituent_above_ma20_ratio",
+        "constituent_new_high_ratio_20d",
+        "constituent_new_low_ratio_20d",
+        "constituent_rsi_oversold_ratio",
+        "constituent_rsi_overbought_ratio",
+        "constituent_valid_count",
+        "constituent_coverage"
+      ],
+      "membership_policy": "latest_snapshot_backfilled_to_all_history"
+    },
+    "leader_diffusion": {
+      "name": "龙头影响组",
+      "priority": "高",
+      "status": "ready_latest_membership_proxy",
+      "factors": [
+        "top5_return_contribution_20d",
+        "top5_turnover_concentration",
+        "constituent_median_return_20d",
+        "constituent_return_dispersion_20d",
+        "leader_median_return_gap_20d",
+        "advance_decline_spread_1d",
+        "approx_limit_up_ratio",
+        "approx_limit_down_ratio",
+        "limit_proxy_coverage"
+      ],
+      "membership_policy": "latest_snapshot_backfilled_to_all_history",
+      "limit_ratio_policy": "approximate_close_at_limit_proxy_without_historical_st_or_ipo_rules"
+    },
+    "hot_sentiment": {
+      "name": "热点舆情组",
+      "priority": "高",
+      "status": "ready_short_history",
+      "factors": [
+        "popularity_strength_mean",
+        "popularity_strength_median",
+        "popularity_rank_improvement_per_day",
+        "popularity_rank_improvement_1d_mean",
+        "popularity_rank_improvement_3d_mean",
+        "popularity_rank_improvement_5d_mean",
+        "hot_stock_ratio_top100",
+        "new_fan_ratio_mean",
+        "new_fan_change_mean",
+        "old_fan_change_mean",
+        "hot_streak_days",
+        "sentiment_valid_count",
+        "sentiment_coverage"
+      ],
+      "minimum_history_start": "2025-08-11",
+      "split_policy": "chronological_first_half_train_second_half_test"
+    }
+  },
+  "horizons": {
+    "ultra_short": {
+      "label": "超短",
+      "days": [1, 2, 3],
+      "weights": {"1": 0.5, "2": 0.3, "3": 0.2},
+      "peak_target": "delta_peak_ultra_short",
+      "valley_target": "delta_valley_ultra_short"
+    },
+    "5d": {
+      "label": "5日",
+      "days": [5],
+      "peak_target": "delta_peak_5d",
+      "valley_target": "delta_valley_5d"
+    },
+    "20d": {
+      "label": "20日",
+      "days": [20],
+      "peak_target": "delta_peak_20d",
+      "valley_target": "delta_valley_20d"
+    }
+  },
+  "target_source": {
+    "peak": "peak_strength_ex_post",
+    "valley": "valley_strength_ex_post",
+    "definition": "future V2 strength minus current V2 strength",
+    "feature_policy": "all V2 current/future/delta fields are forbidden in X"
+  },
+  "frozen_inputs": {
+    "constituent_snapshot": "D:\\database\\sector_information\\constituent_snapshots_eligible\\analysis_date=2026-08-14\\part-000.parquet",
+    "constituent_snapshot_sha256": "d40ab89d3c8509e19bc3af89c6e577aa96045958bb81910df6a3a96e2edd7612"
+  },
+  "second_layer": {
+    "model": "Ridge",
+    "fit_scope": "one_model_per_horizon_and_peak_or_valley_target",
+    "inputs": "six_group_oof_scores_for_same_horizon_and_target",
+    "output_pattern": "{horizon}_{target}_combined_score"
+  },
+  "states": ["波峰风险增强", "波谷机会增强", "峰谷状态稳定", "峰谷冲突", "中性"]
+}

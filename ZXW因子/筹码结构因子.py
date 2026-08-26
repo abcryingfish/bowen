@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
 # fengwo.COST 实测与 VOL 无关（旧筹码衰减和新增筹码均按换手率；新增为三角分布）
 DEFAULT_TURNOVER_BASE_DIR = r"D:\database\qmt_turnover_data"
 CHIP_STATE_CACHE_PATH = (
-    r"C:\Users\Administrator\Desktop\python_venv\temp_calculated_data\Chip Distribution\latest_state.parquet"
+    r"D:\database\signal_daily\_state\chip_structure_latest_state.parquet"
 )
 CHIP_STATE_ALGORITHM_VERSION = "tdx_fengwo_v1"
 CHOUMA_MIN_D = 0.01
@@ -455,6 +455,10 @@ if _NUMBA_AVAILABLE:
             need_low = dl
         if dh > need_high:
             need_high = dh
+
+        # 价格网格未扩展时直接复用原数组，避免每个交易日都重新申请并复制。
+        if need_low == base_low and need_high == cur_high:
+            return chip, base_low, n_bins
 
         left_pad = int(np.round((base_low - need_low) / min_d))
         if left_pad < 0:
@@ -1260,11 +1264,12 @@ def build_chip_structure_factor_bundle(
             return cached
 
     p_count = len(_COST_PERCENTILES)
-    costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
+    costs_np: np.ndarray | None = None
     abs_conc_override: np.ndarray | None = None
     rel_conc_tail_inputs: list[np.ndarray] | None = None
     rel_conc_override: np.ndarray | None = None
-    state_cache_enabled = _chip_state_cache_enabled() and (
+    # valid_bar 压缩路径使用 RangeIndex，不能将其写成真实交易日期状态。
+    state_cache_enabled = isinstance(index, pd.DatetimeIndex) and _chip_state_cache_enabled() and (
         n_cols >= _chip_state_cache_min_cols() or _chip_state_cache_explicitly_enabled()
     )
     state_cache = _load_chip_state_cache() if state_cache_enabled else {}
@@ -1273,6 +1278,7 @@ def build_chip_structure_factor_bundle(
     state_cache_skip_reason = ""
     state_cache_checked_cols = 0
 
+    valid_bar_np = np.isfinite(c_np) & np.isfinite(h_np) & np.isfinite(l_np)
     state_start_rows: list[int] | None = None
     if state_cache_enabled and n_rows > 0 and n_cols > 0:
         state_start_rows = []
@@ -1284,12 +1290,8 @@ def build_chip_structure_factor_bundle(
                 state_start_rows = None
                 break
             last_dt = pd.Timestamp(st["last_dt"]).floor("D")
-            valid_after_cache = np.flatnonzero(input_dates > last_dt)
-            if valid_after_cache.size == 0:
-                state_cache_skip_reason = "no_input_after_cached_date"
-                state_start_rows = None
-                break
-            state_start_rows.append(int(valid_after_cache[0]))
+            valid_after_cache = np.flatnonzero((input_dates > last_dt) & valid_bar_np[:, len(state_start_rows)])
+            state_start_rows.append(int(valid_after_cache[0]) if valid_after_cache.size else n_rows)
     factor_log(
         "chip.state_cache_checked",
         enabled=state_cache_enabled,
@@ -1304,34 +1306,37 @@ def build_chip_structure_factor_bundle(
     )
 
     if state_start_rows is not None:
-        abs_conc_override = np.zeros((n_rows, n_cols), dtype=np.float64)
+        costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
+        abs_conc_override = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
         rel_conc_override = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
         for ci, col in enumerate(columns):
             prev_state = state_cache[str(col)]
-            start_row = int(state_start_rows[ci])
-            col_costs, col_state, col_abs = _compute_chouma_cost_series_with_state(
-                h_np[start_row:, ci],
-                l_np[start_row:, ci],
-                c_np[start_row:, ci],
-                v_np[start_row:, ci],
-                t_np[start_row:, ci],
-                _COST_PERCENTILES,
-                index[start_row:],
-                state=prev_state,
-                min_d=min_d,
-                ac=ac,
-                use_volume=CHOUMA_USE_VOLUME,
-            )
-            _costs_array_to_matrix(col_costs, n_rows - start_row, ci, costs_np[:, start_row:, :])
-            abs_conc_override[:start_row, ci] = np.nan
-            abs_conc_override[start_row:, ci] = col_abs
-            tail = np.asarray(prev_state.get("abs_conc_tail", np.zeros(0)), dtype=np.float64)
-            rel_conc_override[:, ci : ci + 1] = _align_tail_matrix(
-                _tdx_relative_concentration_with_tail(col_abs.reshape(-1, 1), [tail]),
-                n_rows,
-                start_row,
-                1,
-            )
+            last_dt = pd.Timestamp(prev_state["last_dt"]).floor("D")
+            row_pos = np.flatnonzero((input_dates > last_dt) & valid_bar_np[:, ci])
+            if row_pos.size:
+                col_costs, col_state, col_abs = _compute_chouma_cost_series_with_state(
+                    h_np[row_pos, ci],
+                    l_np[row_pos, ci],
+                    c_np[row_pos, ci],
+                    v_np[row_pos, ci],
+                    t_np[row_pos, ci],
+                    _COST_PERCENTILES,
+                    index[row_pos],
+                    state=prev_state,
+                    min_d=min_d,
+                    ac=ac,
+                    use_volume=CHOUMA_USE_VOLUME,
+                )
+                costs_np[:, row_pos, ci] = col_costs
+                abs_conc_override[row_pos, ci] = col_abs
+                tail = np.asarray(prev_state.get("abs_conc_tail", np.zeros(0)), dtype=np.float64)
+                rel_conc_override[row_pos, ci] = _tdx_relative_concentration_with_tail(
+                    col_abs.reshape(-1, 1), [tail]
+                )[:, 0]
+            else:
+                col_state = dict(prev_state)
+            # last_dt表示本状态已处理到的行情日；筹码和滚动尾部仍只由真实K线推进。
+            col_state["last_dt"] = input_dates[-1]
             col_state["htsc_code"] = str(col)
             new_states[str(col)] = col_state
 
@@ -1351,26 +1356,32 @@ def build_chip_structure_factor_bundle(
         pass
     elif state_cache_enabled and _chip_state_cache_bootstrap_enabled(n_rows, n_cols):
         factor_log("chip.path", path="state_bootstrap", rows=int(n_rows), cols=int(n_cols))
-        abs_conc_override = np.zeros((n_rows, n_cols), dtype=np.float64)
-        rel_conc_tail_inputs = [np.zeros(0, dtype=np.float64) for _ in range(n_cols)]
+        costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
+        abs_conc_override = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
+        rel_conc_override = np.full((n_rows, n_cols), np.nan, dtype=np.float64)
         for ci, col in enumerate(columns):
             if ci == 0 or (ci + 1) % 200 == 0 or ci + 1 == n_cols:
                 factor_log("chip.state_bootstrap_progress", done=int(ci + 1), total=int(n_cols), code=str(col))
+            row_pos = np.flatnonzero(valid_bar_np[:, ci])
             col_costs, col_state, col_abs = _compute_chouma_cost_series_with_state(
-                h_np[:, ci],
-                l_np[:, ci],
-                c_np[:, ci],
-                v_np[:, ci],
-                t_np[:, ci],
+                h_np[row_pos, ci],
+                l_np[row_pos, ci],
+                c_np[row_pos, ci],
+                v_np[row_pos, ci],
+                t_np[row_pos, ci],
                 _COST_PERCENTILES,
-                index,
+                index[row_pos],
                 state=None,
                 min_d=min_d,
                 ac=ac,
                 use_volume=CHOUMA_USE_VOLUME,
             )
-            _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
-            abs_conc_override[:, ci] = col_abs
+            costs_np[:, row_pos, ci] = col_costs
+            abs_conc_override[row_pos, ci] = col_abs
+            rel_conc_override[row_pos, ci] = _tdx_relative_concentration_with_tail(
+                col_abs.reshape(-1, 1), [np.zeros(0, dtype=np.float64)]
+            )[:, 0]
+            col_state["last_dt"] = input_dates[-1]
             col_state["htsc_code"] = str(col)
             new_states[str(col)] = col_state
     elif use_numba:
@@ -1389,6 +1400,7 @@ def build_chip_structure_factor_bundle(
         )
     elif use_parallel and n_cols > 1:
         factor_log("chip.path", path="process_pool", rows=int(n_rows), cols=int(n_cols), workers=min(_parallel_workers(), n_cols))
+        costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
         tasks = [
             (
                 ci,
@@ -1412,6 +1424,7 @@ def build_chip_structure_factor_bundle(
                 _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
     else:
         factor_log("chip.path", path="python_loop", rows=int(n_rows), cols=int(n_cols))
+        costs_np = np.full((p_count, n_rows, n_cols), np.nan, dtype=np.float64)
         for ci in range(n_cols):
             if ci == 0 or (ci + 1) % 200 == 0 or ci + 1 == n_cols:
                 factor_log("chip.python_loop_progress", done=int(ci + 1), total=int(n_cols), code=str(columns[ci]))
@@ -1428,6 +1441,8 @@ def build_chip_structure_factor_bundle(
             )
             _costs_array_to_matrix(col_costs, n_rows, ci, costs_np)
 
+    if costs_np is None:
+        raise RuntimeError("筹码成本矩阵未初始化")
     t2 = time.perf_counter()
 
     c1_np, c5_np, c10_np, c15_np = (
@@ -1576,6 +1591,8 @@ def build_chip_structure_factor_bundle(
         "multi_peak_state": pd.DataFrame(multi_peak.astype(float), index=index, columns=columns),
         "chip_peak_score": pd.DataFrame(chip_peak_score, index=index, columns=columns),
     }
+    valid_bar_frame = pd.DataFrame(valid_bar_np, index=index, columns=columns)
+    factor_dfs = {name: frame.where(valid_bar_frame, 0.0) for name, frame in factor_dfs.items()}
 
     factor_name_map: dict[str, str] = {
         "绝对集中度": "absolute_concentration",

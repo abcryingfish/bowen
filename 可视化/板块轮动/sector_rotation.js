@@ -39,14 +39,438 @@
         "60d": { calendarDays: 110, points: 60, label: "60日" },
         ytd: { calendarDays: null, points: null, label: "年初至今" },
     };
-    const state = { prefix: "881", range: "60d", customDays: null, keyword: "", stockFilterCode: "", stockSectorCodes: null, searchRequestId: 0, sortOrder: "desc", sortActive: false, sortRequestId: 0, allItems: [], generation: 0, scrollHandler: null, visibleCardScheduler: null, constituentObserver: null, controlScrollHandler: null, lastScrollY: 0, charts: new Map(), queue: [], activeRequests: 0 };
+    const state = { prefix: "881", range: "60d", customDays: null, keyword: "", stockFilterCode: "", stockSectorCodes: null, searchRequestId: 0, sortMode: "model", sortOrder: "desc", sortActive: false, modelSortActive: true, modelSortPeriod: "ultra_short", modelSortEvent: "valley_bullish", sortRequestId: 0, allItems: [], modelSignalByCode: new Map(), modelHistoryByCode: new Map(), modelHistoryPromises: new Map(), modelDiagnosticsByCode: new Map(), modelSignalRequestId: 0, generation: 0, pendingControllers: new Set(), globalEventRow: null, globalEventSignal: null, globalEventCloseTimer: null, globalEventRequestId: 0, scrollHandler: null, visibleCardScheduler: null, constituentObserver: null, constituentChart: null, constituentSeries: null, constituentBollingerSeries: null, constituentBars: [], constituentCode: "", constituentChartRequestId: 0, constituentHistoryLoading: false, constituentHistoryExhausted: false, constituentFirstAvailableTime: null, controlScrollHandler: null, lastScrollY: 0, charts: new Map(), fundShareBySector: new Map(), fundSharePromise: null, queue: [], activeRequests: 0 };
     const MAX_CONCURRENT_REQUESTS = 4;
+    const CONSTITUENT_INITIAL_HISTORY_DAYS = 365 * 3;
+    const CONSTITUENT_HISTORY_BATCH_DAYS = 365 * 6;
 
-    async function apiFetch(path) {
-        const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error?.message || `HTTP ${response.status}`);
-        return payload;
+    async function apiFetch(path, options = {}) {
+        const timeoutMs = Math.max(0, Number(options.timeoutMs) || 0);
+        const controller = new AbortController();
+        let timeoutTriggered = false;
+        const timer = timeoutMs ? window.setTimeout(() => { timeoutTriggered = true; controller.abort(); }, timeoutMs) : null;
+        state.pendingControllers.add(controller);
+        try {
+            const response = await fetch(`${API_BASE}${path}`, { cache: "no-store", signal: controller.signal });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error?.message || `HTTP ${response.status}`);
+            return payload;
+        } catch (error) {
+            if (controller.signal.aborted) {
+                const abortError = new Error(timeoutTriggered ? `请求超过 ${Math.round(timeoutMs / 1000)} 秒，请检查 API 服务后重试` : "请求已取消");
+                abortError.name = "AbortError";
+                throw abortError;
+            }
+            throw error;
+        } finally {
+            if (timer !== null) window.clearTimeout(timer);
+            state.pendingControllers.delete(controller);
+        }
+    }
+
+    function cancelPendingRequests() {
+        state.pendingControllers.forEach((controller) => controller.abort());
+        state.pendingControllers.clear();
+        state.globalEventRequestId += 1;
+        closeGlobalModelEventDetail();
+    }
+
+    function isAbortError(error) {
+        return error?.name === "AbortError" || /请求已取消/.test(String(error?.message || ""));
+    }
+
+    const MODEL_PERIODS = [
+        ["ultra_short", "超短", "3日内"],
+        ["5d", "短期", "5天"],
+        ["20d", "中期", "20天"],
+    ];
+    const MODEL_EVENTS = [
+        ["valley_bullish", "波谷看涨"],
+        ["peak_bearish", "波峰看跌"],
+        ["two_sided_high_volatility", "双向高波"],
+        ["sideways_bullish", "横盘看涨"],
+        ["sideways_bearish", "横盘看跌"],
+    ];
+    const TECHNICAL_SUBGROUPS = ["ADX", "AMA", "APO", "AROON", "BOLL", "CCI", "CMO", "DEMA", "MACD", "MFI", "MOM", "PPO", "ROC", "RSI", "STOCH", "ULTOSC", "WILLR", "WMA"];
+
+    function formatModelPercent(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : "--";
+    }
+
+    function formatModelNumber(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? number.toFixed(4) : "--";
+    }
+
+    function sectorCodeKeys(value) {
+        const raw = String(value || "").trim().toUpperCase();
+        if (!raw) return [];
+        const base = raw.split(".", 1)[0];
+        return base && base !== raw ? [raw, base] : [raw];
+    }
+
+    function modelStateLabel(item, period) {
+        const raw = String(item?.[`${period}_most_likely_state`] || "").trim();
+        const knownLabels = new Set(MODEL_EVENTS.map(([, name]) => name));
+        if (knownLabels.has(raw)) return raw;
+        let bestName = "模型信号";
+        let bestProbability = -Infinity;
+        MODEL_EVENTS.forEach(([event, name]) => {
+            const probability = Number(item?.[`${period}_prob_${event}`]);
+            if (Number.isFinite(probability) && probability > bestProbability) {
+                bestProbability = probability;
+                bestName = name;
+            }
+        });
+        return bestName;
+    }
+
+    const MODEL_GROUP_LABELS = {
+        technical: "技术面",
+        sideways_volatility: "横盘波动",
+        relative_strength: "相对强弱",
+        constituent_breadth: "成分广度",
+        leader_diffusion: "龙头扩散",
+        market_state_conditioned: "市场状态",
+    };
+
+    function modelEventDirection(event) {
+        if (event === "valley_bullish" || event === "sideways_bullish") return "看涨";
+        if (event === "peak_bearish" || event === "sideways_bearish") return "看跌";
+        return "双向高波动";
+    }
+
+    function modelEventSide(event) {
+        if (event === "valley_bullish" || event === "sideways_bullish") return "valley";
+        if (event === "peak_bearish" || event === "sideways_bearish") return "peak";
+        return null;
+    }
+
+    function renderModelEventDetail(detail, item, diagnostics, period, event) {
+        const probability = Number(item?.[`${period}_prob_${event}`]);
+        const side = modelEventSide(event);
+        const groups = ["technical", "sideways_volatility", "relative_strength", "constituent_breadth", "leader_diffusion", "market_state_conditioned"];
+        const values = groups.map((group) => {
+            if (side) return { group, value: Number(diagnostics?.[`contrib_${group}_delta_${side}_${period}`]) };
+            return {
+                group,
+                peak: Number(diagnostics?.[`contrib_${group}_delta_peak_${period}`]),
+                valley: Number(diagnostics?.[`contrib_${group}_delta_valley_${period}`]),
+            };
+        });
+        const magnitudes = values.map((entry) => side ? Math.abs(entry.value) : Math.abs(entry.peak || 0) + Math.abs(entry.valley || 0));
+        const totalMagnitude = magnitudes.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+        const rows = values.map((entry, index) => {
+            const magnitude = magnitudes[index];
+            const share = totalMagnitude > 0 ? magnitude / totalMagnitude : NaN;
+            const contribution = side ? (Number.isFinite(entry.value) ? formatModelNumber(entry.value) : "--") : `峰 ${Number.isFinite(entry.peak) ? formatModelNumber(entry.peak) : "--"} / 谷 ${Number.isFinite(entry.valley) ? formatModelNumber(entry.valley) : "--"}`;
+            return `<div><span>${MODEL_GROUP_LABELS[entry.group]}</span><strong>${contribution} · ${formatModelPercent(share)}</strong></div>`;
+        }).join("");
+        detail.innerHTML = `<div class="sector-signal-event-summary"><span>事件权重</span><strong>${formatModelPercent(probability)} · ${modelEventDirection(event)}</strong></div><small>构成占比（按贡献绝对值归一化）</small><div class="sector-signal-event-contributions">${rows}</div>`;
+    }
+
+    function globalModelEventDetailNode() {
+        return document.getElementById("sector-global-event-detail");
+    }
+
+    function positionGlobalModelEventDetail(row) {
+        const detail = globalModelEventDetailNode();
+        if (!detail || !row) return;
+        const rect = row.getBoundingClientRect();
+        const margin = 12;
+        const width = Math.min(360, Math.max(240, window.innerWidth - margin * 2));
+        detail.style.width = `${width}px`;
+        let left = rect.right - width;
+        left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+        detail.style.left = `${left}px`;
+        detail.style.top = `${Math.max(margin, rect.bottom + 6)}px`;
+    }
+
+    function closeGlobalModelEventDetail() {
+        if (state.globalEventCloseTimer) window.clearTimeout(state.globalEventCloseTimer);
+        state.globalEventCloseTimer = null;
+        state.globalEventRow = null;
+        state.globalEventSignal = null;
+        const detail = globalModelEventDetailNode();
+        if (!detail) return;
+        detail.classList.remove("is-open", "is-loading");
+        detail.setAttribute("aria-hidden", "true");
+        detail.textContent = "";
+    }
+
+    function bindGlobalModelEventDetail() {
+        const detail = globalModelEventDetailNode();
+        if (!detail || detail.dataset.bound === "1") return;
+        detail.dataset.bound = "1";
+        detail.addEventListener("mouseenter", () => {
+            if (state.globalEventCloseTimer) window.clearTimeout(state.globalEventCloseTimer);
+            state.globalEventSignal?.classList.add("is-hovered");
+        });
+        detail.addEventListener("mouseleave", scheduleGlobalModelEventDetailClose);
+        window.addEventListener("scroll", () => {
+            if (detail.classList.contains("is-open") && state.globalEventRow) positionGlobalModelEventDetail(state.globalEventRow);
+        }, { passive: true });
+    }
+
+    function scheduleGlobalModelEventDetailClose() {
+        if (state.globalEventCloseTimer) window.clearTimeout(state.globalEventCloseTimer);
+        state.globalEventCloseTimer = window.setTimeout(() => {
+            const detail = globalModelEventDetailNode();
+            if (state.globalEventRow?.matches(":hover") || state.globalEventSignal?.matches(":hover") || detail?.matches(":hover")) return;
+            closeGlobalModelEventDetail();
+        }, 180);
+    }
+
+    async function loadModelEventDetail(row) {
+        const signal = row?.closest(".sector-signal");
+        const card = row?.closest(".sector-card");
+        const detail = globalModelEventDetailNode();
+        const period = row?.closest(".sector-signal-popover-period")?.dataset.period;
+        const event = row?.dataset.event;
+        const code = card?.dataset.code;
+        if (!signal || !detail || !period || !event || !code) return;
+        if (state.globalEventCloseTimer) window.clearTimeout(state.globalEventCloseTimer);
+        state.globalEventRow = row;
+        state.globalEventSignal = signal;
+        state.globalEventRequestId += 1;
+        const requestId = state.globalEventRequestId;
+        signal.classList.add("is-hovered");
+        detail.classList.add("is-open", "is-loading");
+        detail.setAttribute("aria-hidden", "false");
+        detail.textContent = "正在读取构成...";
+        positionGlobalModelEventDetail(row);
+        try {
+            const codeKey = String(code).toUpperCase();
+            const item = state.modelSignalByCode.get(codeKey);
+            if (!item) return;
+            let diagnostics = state.modelDiagnosticsByCode.get(codeKey);
+            if (!diagnostics) {
+                const payload = await apiFetch(`/api/market/sector-model-signals?${new URLSearchParams({ sector_code: code, include_diagnostics: "1" }).toString()}`);
+                diagnostics = payload.data?.diagnostics || {};
+                state.modelDiagnosticsByCode.set(codeKey, diagnostics);
+            }
+            if (requestId !== state.globalEventRequestId || state.globalEventRow !== row) return;
+            renderModelEventDetail(detail, item, diagnostics, period, event);
+            positionGlobalModelEventDetail(row);
+        } catch (error) {
+            if (requestId === state.globalEventRequestId && error.name !== "AbortError") detail.textContent = `构成读取失败：${error.message}`;
+        } finally {
+            if (requestId === state.globalEventRequestId) detail.classList.remove("is-loading");
+        }
+    }
+
+    async function loadSectorModelSignals(prefix, generation) {
+        const requestId = ++state.modelSignalRequestId;
+        try {
+            let payload;
+            try {
+                payload = await apiFetch(`/api/market/sector-model-signals?prefix=${encodeURIComponent(prefix)}`);
+            } catch (error) {
+                // 浏览器可能保留旧的 API_BASE_URL；模型信号固定从本机 8000 服务重试一次。
+                if (API_BASE === "http://127.0.0.1:8000" || API_BASE === "http://localhost:8000") throw error;
+                const response = await fetch(`http://127.0.0.1:8000/api/market/sector-model-signals?prefix=${encodeURIComponent(prefix)}`, { cache: "no-store" });
+                payload = await response.json();
+                if (!response.ok) throw error;
+            }
+            if (requestId !== state.modelSignalRequestId || generation !== state.generation) return;
+            const items = Array.isArray(payload.data?.items) ? payload.data.items : (Array.isArray(payload.items) ? payload.items : []);
+            state.modelSignalByCode = new Map();
+            items.forEach((item) => sectorCodeKeys(item.htsc_code || item.code).forEach((key) => state.modelSignalByCode.set(key, item)));
+            document.querySelectorAll("#sector-grid .sector-card").forEach((card) => updateModelSignalCard(card));
+            const latestTime = payload.data?.latest_time || "未知日期";
+            const loadedCount = state.modelSignalByCode.size;
+            document.getElementById("sector-state").textContent = `峰谷模型已加载：${latestTime}，${loadedCount} 个板块`;
+            if (state.modelSortActive) sortCardsByModelSignal();
+        } catch (error) {
+            if (generation === state.generation && !isAbortError(error)) document.getElementById("sector-state").textContent = `模型信号读取失败：${error.message}`;
+        }
+    }
+
+    function updateModelSignalCard(card, itemOverride = null) {
+        const signal = card?.querySelector(".sector-signal");
+        const item = itemOverride || sectorCodeKeys(card?.dataset.code).map((key) => state.modelSignalByCode.get(key)).find(Boolean);
+        if (!signal || !item) return;
+        const caption = signal.querySelector(".sector-signal-caption");
+        if (caption) caption.textContent = `峰谷模型 · ${String(item.time || "").slice(0, 10) || "最新"} · 概率`;
+        const ariaParts = [];
+        MODEL_PERIODS.forEach(([period, label, horizon]) => {
+            const stateName = modelStateLabel(item, period);
+            const strength = formatModelPercent(item[`${period}_event_strength`]);
+            const valleyProbability = Number(item[`${period}_prob_valley_bullish`]);
+            const peakProbability = Number(item[`${period}_prob_peak_bearish`]);
+            const bullish = valleyProbability >= peakProbability;
+            const periodNode = signal.querySelector(`.sector-signal-period[data-period="${period}"]`);
+            if (periodNode) {
+                periodNode.classList.toggle("bullish", bullish);
+                periodNode.classList.toggle("bearish", !bullish);
+                periodNode.querySelector("strong").textContent = stateName;
+                periodNode.querySelector(".sector-signal-period-strength").textContent = `概率 ${strength}`;
+            }
+            const popover = signal.querySelector(`.sector-signal-popover-period[data-period="${period}"]`);
+            if (popover) {
+                MODEL_EVENTS.forEach(([code, name], index) => {
+                    const row = popover.querySelectorAll(".sector-signal-events > div")[index];
+                    if (!row) return;
+                    row.querySelector("span").textContent = name;
+                    row.dataset.event = code;
+                    row.querySelector("strong").textContent = formatModelPercent(item[`${period}_prob_${code}`]);
+                });
+            }
+            ariaParts.push(`${label}${horizon}${stateName}${strength}`);
+        });
+        signal.setAttribute("aria-label", `峰谷模型信号：${ariaParts.join("；")}`);
+    }
+
+    function clearModelSignalCard(card, dateKey = "") {
+        const signal = card?.querySelector(".sector-signal");
+        if (!signal) return;
+        signal.querySelectorAll(".sector-signal-period").forEach((periodNode) => {
+            periodNode.classList.remove("bullish", "bearish");
+            periodNode.querySelector("strong").textContent = "--";
+            periodNode.querySelector(".sector-signal-period-strength").textContent = "--";
+        });
+        signal.querySelectorAll(".sector-signal-events > div").forEach((row) => { row.querySelector("strong").textContent = "--"; });
+        const caption = signal.querySelector(".sector-signal-caption");
+        if (caption) caption.textContent = dateKey ? `峰谷模型 · ${dateKey} · 暂无数据` : "峰谷模型 · 概率";
+        signal.setAttribute("aria-label", dateKey ? `峰谷模型信号：${dateKey}暂无数据` : "峰谷模型信号");
+    }
+
+    function chartTimeKey(time) {
+        if (time === null || time === undefined) return "";
+        if (typeof time === "string") return /^\d{4}-\d{2}-\d{2}$/.test(time) ? time : String(time).slice(0, 10);
+        if (typeof time === "object" && Number.isFinite(Number(time.year))) {
+            return `${String(time.year).padStart(4, "0")}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
+        }
+        const timestamp = Number(time);
+        if (!Number.isFinite(timestamp)) return "";
+        const date = new Date(timestamp * 1000);
+        return date.toISOString().slice(0, 10);
+    }
+
+    async function loadModelHistoryForCard(code, limit = 400) {
+        const codeKey = String(code || "").toUpperCase();
+        if (!codeKey) return null;
+        if (state.modelHistoryByCode.has(codeKey)) return state.modelHistoryByCode.get(codeKey);
+        if (state.modelHistoryPromises.has(codeKey)) return state.modelHistoryPromises.get(codeKey);
+        const promise = apiFetch(`/api/market/sector-model-signal-history?${new URLSearchParams({ sector_code: codeKey, limit: String(Math.max(60, Math.min(2000, Number(limit) || 400))) }).toString()}`)
+            .then((payload) => {
+                const rows = Array.isArray(payload.data?.items) ? payload.data.items : [];
+                const history = new Map(rows.map((row) => [String(row.time || "").slice(0, 10), row]));
+                state.modelHistoryByCode.set(codeKey, history);
+                return history;
+            })
+            .finally(() => state.modelHistoryPromises.delete(codeKey));
+        state.modelHistoryPromises.set(codeKey, promise);
+        return promise;
+    }
+
+    async function updateModelSignalForChartDate(card, dateKey) {
+        const code = String(card?.dataset.code || "").toUpperCase();
+        if (!code || !dateKey) return;
+        if (card.dataset.modelHoverDate === dateKey && card.dataset.modelHoverRendered === "1") return;
+        card.dataset.modelHoverDate = dateKey;
+        card.dataset.modelHoverRendered = "0";
+        try {
+            // 图表区间可能跨越模型最新日期；保留足够历史行，不能只取当前K线点数的末尾。
+            const history = await loadModelHistoryForCard(code, 400);
+            if (card.dataset.modelHoverDate !== dateKey || !card.isConnected) return;
+            const item = history?.get(dateKey);
+            if (item) updateModelSignalCard(card, item);
+            else clearModelSignalCard(card, dateKey);
+            card.dataset.modelHoverRendered = "1";
+        } catch (error) {
+            if (!isAbortError(error)) card.dataset.modelHistoryError = error.message || "历史模型信号读取失败";
+        }
+    }
+
+    function bindChartModelSignalHover(card, chart) {
+        chart.subscribeCrosshairMove((param) => {
+            const dateKey = chartTimeKey(param?.time);
+            if (!dateKey) {
+                delete card.dataset.modelHoverDate;
+                delete card.dataset.modelHoverRendered;
+                delete card.dataset.modelHistoryError;
+                updateModelSignalCard(card);
+                return;
+            }
+            void updateModelSignalForChartDate(card, dateKey);
+        });
+    }
+
+    function restoreLatestModelSignal(card) {
+        if (!card) return;
+        delete card.dataset.modelHoverDate;
+        delete card.dataset.modelHoverRendered;
+        delete card.dataset.modelHistoryError;
+        updateModelSignalCard(card);
+    }
+
+    function closeModelSignalDialog() {
+        const dialog = document.getElementById("model-signal-dialog");
+        if (!dialog) return;
+        dialog.classList.remove("is-open");
+        dialog.setAttribute("aria-hidden", "true");
+    }
+
+    function renderModelSignalTable(title, rows, columns) {
+        const head = columns.map((column) => `<th>${column.label}</th>`).join("");
+        const body = rows.map((row) => `<tr><td>${row.label}</td>${columns.map((column) => `<td>${column.format(row[column.key])}</td>`).join("")}</tr>`).join("");
+        return `<section class="model-signal-section"><h3>${title}</h3><div class="model-signal-table-wrap"><table class="model-signal-table"><thead><tr><th>项目</th>${head}</tr></thead><tbody>${body}</tbody></table></div></section>`;
+    }
+
+    async function openModelSignalDialog(code) {
+        const dialog = document.getElementById("model-signal-dialog");
+        const content = document.getElementById("model-signal-content");
+        const status = document.getElementById("model-signal-state");
+        if (!dialog || !content || !status) return;
+        dialog.classList.add("is-open");
+        dialog.setAttribute("aria-hidden", "false");
+        status.classList.remove("error");
+        status.textContent = "正在读取峰谷模型诊断...";
+        content.textContent = "";
+        try {
+            const params = new URLSearchParams({ sector_code: code, include_diagnostics: "1", include_history: "1", history_limit: "120" });
+            const payload = await apiFetch(`/api/market/sector-model-signals?${params.toString()}`);
+            const item = payload.data?.items?.[0];
+            const diagnostics = payload.data?.diagnostics || {};
+            const history = payload.data?.history || [];
+            if (!item) throw new Error("没有找到该板块的模型信号");
+            document.getElementById("model-signal-title").textContent = `${code} · 峰谷模型信号`;
+            document.getElementById("model-signal-meta").textContent = `信号日期：${item.time || "--"}`;
+        const periodHtml = MODEL_PERIODS.map(([period, label, horizon]) => `<section class="model-signal-period"><h3>${label}（${horizon}）</h3><div class="model-signal-probs">${MODEL_EVENTS.map(([event, name]) => `<div class="model-signal-prob"><span>${name}</span><strong>${formatModelPercent(item[`${period}_prob_${event}`])}</strong></div>`).join("")}</div><div class="model-signal-metrics"><div class="model-signal-metric"><span>最大事件</span><strong>${modelStateLabel(item, period)}</strong></div><div class="model-signal-metric"><span>事件强度</span><strong>${formatModelPercent(item[`${period}_event_strength`])}</strong></div><div class="model-signal-metric"><span>方向强度</span><strong>${formatModelNumber(diagnostics[`direction_strength_${period}`])}</strong></div></div></section>`).join("");
+            const targetRows = TARGETS_FOR_MODEL().map((target) => ({ label: target, score: diagnostics[`pred_${target}`], peak: diagnostics[`peak_rank_${target.split("_").slice(-1)[0]}`] }));
+            const groupRows = GROUPS_FOR_MODEL().map((group) => ({ label: MODEL_GROUP_LABELS[group] || group, ultraPeak: diagnostics[`score_${group}_delta_peak_ultra_short`], ultraValley: diagnostics[`score_${group}_delta_valley_ultra_short`], shortPeak: diagnostics[`score_${group}_delta_peak_5d`], shortValley: diagnostics[`score_${group}_delta_valley_5d`], midPeak: diagnostics[`score_${group}_delta_peak_20d`], midValley: diagnostics[`score_${group}_delta_valley_20d`] }));
+            const contributionRows = GROUPS_FOR_MODEL().map((group) => ({ label: MODEL_GROUP_LABELS[group] || group, ultraPeak: diagnostics[`contrib_${group}_delta_peak_ultra_short`], ultraValley: diagnostics[`contrib_${group}_delta_valley_ultra_short`], shortPeak: diagnostics[`contrib_${group}_delta_peak_5d`], shortValley: diagnostics[`contrib_${group}_delta_valley_5d`], midPeak: diagnostics[`contrib_${group}_delta_peak_20d`], midValley: diagnostics[`contrib_${group}_delta_valley_20d`] }));
+            const historyHtml = history.slice(-30).reverse().map((row) => `<div class="model-signal-history-card"><span>${row.time}</span><strong>${modelStateLabel(row, "ultra_short")} · ${formatModelPercent(row.ultra_short_event_strength)}</strong><span>方向强度 ${formatModelNumber(row.direction_strength_ultra_short)}</span></div>`).join("");
+            const scoreColumns = [{ key: "ultraPeak", label: "超短波峰", format: formatModelNumber }, { key: "ultraValley", label: "超短波谷", format: formatModelNumber }, { key: "shortPeak", label: "短期波峰", format: formatModelNumber }, { key: "shortValley", label: "短期波谷", format: formatModelNumber }, { key: "midPeak", label: "中期波峰", format: formatModelNumber }, { key: "midValley", label: "中期波谷", format: formatModelNumber }];
+            content.innerHTML = `${periodHtml}${renderModelSignalTable("六个连续波峰/波谷预测分", TARGET_ROWS(diagnostics), [{ key: "ultra", label: "超短", format: formatModelNumber }, { key: "short", label: "短期", format: formatModelNumber }, { key: "mid", label: "中期", format: formatModelNumber }])}${renderModelSignalTable("六组因子评分", groupRows, scoreColumns)}${renderModelSignalTable("各组顶层预测贡献", contributionRows, scoreColumns)}${renderModelSignalTable("18个技术子组评分", TECHNICAL_ROWS(diagnostics), scoreColumns)}<section class="model-signal-section"><h3>历史方向和强度（最近30个交易日）</h3><div class="model-signal-history">${historyHtml || "暂无历史记录"}</div></section>`;
+            status.textContent = `已加载 ${history.length} 条历史信号；技术子组评分保存在诊断文件中。`;
+        } catch (error) {
+            status.classList.add("error");
+            status.textContent = `模型信号读取失败：${error.message}`;
+        }
+    }
+
+    function GROUPS_FOR_MODEL() { return ["technical", "sideways_volatility", "relative_strength", "constituent_breadth", "leader_diffusion", "market_state_conditioned"]; }
+    function TARGETS_FOR_MODEL() { return ["delta_peak_ultra_short", "delta_valley_ultra_short", "delta_peak_5d", "delta_valley_5d", "delta_peak_20d", "delta_valley_20d"]; }
+    function TARGET_ROWS(diagnostics) {
+        return [
+            { label: "波峰预测分", ultra: diagnostics.pred_delta_peak_ultra_short, short: diagnostics.pred_delta_peak_5d, mid: diagnostics.pred_delta_peak_20d },
+            { label: "波谷预测分", ultra: diagnostics.pred_delta_valley_ultra_short, short: diagnostics.pred_delta_valley_5d, mid: diagnostics.pred_delta_valley_20d },
+        ];
+    }
+
+    function TECHNICAL_ROWS(diagnostics) {
+        return TECHNICAL_SUBGROUPS.map((indicator) => ({
+            label: indicator,
+            ultraPeak: diagnostics[`score_${indicator}_delta_peak_ultra_short`],
+            ultraValley: diagnostics[`score_${indicator}_delta_valley_ultra_short`],
+            shortPeak: diagnostics[`score_${indicator}_delta_peak_5d`],
+            shortValley: diagnostics[`score_${indicator}_delta_valley_5d`],
+            midPeak: diagnostics[`score_${indicator}_delta_peak_20d`],
+            midValley: diagnostics[`score_${indicator}_delta_valley_20d`],
+        }));
     }
 
     function closeConstituentDialog() {
@@ -56,6 +480,179 @@
         dialog.setAttribute("aria-hidden", "true");
         state.constituentObserver?.disconnect();
         state.constituentObserver = null;
+        destroyConstituentChart();
+    }
+
+    function destroyConstituentChart() {
+        state.constituentChartRequestId += 1;
+        state.constituentChart?.remove();
+        state.constituentChart = null;
+        state.constituentSeries = null;
+        state.constituentBollingerSeries = null;
+        state.constituentBars = [];
+        state.constituentCode = "";
+        state.constituentHistoryLoading = false;
+        state.constituentHistoryExhausted = false;
+        state.constituentFirstAvailableTime = null;
+        const mount = document.getElementById("constituent-chart");
+        if (mount) mount.textContent = "";
+    }
+
+    function mergeConstituentBars(incoming) {
+        const merged = new Map(state.constituentBars.map((bar) => [bar.time, bar]));
+        selectOhlcBars(incoming).forEach((bar) => merged.set(bar.time, bar));
+        state.constituentBars = Array.from(merged.values()).sort((left, right) => left.time - right.time);
+    }
+
+    function calculateConstituentBollingerBands(bars, period = 20, deviationMultiplier = 2) {
+        const upper = [];
+        const middle = [];
+        const lower = [];
+        const window = [];
+        let sum = 0;
+        let sumSquares = 0;
+        (Array.isArray(bars) ? bars : []).forEach((bar) => {
+            const close = Number(bar.close);
+            if (!Number.isFinite(close)) return;
+            window.push(close);
+            sum += close;
+            sumSquares += close * close;
+            if (window.length > period) {
+                const removed = window.shift();
+                sum -= removed;
+                sumSquares -= removed * removed;
+            }
+            const mean = sum / window.length;
+            const variance = Math.max(0, sumSquares / window.length - mean * mean);
+            const deviation = Math.sqrt(variance) * deviationMultiplier;
+            middle.push({ time: bar.time, value: mean });
+            upper.push({ time: bar.time, value: mean + deviation });
+            lower.push({ time: bar.time, value: mean - deviation });
+        });
+        return { upper, middle, lower };
+    }
+
+    function renderConstituentChartData() {
+        state.constituentSeries?.setData(state.constituentBars);
+        if (!state.constituentBollingerSeries) return;
+        const bands = calculateConstituentBollingerBands(state.constituentBars);
+        state.constituentBollingerSeries.upper.setData(bands.upper);
+        state.constituentBollingerSeries.middle.setData(bands.middle);
+        state.constituentBollingerSeries.lower.setData(bands.lower);
+    }
+
+    function lockConstituentHistoryLeftEdge() {
+        state.constituentHistoryExhausted = true;
+        const timeScale = state.constituentChart?.timeScale();
+        if (!timeScale) return;
+        timeScale.applyOptions({ fixLeftEdge: true });
+        const logicalRange = timeScale.getVisibleLogicalRange();
+        if (logicalRange && logicalRange.from < 0) {
+            const span = Math.max(1, logicalRange.to - logicalRange.from);
+            timeScale.setVisibleLogicalRange({ from: 0, to: span });
+        }
+    }
+
+    async function loadOlderConstituentBars(requestId) {
+        if (
+            requestId !== state.constituentChartRequestId
+            || state.constituentHistoryLoading
+            || state.constituentHistoryExhausted
+            || !state.constituentBars.length
+        ) return;
+        const oldestTime = state.constituentBars[0].time;
+        if (Number.isFinite(state.constituentFirstAvailableTime) && oldestTime <= state.constituentFirstAvailableTime) {
+            lockConstituentHistoryLeftEdge();
+            return;
+        }
+        state.constituentHistoryLoading = true;
+        const to = oldestTime - 86400;
+        const from = Math.max(0, to - CONSTITUENT_HISTORY_BATCH_DAYS * 86400);
+        try {
+            const params = new URLSearchParams({ code: state.constituentCode, from: String(from), to: String(to), limit: "5000" });
+            const payload = await apiFetch(`/api/market/index/bars?${params.toString()}`, { timeoutMs: 20000 });
+            if (requestId !== state.constituentChartRequestId || !state.constituentChart || !state.constituentSeries) return;
+            const incoming = selectOhlcBars(payload.bars);
+            if (!incoming.length) {
+                lockConstituentHistoryLeftEdge();
+                return;
+            }
+            const visibleRange = state.constituentChart.timeScale().getVisibleRange();
+            const previousOldest = state.constituentBars[0].time;
+            mergeConstituentBars(incoming);
+            renderConstituentChartData();
+            if (visibleRange) state.constituentChart.timeScale().setVisibleRange(visibleRange);
+            if (state.constituentBars[0].time >= previousOldest) lockConstituentHistoryLeftEdge();
+            if (Number.isFinite(state.constituentFirstAvailableTime) && state.constituentBars[0].time <= state.constituentFirstAvailableTime) {
+                lockConstituentHistoryLeftEdge();
+            }
+        } catch (_) {
+            // 单批历史读取失败时允许用户再次向左拖动重试。
+        } finally {
+            if (requestId === state.constituentChartRequestId) state.constituentHistoryLoading = false;
+        }
+    }
+
+    async function loadConstituentHistoryChart(code) {
+        destroyConstituentChart();
+        const requestId = state.constituentChartRequestId;
+        const mount = document.getElementById("constituent-chart");
+        const chartState = document.getElementById("constituent-chart-state");
+        if (!mount || !chartState) return;
+        chartState.className = "constituent-chart-state";
+        chartState.textContent = "正在读取板块历史行情...";
+        state.constituentCode = code;
+        try {
+            const to = Math.floor(Date.now() / 1000);
+            const from = to - CONSTITUENT_INITIAL_HISTORY_DAYS * 86400;
+            const params = new URLSearchParams({ code, from: String(from), to: String(to), limit: "320" });
+            const payload = await apiFetch(`/api/market/index/bars?${params.toString()}`, { timeoutMs: 20000 });
+            if (requestId !== state.constituentChartRequestId || state.constituentCode !== code) return;
+            mergeConstituentBars(payload.bars);
+            if (!state.constituentBars.length || !window.LightweightCharts) throw new Error("该板块暂无可用历史行情");
+            const firstAvailable = Number(payload.meta?.first_available_bar_time);
+            state.constituentFirstAvailableTime = Number.isFinite(firstAvailable) ? firstAvailable : null;
+            const chart = window.LightweightCharts.createChart(mount, {
+                ...createChartOptions(),
+                timeScale: { borderColor: "#2b2b2b", timeVisible: false, rightOffset: 4, barSpacing: 7, minBarSpacing: 1, fixRightEdge: true },
+                leftPriceScale: { visible: false },
+                handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+                handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+            });
+            const series = chart.addSeries(window.LightweightCharts.CandlestickSeries, {
+                upColor: "#ef5350", downColor: "#26a69a", borderVisible: false,
+                wickUpColor: "#ef5350", wickDownColor: "#26a69a", priceLineVisible: false,
+            });
+            const bollingerSeriesOptions = {
+                lineWidth: 1,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false,
+            };
+            const bollingerSeries = {
+                upper: chart.addSeries(window.LightweightCharts.LineSeries, { ...bollingerSeriesOptions, color: "rgba(233,162,59,.9)" }),
+                middle: chart.addSeries(window.LightweightCharts.LineSeries, { ...bollingerSeriesOptions, color: "rgba(107,156,255,.85)", lineStyle: window.LightweightCharts.LineStyle.Dashed }),
+                lower: chart.addSeries(window.LightweightCharts.LineSeries, { ...bollingerSeriesOptions, color: "rgba(233,162,59,.9)" }),
+            };
+            state.constituentChart = chart;
+            state.constituentSeries = series;
+            state.constituentBollingerSeries = bollingerSeries;
+            renderConstituentChartData();
+            chart.timeScale().fitContent();
+            if (Number.isFinite(state.constituentFirstAvailableTime) && state.constituentBars[0].time <= state.constituentFirstAvailableTime) {
+                lockConstituentHistoryLeftEdge();
+            }
+            chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                if (range && range.from <= Math.max(25, (range.to - range.from) * 0.2)) {
+                    void loadOlderConstituentBars(requestId);
+                }
+            });
+            chartState.classList.add("is-hidden");
+        } catch (error) {
+            if (requestId !== state.constituentChartRequestId) return;
+            chartState.classList.add("error");
+            chartState.textContent = `板块历史行情读取失败：${error.message}`;
+        }
     }
 
     function drawMiniCloseLine(canvas, closes) {
@@ -111,9 +708,10 @@
             : null;
         dialog.classList.add("is-open");
         dialog.setAttribute("aria-hidden", "false");
+        void loadConstituentHistoryChart(code);
         try {
             const params = new URLSearchParams({ sector_code: code });
-            const payload = await apiFetch(`/api/market/sector-constituents?${params.toString()}`);
+            const payload = await apiFetch(`/api/market/sector-constituents?${params.toString()}`, { timeoutMs: 20000 });
             const items = (Array.isArray(payload.items) ? payload.items : []).map((item) => {
                 const closes = (Array.isArray(item.closes_20d) ? item.closes_20d : []).map(Number).filter(Number.isFinite);
                 const returnRate = closes.length >= 2 && closes[0] !== 0
@@ -356,6 +954,7 @@
             layout: { background: { color: "#1e222d" }, textColor: "#d1d4dc", fontSize: 10, attributionLogo: false },
             grid: { vertLines: { color: "#2b2b2b" }, horzLines: { color: "#2b2b2b" } },
             rightPriceScale: { borderColor: "#2b2b2b", scaleMargins: { top: 0.12, bottom: 0.12 } },
+            leftPriceScale: { visible: true, borderColor: "#2b2b2b", scaleMargins: { top: 0.12, bottom: 0.12 } },
             timeScale: { borderColor: "#2b2b2b", timeVisible: false, rightOffset: 1, fixLeftEdge: true, fixRightEdge: true },
             crosshair: {
                 mode: window.LightweightCharts.CrosshairMode.Normal,
@@ -371,11 +970,55 @@
         const card = document.createElement("article");
         card.className = "sector-card";
         card.dataset.code = item.code;
-        card.innerHTML = `<div class="sector-card-head"><div class="sector-name"><h2></h2><span></span></div><div class="sector-performance"><strong>--</strong><span>${getRangeLabel()}涨跌幅</span></div></div><div class="chart-mount"><div class="chart-placeholder">等待加载走势</div></div>`;
+        const fundMetricLabel = ["885", "886"].includes(String(item.code || "").slice(0, 3)) ? "资金覆盖率" : "资金占比";
+        const periodCards = MODEL_PERIODS.map(([period, label, horizon]) => `<div class="sector-signal-period" data-period="${period}"><div class="sector-signal-period-label"><span>${label}</span><small class="sector-signal-period-horizon">${horizon}</small></div><strong>--</strong><small class="sector-signal-period-strength">--</small></div>`).join("");
+        const periodPopovers = MODEL_PERIODS.map(([period, label, horizon]) => `<section class="sector-signal-popover-period" data-period="${period}"><div class="sector-signal-popover-head"><strong>${label}</strong><span>${horizon}</span></div><div class="sector-signal-events">${MODEL_EVENTS.map(([, name]) => `<div class="sector-signal-event-row"><span>${name}</span><strong>--</strong></div>`).join("")}</div></section>`).join("");
+        card.innerHTML = `<div class="sector-card-head"><div class="sector-name"><h2></h2><span></span></div><div class="sector-head-metrics"><div class="sector-signal" tabindex="0" aria-label="峰谷模型信号" title="加载后悬停查看超短、短期、中期共15个事件概率；点击打开详情"><div class="sector-signal-periods">${periodCards}</div><span class="sector-signal-caption">峰谷模型 · 概率</span><div class="sector-signal-popover" role="tooltip"><div class="sector-signal-popover-title"><strong>峰谷模型概率</strong><span>悬停查看15个概率</span></div>${periodPopovers}</div></div><div class="sector-performance"><strong>--</strong><span>${getRangeLabel()}涨跌幅</span></div><div class="sector-fund-share"><strong>--</strong><span>${fundMetricLabel}</span></div></div></div><div class="chart-mount"><div class="chart-placeholder">等待加载走势</div></div>`;
         card.querySelector("h2").textContent = item.name || item.code;
         card.querySelector(".sector-name span").textContent = item.code;
+        const signal = card.querySelector(".sector-signal");
+        if (signal) {
+            const popover = signal.querySelector(".sector-signal-popover");
+            let closeTimer = null;
+            const keepPopoverOpen = () => {
+                if (closeTimer) window.clearTimeout(closeTimer);
+                signal.classList.add("is-hovered");
+                signal.dataset.activePeriod ||= MODEL_PERIODS[0][0];
+            };
+            const schedulePopoverClose = () => {
+                if (closeTimer) window.clearTimeout(closeTimer);
+                closeTimer = window.setTimeout(() => {
+                    if (signal.matches(":hover")) return;
+                    signal.classList.remove("is-hovered");
+                    delete signal.dataset.activePeriod;
+                }, 180);
+            };
+            signal.addEventListener("mouseenter", keepPopoverOpen);
+            signal.addEventListener("focus", () => { signal.dataset.activePeriod ||= MODEL_PERIODS[0][0]; });
+            signal.addEventListener("mouseleave", schedulePopoverClose);
+            popover?.addEventListener("mouseenter", keepPopoverOpen);
+            popover?.addEventListener("mouseleave", schedulePopoverClose);
+            signal.querySelectorAll(".sector-signal-period").forEach((periodNode) => {
+                periodNode.addEventListener("mouseenter", () => { signal.dataset.activePeriod = periodNode.dataset.period || MODEL_PERIODS[0][0]; });
+            });
+            signal.querySelectorAll(".sector-signal-event-row").forEach((row) => {
+                row.addEventListener("mouseenter", () => { void loadModelEventDetail(row); });
+                row.addEventListener("mouseleave", scheduleGlobalModelEventDetailClose);
+            });
+            signal.addEventListener("click", (event) => {
+            event.stopPropagation();
+            void openModelSignalDialog(item.code);
+            });
+        }
         card.addEventListener("dblclick", () => { void openConstituentDialog(card); });
+        updateModelSignalCard(card);
         return card;
+    }
+
+    function updateSectorSignal(card) {
+        // 行情涨跌幅只更新 sector-performance，模型卡片由 updateModelSignalCard 统一渲染。
+        // 保留此调用点是为了兼容已有的走势加载流程，避免收益刷新覆盖模型概率。
+        updateModelSignalCard(card);
     }
 
     function sortCardsByReturn() {
@@ -391,6 +1034,27 @@
             if (!leftLoaded) return String(left.dataset.code).localeCompare(String(right.dataset.code));
             const difference = state.sortOrder === "asc" ? leftValue - rightValue : rightValue - leftValue;
             return difference || String(left.dataset.code).localeCompare(String(right.dataset.code));
+        });
+        const fragment = document.createDocumentFragment();
+        cards.forEach((card) => fragment.appendChild(card));
+        grid.appendChild(fragment);
+    }
+
+    function sortCardsByModelSignal() {
+        const grid = document.getElementById("sector-grid");
+        if (!grid) return;
+        const key = `${state.modelSortPeriod}_prob_${state.modelSortEvent}`;
+        const cards = Array.from(grid.querySelectorAll(".sector-card"));
+        cards.sort((left, right) => {
+            const leftItem = state.modelSignalByCode.get(String(left.dataset.code || "").toUpperCase());
+            const rightItem = state.modelSignalByCode.get(String(right.dataset.code || "").toUpperCase());
+            const leftValue = Number(leftItem?.[key]);
+            const rightValue = Number(rightItem?.[key]);
+            const leftLoaded = Number.isFinite(leftValue);
+            const rightLoaded = Number.isFinite(rightValue);
+            if (leftLoaded !== rightLoaded) return leftLoaded ? -1 : 1;
+            if (!leftLoaded) return String(left.dataset.code).localeCompare(String(right.dataset.code));
+            return rightValue - leftValue || String(left.dataset.code).localeCompare(String(right.dataset.code));
         });
         const fragment = document.createDocumentFragment();
         cards.forEach((card) => fragment.appendChild(card));
@@ -472,6 +1136,31 @@
         }));
     }
 
+    async function loadSectorFundShares(generation) {
+        const bounds = rangeTimestamps(state.range);
+        const requestedLimit = state.range === "custom"
+            ? Math.min(2000, Math.max(1, Number(state.customDays || 1)))
+            : RANGE_CONFIG[state.range].points || 400;
+        const params = new URLSearchParams({ prefix: state.prefix, from: String(bounds.from), to: String(bounds.to), limit: String(requestedLimit) });
+        try {
+            const payload = await apiFetch(`/api/market/sector-fund-shares?${params.toString()}`);
+            if (generation !== state.generation) return;
+            const grouped = new Map();
+            (Array.isArray(payload.points) ? payload.points : []).forEach((point) => {
+                const code = String(point.sector_code || "").toUpperCase();
+                const value = Number(point.fund_share_pct);
+                const time = Number(point.time);
+                if (!code || !Number.isFinite(time) || !Number.isFinite(value)) return;
+                if (!grouped.has(code)) grouped.set(code, []);
+                grouped.get(code).push({ time, value });
+            });
+            state.fundShareBySector = grouped;
+        } catch (error) {
+            if (isAbortError(error)) return;
+            if (generation === state.generation) state.fundShareBySector = new Map();
+        }
+    }
+
     function enqueueCard(card, generation) {
         state.queue.push({ card, generation });
         drainQueue();
@@ -498,10 +1187,14 @@
             const bounds = rangeTimestamps(state.range);
             const requestedLimit = state.range === "custom" ? Math.min(5000, Math.max(60, Math.ceil(Number(state.customDays || 1) * 1.8) + 30)) : 400;
             const params = new URLSearchParams({ code: card.dataset.code, from: String(bounds.from), to: String(bounds.to), limit: String(requestedLimit) });
-            const payload = await apiFetch(`/api/market/index/bars?${params.toString()}`);
+            const [payload] = await Promise.all([
+                apiFetch(`/api/market/index/bars?${params.toString()}`),
+                state.fundSharePromise || Promise.resolve(),
+            ]);
             if (!card.isConnected || generation !== state.generation) return;
             const pointLimit = state.range === "custom" ? Number(state.customDays) : RANGE_CONFIG[state.range].points;
             const data = selectOhlcBars(payload.bars, pointLimit);
+            card.dataset.chartPointCount = String(data.length);
             if (data.length < 2 || !window.LightweightCharts) throw new Error("该区间暂无足够行情");
             mount.textContent = "";
             const chart = window.LightweightCharts.createChart(mount, createChartOptions());
@@ -518,14 +1211,37 @@
                 lastValueVisible: true,
             });
             series.setData(data);
+            const fundSharePoints = state.fundShareBySector.get(card.dataset.code) || [];
+            const fundShareNode = card.querySelector(".sector-fund-share");
+            if (fundSharePoints.length) {
+                const line = chart.addSeries(window.LightweightCharts.LineSeries, {
+                    color: "#e9a23b",
+                    lineWidth: 2,
+                    priceScaleId: "fund-share",
+                    priceFormat: { type: "custom", formatter: (value) => `${Number(value).toFixed(1)}%` },
+                    priceLineVisible: false,
+                    lastValueVisible: true,
+                });
+                line.setData(fundSharePoints);
+                const latest = fundSharePoints[fundSharePoints.length - 1].value;
+                fundShareNode?.classList.add("has-value");
+                if (fundShareNode) fundShareNode.querySelector("strong").textContent = `${latest.toFixed(1)}%`;
+            } else if (fundShareNode) {
+                fundShareNode.querySelector("strong").textContent = "--";
+                fundShareNode.querySelector("span").textContent = "资金数据暂无快照";
+            }
             chart.timeScale().fitContent();
+            bindChartModelSignalHover(card, chart);
+            card.addEventListener("mouseleave", () => restoreLatestModelSignal(card));
             state.charts.set(card.dataset.code, chart);
             const performance = card.querySelector(".sector-performance");
             card.dataset.return = String(change);
             performance.classList.add(change >= 0 ? "positive" : "negative");
             performance.querySelector("strong").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
+            updateSectorSignal(card, change);
             card.dataset.status = "ready";
         } catch (error) {
+            if (isAbortError(error)) return;
             card.dataset.status = "error";
             if (card.isConnected && generation === state.generation) mount.innerHTML = `<div class="chart-error"></div>`;
             const errorNode = mount.querySelector(".chart-error");
@@ -536,7 +1252,10 @@
     function renderSectors() {
         state.generation += 1;
         const generation = state.generation;
+        cancelPendingRequests();
         destroyCharts();
+        state.fundShareBySector = new Map();
+        state.fundSharePromise = loadSectorFundShares(generation);
         const grid = document.getElementById("sector-grid");
         grid.textContent = "";
         const items = filterSectorItems(state.allItems, state.prefix, state.keyword);
@@ -553,6 +1272,7 @@
         const fragment = document.createDocumentFragment();
         items.forEach((item) => fragment.appendChild(createSectorCard(item)));
         grid.appendChild(fragment);
+        void loadSectorModelSignals(state.prefix, generation);
         const cards = Array.from(grid.querySelectorAll(".sector-card"));
         let framePending = false;
         const scheduleVisibleCards = () => {
@@ -575,7 +1295,8 @@
         };
         window.addEventListener("scroll", state.scrollHandler, { passive: true });
         window.requestAnimationFrame(scheduleVisibleCards);
-        if (state.sortActive) void loadReturnsAndSort(generation);
+        if (state.modelSortActive) sortCardsByModelSignal();
+        else if (state.sortActive) void loadReturnsAndSort(generation);
     }
 
     async function loadSectorList(forceRefresh = false) {
@@ -627,9 +1348,35 @@
         customInput?.addEventListener("keydown", (event) => { if (event.key === "Enter") applyCustomRange(); });
         document.querySelectorAll("[data-sort]").forEach((button) => button.addEventListener("click", () => {
             state.sortOrder = button.dataset.sort === "asc" ? "asc" : "desc";
+            state.sortMode = "return";
             state.sortActive = true;
+            state.modelSortActive = false;
             document.querySelectorAll("[data-sort]").forEach((item) => item.classList.toggle("active", item === button));
+            modelSortTrigger?.classList.remove("active");
             void loadReturnsAndSort(state.generation);
+        }));
+        const modelSortMenu = document.querySelector(".model-sort-menu");
+        const modelSortTrigger = modelSortMenu?.querySelector(".model-sort-trigger");
+        const modelSortLabel = (period, event) => {
+            const periodLabel = { ultra_short: "超短", "5d": "短期", "20d": "中期" }[period] || period;
+            const eventLabel = { valley_bullish: "波谷看涨", peak_bearish: "波峰看跌" }[event] || event;
+            return `峰谷模型：${periodLabel}·${eventLabel}`;
+        };
+        modelSortMenu?.addEventListener("mouseenter", () => modelSortTrigger?.setAttribute("aria-expanded", "true"));
+        modelSortMenu?.addEventListener("mouseleave", () => modelSortTrigger?.setAttribute("aria-expanded", "false"));
+        modelSortMenu?.addEventListener("focusin", () => modelSortTrigger?.setAttribute("aria-expanded", "true"));
+        modelSortMenu?.addEventListener("focusout", (event) => { if (!modelSortMenu.contains(event.relatedTarget)) modelSortTrigger?.setAttribute("aria-expanded", "false"); });
+        modelSortMenu?.querySelectorAll("[data-model-period]").forEach((option) => option.addEventListener("click", () => {
+            state.sortMode = "model";
+            state.sortActive = false;
+            state.modelSortActive = true;
+            state.modelSortPeriod = option.dataset.modelPeriod || "ultra_short";
+            state.modelSortEvent = option.dataset.modelEvent || "valley_bullish";
+            modelSortTrigger.textContent = modelSortLabel(state.modelSortPeriod, state.modelSortEvent);
+            modelSortTrigger.classList.add("active");
+            modelSortMenu.querySelectorAll(".model-sort-option").forEach((item) => item.classList.toggle("active", item === option));
+            document.querySelectorAll("[data-sort]").forEach((item) => item.classList.remove("active"));
+            sortCardsByModelSignal();
         }));
         let searchTimer = null;
         document.getElementById("sector-search").addEventListener("input", (event) => {
@@ -688,15 +1435,19 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+        bindGlobalModelEventDetail();
         bindControls();
         bindAutoCollapseControls();
         document.getElementById("constituent-close")?.addEventListener("click", closeConstituentDialog);
         document.querySelector("[data-close-constituents]")?.addEventListener("click", closeConstituentDialog);
         document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeConstituentDialog(); });
+        document.getElementById("model-signal-close")?.addEventListener("click", closeModelSignalDialog);
+        document.querySelector("[data-close-model-signal]")?.addEventListener("click", closeModelSignalDialog);
+        document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModelSignalDialog(); });
         updateClock();
         window.setInterval(updateClock, 1000);
         loadSectorList();
     });
 
-    window.SectorRotation = { filterSectorItems, isStockCodeQuery, applySearchQuery, bindAutoCollapseControls, rangeTimestamps, normalizedCloseSeries, selectOhlcBars, renderSectors, loadSectorList };
+    window.SectorRotation = { filterSectorItems, isStockCodeQuery, applySearchQuery, bindAutoCollapseControls, rangeTimestamps, normalizedCloseSeries, selectOhlcBars, calculateConstituentBollingerBands, renderSectors, loadSectorList };
 })();

@@ -116,6 +116,33 @@ def test_parse_year_jsonp_normalizes_existing_index_schema():
     assert frame["value"].to_list() == [1000.5, 1200.5]
 
 
+def test_parse_today_jsonp_normalizes_latest_snapshot():
+    module = load_module()
+    payload = {
+        "48_881121": {
+            "1": "20260821",
+            "7": "10.0",
+            "8": "12.0",
+            "9": "9.0",
+            "11": "11.0",
+            "13": "100",
+            "19": "1000.5",
+        }
+    }
+    frame = module.parse_today_jsonp(
+        f"callback({json.dumps(payload)})",
+        security_id="881121",
+    )
+
+    assert frame["time"].item() == datetime(2026, 8, 21)
+    assert frame["open"].item() == 10.0
+    assert frame["high"].item() == 12.0
+    assert frame["low"].item() == 9.0
+    assert frame["close"].item() == 11.0
+    assert frame["volume"].item() == 100.0
+    assert frame["value"].item() == 1000.5
+
+
 def test_resolve_completed_end_date_uses_1530_boundary():
     module = load_module()
 

@@ -55,8 +55,13 @@ class STOCH:
             "bull_bear_transition": 0.6,     # 多空转换（K线穿50）：趋势确认
         }
 
+        self.continuous_signal_names = [
+            "normalized_value",
+            "kd_spread",
+            "range_position",
+        ]
         # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_stoch_components(self, high_prices, low_prices, close_prices, 
                              k_period=14, d_period=3, smooth_k=3, smooth_d=3, **kwargs):
@@ -238,6 +243,28 @@ class STOCH:
         return {
             "top_divergence": top_divergence.fillna(0),
             "bottom_divergence": bottom_divergence.fillna(0),
+        }
+
+    def continuous_signals(self, stoch_k, stoch_d, lookback_period=20):
+        """返回可用于排序/回归的连续随机指标特征。"""
+        normalized_value = ((stoch_k - 50.0) / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        kd_spread = ((stoch_k - stoch_d) / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+
+        stoch_min = stoch_k.rolling(window=lookback_period, min_periods=1).min()
+        stoch_max = stoch_k.rolling(window=lookback_period, min_periods=1).max()
+        stoch_range = (stoch_max - stoch_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (stoch_k - stoch_min) / stoch_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "normalized_value": normalized_value,
+            "kd_spread": kd_spread,
+            "range_position": range_position,
         }
 
 
@@ -440,9 +467,18 @@ class STOCH:
         trend = self.trend_signals_detailed(k_line)
         pattern = self.pattern_signals_detailed(k_line)
         div = self.divergence_signals_detailed(k_line, Close_data)
+        continuous = self.continuous_signals(k_line, d_line)
 
         # 3. 合并所有字典
-        all_factors = {**cross, **breakthrough, **midline, **trend, **pattern, **div}
+        all_factors = {
+            **cross,
+            **breakthrough,
+            **midline,
+            **trend,
+            **pattern,
+            **div,
+            **continuous,
+        }
         
         # 4. 清洗数据
         # STOCH 需要 K周期 + 平滑周期

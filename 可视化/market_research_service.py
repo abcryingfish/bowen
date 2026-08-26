@@ -40,6 +40,9 @@ DAILY_BASE_PATH = Path(os.environ.get("MARKET_RESEARCH_DAILY_PATH", r"D:\databas
 ADJ_SEGMENT_PATH = Path(
     os.environ.get("MARKET_RESEARCH_ADJ_SEGMENT_PATH", r"D:\database\stock_adj_daily\adj_factor_segments.parquet")
 )
+ADJ_FACTOR_DAILY_BASE_PATH = Path(
+    os.environ.get("MARKET_RESEARCH_ADJ_FACTOR_DAILY_PATH", r"D:\database\stock_adj_daily\adj_factor_daily")
+)
 
 RSI_PERIOD = 14
 RSI_WARMUP_CALENDAR_DAYS = 400
@@ -50,6 +53,12 @@ MARKET_LABELS = {
     "sz": "深",
     "star": "科创",
     "all-a": "全A",
+}
+MARKET_PRICE_LABELS = {
+    "sh": "沪A等权价格（归一化）",
+    "sz": "深A等权价格（归一化）",
+    "star": "科创板等权价格（归一化）",
+    "all-a": "全A等权价格（归一化）",
 }
 
 _COMPUTE_LOCK = threading.Lock()
@@ -206,9 +215,58 @@ def _load_market_frame(start_day: date, end_day: date) -> tuple[pd.DataFrame, li
     daily_paths = _partition_files(DAILY_BASE_PATH, start_day, end_day)
     if not daily_paths:
         raise MarketDataNotFoundError(f"市场研究日线分区不存在: {DAILY_BASE_PATH}")
+    adj_daily_paths = _partition_files(ADJ_FACTOR_DAILY_BASE_PATH, start_day, end_day)
     conn = duckdb.connect(database=":memory:")
     try:
-        if ADJ_SEGMENT_PATH.is_file():
+        if adj_daily_paths:
+            sql = """
+                WITH daily AS (
+                    SELECT
+                        UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                        CAST(time AS DATE) AS trade_date,
+                        TRY_CAST(close AS DOUBLE) AS close,
+                        TRY_CAST(value AS DOUBLE) AS trade_value
+                    FROM read_parquet(?, union_by_name=true)
+                    WHERE CAST(time AS DATE) BETWEEN ? AND ?
+                      AND (UPPER(TRIM(CAST(htsc_code AS VARCHAR))) LIKE '%.SH'
+                           OR UPPER(TRIM(CAST(htsc_code AS VARCHAR))) LIKE '%.SZ')
+                      AND TRY_CAST(close AS DOUBLE) > 0
+                ), adj AS (
+                    SELECT
+                        UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
+                        CAST(time AS DATE) AS trade_date,
+                        MAX(TRY_CAST(adj_factor AS DOUBLE)) AS adj_factor
+                    FROM read_parquet(?, union_by_name=true)
+                    WHERE CAST(time AS DATE) BETWEEN ? AND ?
+                    GROUP BY 1, 2
+                ), adj_bounds AS (
+                    SELECT htsc_code, MIN(trade_date) AS first_adj_date
+                    FROM adj
+                    WHERE adj_factor > 0
+                    GROUP BY htsc_code
+                )
+                SELECT
+                    d.htsc_code,
+                    d.trade_date,
+                    d.close * CASE
+                        WHEN a.adj_factor > 0 THEN a.adj_factor
+                        WHEN b.first_adj_date IS NULL OR d.trade_date < b.first_adj_date THEN 1.0
+                        ELSE NULL
+                    END AS adjusted_close,
+                    d.trade_value
+                FROM daily d
+                LEFT JOIN adj a
+                  ON d.htsc_code = a.htsc_code
+                 AND d.trade_date = a.trade_date
+                LEFT JOIN adj_bounds b
+                  ON d.htsc_code = b.htsc_code
+                ORDER BY d.htsc_code, d.trade_date
+            """
+            frame = conn.execute(
+                sql,
+                [daily_paths, start_day, end_day, adj_daily_paths, start_day, end_day],
+            ).df()
+        elif ADJ_SEGMENT_PATH.is_file():
             sql = """
                 WITH daily AS (
                     SELECT
@@ -237,7 +295,7 @@ def _load_market_frame(start_day: date, end_day: date) -> tuple[pd.DataFrame, li
                         htsc_code,
                         begin_date,
                         EXP(SUM(LN(
-                            CASE WHEN previous_xdy IS NULL OR xdy != previous_xdy THEN xdy ELSE 1.0 END
+                            xdy
                         )) OVER (
                             PARTITION BY htsc_code
                             ORDER BY begin_date
@@ -261,29 +319,22 @@ def _load_market_frame(start_day: date, end_day: date) -> tuple[pd.DataFrame, li
                 [daily_paths, start_day, end_day, str(ADJ_SEGMENT_PATH)],
             ).df()
         else:
-            sql = """
-                SELECT
-                    UPPER(TRIM(CAST(htsc_code AS VARCHAR))) AS htsc_code,
-                    CAST(time AS DATE) AS trade_date,
-                    TRY_CAST(close AS DOUBLE) AS adjusted_close,
-                    TRY_CAST(value AS DOUBLE) AS trade_value
-                FROM read_parquet(?, union_by_name=true)
-                WHERE CAST(time AS DATE) BETWEEN ? AND ?
-                  AND (UPPER(TRIM(CAST(htsc_code AS VARCHAR))) LIKE '%.SH'
-                       OR UPPER(TRIM(CAST(htsc_code AS VARCHAR))) LIKE '%.SZ')
-                  AND TRY_CAST(close AS DOUBLE) > 0
-                ORDER BY htsc_code, trade_date
-            """
-            frame = conn.execute(sql, [daily_paths, start_day, end_day]).df()
+            raise MarketDataNotFoundError(
+                "市场研究缺少 adj_factor_daily 或 adj_factor_segments，拒绝使用未复权收盘价"
+            )
     except Exception as exc:  # noqa: BLE001
         raise MarketDataError(f"读取市场研究数据失败: {exc}") from exc
     finally:
         conn.close()
 
+    if adj_daily_paths and frame["adjusted_close"].isna().any():
+        samples = frame.loc[frame["adjusted_close"].isna(), "htsc_code"].drop_duplicates().head(5).tolist()
+        raise MarketDataError(f"adj_factor_daily 在复权事件之后存在缺失覆盖，样例={samples}")
+
     if frame.empty:
         raise MarketDataNotFoundError("查询区间没有可用的沪深 A 股日线")
 
-    return frame, daily_paths
+    return frame, daily_paths + adj_daily_paths
 
 
 def _market_mask(codes: pd.Series, market_id: str) -> pd.Series:
@@ -296,6 +347,34 @@ def _market_mask(codes: pd.Series, market_id: str) -> pd.Series:
     return codes.str.endswith((".SH", ".SZ"))
 
 
+def _build_market_price_index(frame: pd.DataFrame, market_id: str, from_day: date) -> pd.Series:
+    """按市场股票后复权收盘价的每日等权收益生成归一化价格基准。"""
+    market = frame.loc[
+        _market_mask(frame["htsc_code"], market_id),
+        ["htsc_code", "trade_date", "adjusted_close"],
+    ].copy()
+    market = market.loc[
+        np.isfinite(market["adjusted_close"])
+        & (market["adjusted_close"] > 0)
+    ]
+    if market.empty:
+        return pd.Series(dtype=float, name="price_index")
+
+    market.sort_values(["htsc_code", "trade_date"], inplace=True)
+    market.drop_duplicates(["htsc_code", "trade_date"], keep="last", inplace=True)
+    market["daily_return"] = market.groupby("htsc_code", sort=False)["adjusted_close"].pct_change(fill_method=None)
+    daily_returns = market.groupby("trade_date", sort=True)["daily_return"].mean()
+    daily_returns = daily_returns.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    levels = (1.0 + daily_returns).cumprod()
+    levels = levels.loc[levels.index >= pd.Timestamp(from_day)]
+    if levels.empty:
+        return pd.Series(dtype=float, name="price_index")
+    base = float(levels.iloc[0])
+    if not math.isfinite(base) or base <= 0:
+        return pd.Series(dtype=float, name="price_index")
+    return (levels / base * 100.0).rename("price_index")
+
+
 def _safe_number(value: Any, digits: int = 6) -> float | None:
     try:
         parsed = float(value)
@@ -305,6 +384,7 @@ def _safe_number(value: Any, digits: int = 6) -> float | None:
 
 
 def _build_market_points(frame: pd.DataFrame, market_id: str, from_day: date, points: int) -> list[dict[str, Any]]:
+    price_index = _build_market_price_index(frame, market_id, from_day)
     market = frame.loc[_market_mask(frame["htsc_code"], market_id)].copy()
     from_timestamp = pd.Timestamp(from_day)
     market = market.loc[
@@ -337,6 +417,7 @@ def _build_market_points(frame: pd.DataFrame, market_id: str, from_day: date, po
     summary = summary.join(top_summary, how="left")
     summary["concentration"] = summary["top_trade_value"] / summary["total_trade_value"]
     summary["rsi_ratio"] = summary["top_rsi"] / summary["all_rsi"]
+    summary = summary.join(price_index, how="left")
     summary = summary.tail(points)
 
     result: list[dict[str, Any]] = []
@@ -348,6 +429,7 @@ def _build_market_points(frame: pd.DataFrame, market_id: str, from_day: date, po
                 "date": pd.Timestamp(trade_day).strftime("%Y-%m-%d"),
                 "concentration": _safe_number(row["concentration"] * 100.0),
                 "rsi_ratio": _safe_number(row["rsi_ratio"]),
+                "price_index": _safe_number(row["price_index"], 4),
                 "stock_count": int(row["stock_count"]),
                 "top_count": int(row["top_count"]),
                 "rsi_count": int(row["rsi_count"]),
@@ -374,6 +456,7 @@ def _query_cached(
     markets = {
         market_id: {
             "label": label,
+            "price_label": MARKET_PRICE_LABELS[market_id],
             "points": _build_market_points(frame, market_id, from_day, points),
         }
         for market_id, label in MARKET_LABELS.items()

@@ -280,10 +280,7 @@ def _zxw_build_ratio_factor_long_from_wide(wide_df: pd.DataFrame, codes: np.ndar
             continue
         series = pd.Series(mapping, dtype=np.float64).sort_index()
         raw = series.to_numpy(dtype=np.float64)
-        segment_start = np.ones(len(raw), dtype=bool)
-        if len(raw) > 1:
-            segment_start[1:] = raw[1:] != raw[:-1]
-        factors = np.cumprod(np.where(segment_start, raw, 1.0))
+        factors = np.cumprod(raw)
         for day, factor in zip(series.index, factors):
             rows.append(
                 {
@@ -364,11 +361,8 @@ def _apply_ratio_factor_series_to_price_df(price_df: pd.DataFrame, wide_df: pd.D
         xdy_series = pd.concat(parts).sort_index()
         xdy_series = xdy_series[~xdy_series.index.duplicated(keep="last")]
         raw = xdy_series.to_numpy(dtype=np.float64)
-        segment_start = np.ones(len(raw), dtype=bool)
-        if len(raw) > 1:
-            segment_start[1:] = raw[1:] != raw[:-1]
         factor_by_code[code] = pd.Series(
-            np.cumprod(np.where(segment_start, raw, 1.0)),
+            np.cumprod(raw),
             index=xdy_series.index,
             dtype=np.float64,
         )

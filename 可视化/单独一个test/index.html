@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单独一个test</title>
+    <link rel="icon" type="image/png" href="../shared/assets/bothwin-logo.png">
+    <link rel="stylesheet" href="./test_kline.css?v=20260819-11">
+</head>
+<body>
+    <main class="kline-page">
+        <header class="instrument-header">
+            <div>
+                <h1>种植业与林业</h1>
+                <span>881101.THS · 日 K</span>
+            </div>
+            <div id="quote-summary" class="quote-summary" aria-live="polite"></div>
+        </header>
+        <section class="chart-stage" aria-label="种植业与林业日 K 线">
+            <div id="kline-chart" class="kline-chart"></div>
+            <div class="trend-legend" aria-label="趋势线状态">
+                <span><i class="trend-swatch trend-up"></i>上升趋势线 <b id="uptrend-state">--</b></span>
+                <span><i class="trend-swatch trend-down"></i>下降趋势线 <b id="downtrend-state">--</b></span>
+            </div>
+            <div id="fib-summary" class="fib-summary" aria-live="polite">FIB --</div>
+            <div id="chart-state" class="chart-state" role="status">正在读取行情...</div>
+        </section>
+    </main>
+
+    <script defer src="../shared/lightweight-charts.standalone.production.js"></script>
+    <script defer src="./test_kline.js?v=20260819-11"></script>
+</body>
+</html>

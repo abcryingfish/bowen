@@ -372,6 +372,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=30.0, help="单次请求超时秒数，默认 30")
     parser.add_argument("--retries", type=int, default=3, help="失败重试次数，默认 3")
     parser.add_argument("--batch-size", type=int, default=50, help="每多少只股票写一个 part 文件，默认 50")
+    parser.add_argument("--target-date", default="", help="目标日期 YYYY-MM-DD，默认运行当天")
     parser.add_argument("--import-history", type=Path, help="从旧粉丝历史目录导入四项因子；启用时不请求网络")
     return parser.parse_args()
 
@@ -384,6 +385,14 @@ def main() -> int:
         raise ValueError("--sleep-sec、--retries 必须非负，--timeout、--workers、--batch-size 必须大于 0")
     if args.limit is not None and args.limit < 1:
         raise ValueError("--limit 必须大于 0")
+    try:
+        target_date = (
+            datetime.strptime(args.target_date, "%Y-%m-%d").date()
+            if str(args.target_date).strip()
+            else datetime.now().date()
+        )
+    except ValueError as exc:
+        raise ValueError("--target-date 必须是 YYYY-MM-DD 格式") from exc
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if args.import_history is not None:
@@ -392,7 +401,7 @@ def main() -> int:
 
     stocks = load_stocks(args.universe, args.codes, args.limit)
     requested_codes = {stock.htsc_code for stock in stocks}
-    stocks, skipped_count = filter_completed_stocks(stocks, args.output_dir, datetime.now().date())
+    stocks, skipped_count = filter_completed_stocks(stocks, args.output_dir, target_date)
     pending_codes = {stock.htsc_code for stock in stocks}
     failure_path = args.output_dir / "failed_stocks.json"
     failures: dict[str, dict[str, str]] = {}
@@ -413,12 +422,11 @@ def main() -> int:
             failure_path.unlink()
             LOGGER.info("已清理全部陈旧失败记录")
     if skipped_count:
-        LOGGER.info("跳过已有 %s 数据的 %d 只股票，剩余 %d 只", datetime.now().date(), skipped_count, len(stocks))
+        LOGGER.info("跳过已有 %s 数据的 %d 只股票，剩余 %d 只", target_date, skipped_count, len(stocks))
     if not stocks:
         LOGGER.info("所有股票都已有当天数据，无需请求")
         return 0
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    target_date = datetime.now().date()
     retry_codes = set(failures)
     stocks.sort(key=lambda stock: (stock.htsc_code not in retry_codes, stock.htsc_code))
     batch: list[dict[str, Any]] = []

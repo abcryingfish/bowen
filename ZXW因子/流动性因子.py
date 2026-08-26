@@ -12,14 +12,21 @@ import pandas as pd
 
 BUNDLE_ID = "liquidity"
 DEFAULT_TURNOVER_GLOB = r"D:\database\qmt_turnover_data\year=*\month=*\merged.parquet"
+
+
+def _calendar_lookback_days(required_bars: int) -> int:
+    """将交易日窗口转换为保守的自然日回看长度。"""
+    return (int(required_bars) * 3 + 1) // 2
+
+
 FACTOR_LOOKBACK_DAYS = {
-    "avg_trading_value_20d": 20,
-    "avg_trading_value_60d": 60,
-    "avg_turnover_20d": 20,
-    "avg_turnover_60d": 60,
-    "amihud_20d": 21,
-    "trading_value_volatility_20d": 21,
-    "zero_trading_value_ratio_20d": 20,
+    "avg_trading_value_20d": _calendar_lookback_days(20),
+    "avg_trading_value_60d": _calendar_lookback_days(60),
+    "avg_turnover_20d": _calendar_lookback_days(20),
+    "avg_turnover_60d": _calendar_lookback_days(60),
+    "amihud_20d": _calendar_lookback_days(21),
+    "trading_value_volatility_20d": _calendar_lookback_days(21),
+    "zero_trading_value_ratio_20d": _calendar_lookback_days(20),
 }
 FACTOR_NAME_MAP = {
     "20日平均成交额": "avg_trading_value_20d",

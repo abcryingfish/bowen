@@ -40,7 +40,8 @@ class MACD:
             "hist_confirm_positive": 0.5, "hist_confirm_negative": -0.5,
             "divergence_repair_bull": 0.4, "divergence_repair_bear": -0.4,
         }
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = ["dif_relative", "dea_relative", "hist_relative"]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_macd_components(self, close_adj, fast_period=12, slow_period=26, signal_period=9):
         """
@@ -211,6 +212,15 @@ class MACD:
             "hist_contraction_bull": hist_contraction_bull, "hist_contraction_bear": hist_contraction_bear
         }
 
+    def continuous_signals(self, dif, dea, histogram, close_adj):
+        """返回按收盘价归一化的连续 MACD 特征。"""
+        denominator = close_adj.abs().replace(0.0, np.nan)
+        return {
+            "dif_relative": (dif / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
+            "dea_relative": (dea / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
+            "hist_relative": (histogram / denominator).clip(lower=-1.0, upper=1.0).fillna(0.0),
+        }
+
     def get_factor_matrices(self, Open, High, Low, Close, Volume, 
                            HighAdj, LowAdj, CloseAdj, # 必需 Adj
                            fast_period=12, slow_period=26, signal_period=9):
@@ -228,9 +238,11 @@ class MACD:
         hist_conf = self.histogram_confirmation_signals(hist)
         div_repair = self.divergence_repair_signals(dif, CloseAdj)
         hist_sigs = self.histogram_signals_detailed(hist)
+        continuous = self.continuous_signals(dif, dea, hist, CloseAdj)
 
-        all_factors = {**golden_death, **second_cross, **div, **hidden_div, **multi_div, 
-                    **hist_div, **extreme, **cohesion, **hist_conf, **div_repair, **hist_sigs}
+        all_factors = {**golden_death, **second_cross, **div, **hidden_div, **multi_div,
+                    **hist_div, **extreme, **cohesion, **hist_conf, **div_repair, **hist_sigs,
+                    **continuous}
         
         for name in all_factors:
             all_factors[name].iloc[:slow_period] = 0.0

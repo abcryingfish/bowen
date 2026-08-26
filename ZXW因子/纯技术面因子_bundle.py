@@ -32,6 +32,36 @@ from 纯技术面因子.WMA import WMA
 
 
 BUNDLE_ID = "pure_technical"
+# 无有效触发、方向语义不成立、重复或名称与实现不符的信号统一在此退役；
+# 它们不再出现在目录、迭代输出和后续生成计划中。
+RETIRED_FACTOR_IDS = frozenset(
+    {
+        "MOM_triangle_convergence",
+        "PPO_triangle_convergence",
+        "ROC_triangle_convergence",
+        "ADX_trend_confirmation",
+        "ADX_trend_weakening",
+        "DEMA_golden_cross",
+        "DEMA_death_cross",
+        "DEMA_zero_line_breakthrough",
+        "DEMA_zero_line_pullback",
+        "DEMA_bottom_divergence",
+        "CMO_triple_bottom",
+        "CMO_triple_top",
+        "CMO_head_shoulders_bottom",
+        "CMO_head_shoulders_top",
+        "ULTOSC_expansion",
+        "ULTOSC_contraction",
+        "ULTOSC_bull_bear_transition",
+        "ULTOSC_double_bottom",
+        "ULTOSC_double_top",
+        "WILLR_willr_divergence",
+        "WILLR_willr_convergence",
+        "WILLR_bull_bear_transition",
+        "WMA_wma_divergence",
+        "WMA_wma_convergence",
+    }
+)
 DEFAULT_LOOKBACK_DAYS = 520
 DEFAULT_CATALOG_CACHE_PATH = Path(
     r"D:\database\signal_daily\_meta\pure_technical_factor_catalog_cache.json"
@@ -89,28 +119,30 @@ _SIGNAL_PHRASE_CN = {
 }
 _SIGNAL_TOKEN_CN = {
     "above": "上方", "acceleration": "加速", "alignment": "排列", "bear": "空头",
-    "bearish": "空头", "below": "下方", "bottom": "底部", "breakdown": "跌破",
+    "band": "带", "bearish": "空头", "below": "下方", "bottom": "底部", "breakdown": "跌破",
     "breakthrough": "突破", "bull": "多头", "bullish": "多头", "buy": "买入",
     "channel": "通道", "cohesion": "聚合", "confirm": "确认", "confirmation": "确认",
     "contraction": "收缩", "convergence": "收敛", "cross": "交叉", "cycle": "周期",
-    "d": "D线", "death": "死叉", "deceleration": "减速", "divergence": "背离",
+    "d": "D线", "dea": "DEA", "death": "死叉", "deceleration": "减速", "deviation": "偏离", "dif": "DIF", "divergence": "背离",
     "double": "双重", "down": "向下", "downtrend": "下跌趋势", "efficiency": "效率",
     "exhaustion": "衰竭", "expansion": "扩张", "extreme": "极端", "falling": "下降",
     "flow": "资金流", "golden": "金叉", "head": "头部", "hidden": "隐藏",
     "high": "高位", "hist": "柱体", "histogram": "柱体", "in": "流入",
-    "k": "K线", "line": "轴", "low": "低位", "lower": "下轨",
+    "k": "K线", "kd": "KD", "line": "轴", "low": "低位", "lower": "下轨",
     "ma": "均线", "mfi": "MFI", "middle": "中轨", "momentum": "动量",
-    "money": "资金", "negative": "转负", "oscillating": "震荡", "oscillator": "振荡器",
+    "money": "资金", "negative": "转负", "normalized": "归一化", "oscillating": "震荡", "oscillator": "振荡器",
     "out": "流出", "overbought": "超买", "oversold": "超卖", "positive": "转正",
-    "ppo": "PPO", "price": "价格", "pullback": "回落", "range": "区间",
+    "ppo": "PPO", "price": "价格", "pullback": "回落", "range": "区间", "position": "位置",
     "recovery": "恢复", "repair": "修复", "resistance": "阻力", "resonance": "共振",
+    "ratio": "比率", "rate": "速率", "relative": "相对", "slope": "斜率",
     "reversal": "反转", "rising": "上升", "second": "二次", "sell": "卖出",
-    "shoulders": "肩", "signal": "信号", "squeeze": "挤压", "stagnation": "停滞",
+    "strength": "强度", "directional": "方向性", "bias": "偏向", "score": "分数",
+    "shoulders": "肩", "signal": "信号", "squeeze": "挤压", "spread": "差值", "stagnation": "停滞",
     "strengthen": "增强", "strong": "强势", "support": "支撑", "surge": "放量",
     "top": "顶部", "transition": "转换", "trend": "趋势", "triangle": "三角形",
     "triple": "三重", "turn": "转向", "up": "向上", "upper": "上轨",
-    "uptrend": "上涨趋势", "volume": "成交量", "weak": "弱势", "weakening": "减弱",
-    "wedge": "楔形", "willr": "WILLR", "wma": "WMA", "zero": "零", "zone": "区域",
+    "uptrend": "上涨趋势", "value": "值", "volume": "成交量", "weak": "弱势", "weakening": "减弱",
+    "wedge": "楔形", "width": "宽度", "willr": "WILLR", "wma": "WMA", "zero": "零", "zone": "区域",
 }
 
 
@@ -246,6 +278,8 @@ def _validate_and_prefix(
     result: dict[str, pd.DataFrame] = {}
     for signal_key, frame in factor_dfs.items():
         factor_id = f"{indicator}_{str(signal_key).strip()}"
+        if factor_id in RETIRED_FACTOR_IDS:
+            continue
         if not _FACTOR_ID_PATTERN.fullmatch(factor_id):
             raise ValueError(f"因子唯一名不符合规范: {factor_id}")
         if factor_id in result:
@@ -338,12 +372,19 @@ def iter_pure_technical_factor_bundles(
             continue
 
         if indicator == "AMA" and ama_state_cache_path is not None:
+            ama_close = C
+            mask = None
+            if valid_bar is not None:
+                mask = valid_bar.reindex(index=C.index, columns=C.columns).fillna(False)
+                # AMA 是按有效 K 线递归的状态指标。前向填充价格只用于矩阵对齐，
+                # 停牌或缺失交易日不能作为一根重复价格 K 线推进状态。
+                ama_close = C.where(mask)
             raw = _compute_indicator(
                 indicator,
                 O=O,
                 H=H,
                 L=L,
-                C=C,
+                C=ama_close,
                 V=V,
                 H_adj=adjusted[0],
                 L_adj=adjusted[1],
@@ -352,8 +393,7 @@ def iter_pure_technical_factor_bundles(
                 ama_state_only=ama_state_only,
             )
             prefixed = _validate_and_prefix(indicator, raw, index=C.index, columns=C.columns)
-            if valid_bar is not None:
-                mask = valid_bar.reindex(index=C.index, columns=C.columns).fillna(False)
+            if mask is not None:
                 prefixed = {name: frame.where(mask, 0.0) for name, frame in prefixed.items()}
             factor_labels = {name: _factor_display_name(name) for name in prefixed}
             output = {
@@ -426,7 +466,10 @@ def iter_pure_technical_factor_bundles(
 
 
 def _module_signature() -> dict[str, str]:
-    signature: dict[str, str] = {}
+    bundle_stat = Path(__file__).stat()
+    signature: dict[str, str] = {
+        "bundle": f"{Path(__file__).name}:{bundle_stat.st_size}:{bundle_stat.st_mtime_ns}"
+    }
     for indicator in INDICATOR_NAMES:
         path = _MODULE_DIR / f"{indicator}.py"
         stat = path.stat()

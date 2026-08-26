@@ -64,6 +64,7 @@ OUTPUT_COLUMNS = [
     "open", "close", "high", "low", "volume", "value",
 ]
 API_TEMPLATE = "https://d.10jqka.com.cn/v6/line/48_{security_id}/01/{year}.js"
+TODAY_API_TEMPLATE = "https://d.10jqka.com.cn/v6/line/48_{security_id}/01/today.js"
 
 
 def read_ths_text(path: str | Path) -> str:
@@ -528,6 +529,54 @@ def parse_year_jsonp(text: str, security_id: str) -> pl.DataFrame:
     )
 
 
+def parse_today_jsonp(text: str, security_id: str) -> pl.DataFrame:
+    """解析同花顺 today.js，补齐年度接口尚未落盘的最新交易日。"""
+    left = text.find("{")
+    right = text.rfind("}")
+    if left < 0 or right < left:
+        raise ValueError(f"{security_id} 当日接口返回不是有效JSONP")
+    payload = json.loads(text[left : right + 1])
+    record = payload.get(f"48_{security_id}", {})
+    date_text = str(record.get("1", ""))
+    if not re.fullmatch(r"\d{8}", date_text):
+        return _empty_daily_frame()
+
+    def to_float(field: str) -> float | None:
+        value = record.get(field)
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    values = {
+        "open": to_float("7"),
+        "high": to_float("8"),
+        "low": to_float("9"),
+        "close": to_float("11"),
+        "volume": to_float("13"),
+        "value": to_float("19"),
+    }
+    if any(value is None for value in values.values()):
+        return _empty_daily_frame()
+    return _normalize_daily_frame(
+        pl.DataFrame(
+            [
+                {
+                    "htsc_code": f"{security_id}.THS",
+                    "time": datetime.strptime(date_text, "%Y%m%d"),
+                    "exchange": "THS",
+                    "security_type": "index",
+                    "security_id": security_id,
+                    "frequency": "daily",
+                    **values,
+                }
+            ]
+        ).select(OUTPUT_COLUMNS)
+    )
+
+
 def _previous_weekday(value: date) -> date:
     result = value
     while result.weekday() >= 5:
@@ -682,6 +731,30 @@ def _request_year(security_id: str, year: int, timeout: float, retries: int) -> 
     raise RuntimeError(f"{security_id} {year} 请求失败：{last_error}")
 
 
+def _request_today(security_id: str, timeout: float, retries: int) -> str | None:
+    url = TODAY_API_TEMPLATE.format(security_id=security_id)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Referer": "https://q.10jqka.com.cn/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+    )
+    last_error: Exception | None = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            last_error = exc
+        except Exception as exc:
+            last_error = exc
+        time.sleep(0.5 * (attempt + 1))
+    raise RuntimeError(f"{security_id} today 请求失败：{last_error}")
+
+
 def fetch_code_range(
     security_id: str,
     start_date: date,
@@ -698,6 +771,15 @@ def fetch_code_range(
         frame = parse_year_jsonp(text, security_id)
         if not frame.is_empty():
             frames.append(frame)
+
+    # 年度接口偶尔会缺少当天记录，或返回 OHLC 为空的占位行；当目标日期接近当前日期时，
+    # 用同花顺 today.js 补齐有效的最新交易日。历史回补不请求该接口，避免引入当前快照。
+    if end_date >= datetime.now().date() - timedelta(days=1):
+        today_text = _request_today(security_id, timeout, retries)
+        if today_text:
+            today_frame = parse_today_jsonp(today_text, security_id)
+            if not today_frame.is_empty():
+                frames.append(today_frame)
     if not frames:
         return _empty_daily_frame()
     start_dt = datetime.combine(start_date, dt_time.min)

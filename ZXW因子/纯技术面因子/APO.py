@@ -64,8 +64,13 @@ class APO:
             "oversold_signal": 0.4,          # 超卖（弱看涨机会）
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 所有信号名称列表；连续特征保留归一化后的幅度，便于排序/回归。
+        self.continuous_signal_names = [
+            "relative_value",
+            "slope_rate",
+            "range_position",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_apo_components(self, close_prices_matrix, fast_period=12, slow_period=26):
         """计算APO核心组件 (fast_ema, slow_ema, apo_line)"""
@@ -77,7 +82,7 @@ class APO:
         apo_line = ema_fast - ema_slow
         
         # 填充NaN值，通常由e.g. slow_period-1个初始值产生
-        apo_line = apo_line.fillna(method='ffill').fillna(0) # 用前一个有效值填充，开头仍为NaN的设为0
+        apo_line = apo_line.ffill().fillna(0) # 用前一个有效值填充，开头仍为NaN的设为0
         
         return ema_fast, ema_slow, apo_line
 
@@ -173,6 +178,23 @@ class APO:
             "oversold_signal": is_oversold.fillna(0)
         }
 
+    def continuous_signals(self, close_prices_matrix, apo_line, lookback_period=10):
+        """返回不依赖价格绝对单位的连续 APO 特征。"""
+        close_abs = close_prices_matrix.abs().replace(0.0, np.nan)
+        relative_value = (apo_line / close_abs).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        slope_rate = (apo_line.diff() / close_abs).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        apo_max = apo_line.rolling(lookback_period, min_periods=lookback_period).max()
+        apo_min = apo_line.rolling(lookback_period, min_periods=lookback_period).min()
+        apo_range = (apo_max - apo_min).replace(0.0, np.nan)
+        range_position = (2.0 * (apo_line - apo_min) / apo_range - 1.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        return {
+            "relative_value": relative_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
+        }
+
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, fast_period=12, slow_period=26, enabled_signals=None):
         """
         整合启用的信号，生成最终的APO信号强度矩阵
@@ -203,9 +225,10 @@ class APO:
         trend_conf = self.trend_confirmation_signals(apo_line)
         divergence = self.divergence_signals(apo_line, Close_data)
         momentum = self.momentum_signals(apo_line)
+        continuous = self.continuous_signals(Close_data, apo_line)
 
         # 合并所有信号字典
-        all_signals_dict = {**zero_cross, **trend_conf, **divergence, **momentum}
+        all_signals_dict = {**zero_cross, **trend_conf, **divergence, **momentum, **continuous}
 
         # 5. 累加启用的信号强度
         for signal_name, signal_matrix in all_signals_dict.items():
@@ -281,7 +304,8 @@ class APO:
             self.zero_cross_signals(apo_line),
             self.trend_confirmation_signals(apo_line),
             self.divergence_signals(apo_line, Close_data),
-            self.momentum_signals(apo_line)
+            self.momentum_signals(apo_line),
+            self.continuous_signals(Close_data, apo_line),
         ]
         
         # 统一处理所有信号记录
@@ -350,9 +374,10 @@ class APO:
         trend_conf = self.trend_confirmation_signals(apo_line)
         divergence = self.divergence_signals(apo_line, Close_data)
         momentum = self.momentum_signals(apo_line)
-        
+        continuous = self.continuous_signals(Close_data, apo_line)
+
         # 3. 合并所有信号字典
-        all_signals_dict = {**zero_cross, **trend_conf, **divergence, **momentum}
+        all_signals_dict = {**zero_cross, **trend_conf, **divergence, **momentum, **continuous}
         
         # 4. 过滤信号
         if enabled_signals is not None:
@@ -438,8 +463,9 @@ class APO:
         conf = self.trend_confirmation_signals(apo_line)
         div = self.divergence_signals(apo_line, Close_data)
         mom = self.momentum_signals(apo_line)
+        continuous = self.continuous_signals(Close_data, apo_line)
 
-        all_factors = {**zero, **conf, **div, **mom}
+        all_factors = {**zero, **conf, **div, **mom, **continuous}
         
         min_period = max(fast_period, slow_period)
         for name in all_factors:

@@ -13,3 +13,13 @@ __pycache__/
 *.log
 工具/logs/
 node_modules/
+
+# Project-local Neo4j runtime and mutable database files.
+neo4j_local/server/
+neo4j_local/runtime/
+neo4j_local/.venv/
+neo4j_local/data/
+neo4j_local/logs/
+neo4j_local/run/
+neo4j_local/backups/
+neo4j_local/import/

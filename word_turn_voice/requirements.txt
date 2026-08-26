@@ -1,0 +1,9 @@
+# Recommended offline neural TTS backend
+sherpa-onnx>=1.10.0
+onnxruntime-gpu>=1.18.0
+sounddevice>=0.4.6
+soundfile>=0.12.1
+
+# Optional Windows SAPI fallback
+pyttsx3>=2.90
+lameenc>=1.8.4

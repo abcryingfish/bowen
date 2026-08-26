@@ -16,6 +16,12 @@
         charts: [],
         series: [],
         pointByTime: new Map(),
+        valueByTime: {
+            concentration: new Map(),
+            rsi: new Map(),
+            price: new Map(),
+        },
+        syncingCrosshair: false,
         generation: 0,
     };
 
@@ -96,18 +102,28 @@
         state.charts.forEach((chart) => chart.remove());
         state.charts = [];
         state.series = [];
+        state.valueByTime.concentration.clear();
+        state.valueByTime.rsi.clear();
+        state.valueByTime.price.clear();
+        state.syncingCrosshair = false;
     }
 
-    function syncTimeScales(first, second) {
+    function syncTimeScales(...charts) {
+        const validCharts = charts.filter(Boolean);
         let syncing = false;
-        const bind = (source, target) => source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (!range || syncing) return;
-            syncing = true;
-            target.timeScale().setVisibleLogicalRange(range);
-            syncing = false;
+        validCharts.forEach((source) => {
+            source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                if (!range || syncing) return;
+                syncing = true;
+                try {
+                    validCharts.forEach((target) => {
+                        if (target !== source) target.timeScale().setVisibleLogicalRange(range);
+                    });
+                } finally {
+                    syncing = false;
+                }
+            });
         });
-        bind(first, second);
-        bind(second, first);
     }
 
     function setMetricPoint(point) {
@@ -122,13 +138,51 @@
             ? Number(point.rsi_ratio).toFixed(3)
             : "--";
         document.getElementById("rsi-meta").textContent = `覆盖 ${point.rsi_count}/${point.stock_count} · Top ${point.top_rsi_count}/${point.top_count}`;
+        document.getElementById("price-index-date").textContent = point.date;
+        document.getElementById("price-index-value").textContent = Number.isFinite(Number(point.price_index))
+            ? Number(point.price_index).toFixed(2)
+            : "--";
         document.getElementById("latest-concentration").textContent = `${MARKET_LABELS[state.market]} ${Number(point.concentration).toFixed(2)}%`;
     }
 
-    function bindCrosshair(chart) {
+    function syncCrosshair(targets, timestamp) {
+        if (state.syncingCrosshair) return;
+        state.syncingCrosshair = true;
+        try {
+            targets.forEach(({ chart, series, metric }) => {
+                const targetValue = state.valueByTime[metric].get(timestamp);
+                if (Number.isFinite(targetValue) && typeof chart.setCrosshairPosition === "function") {
+                    chart.setCrosshairPosition(targetValue, timestamp, series);
+                } else if (typeof chart.clearCrosshairPosition === "function") {
+                    chart.clearCrosshairPosition();
+                }
+            });
+        } finally {
+            state.syncingCrosshair = false;
+        }
+    }
+
+    function clearCrosshair(targets) {
+        if (state.syncingCrosshair) return;
+        state.syncingCrosshair = true;
+        try {
+            targets.forEach(({ chart }) => {
+                if (typeof chart.clearCrosshairPosition === "function") chart.clearCrosshairPosition();
+            });
+        } finally {
+            state.syncingCrosshair = false;
+        }
+    }
+
+    function bindCrosshair(chart, targets) {
         chart.subscribeCrosshairMove((param) => {
             const timestamp = typeof param.time === "number" ? param.time : null;
-            if (timestamp != null) setMetricPoint(state.pointByTime.get(timestamp));
+            if (timestamp == null) {
+                clearCrosshair(targets);
+                return;
+            }
+            setMetricPoint(state.pointByTime.get(timestamp));
+            syncCrosshair(targets, timestamp);
         });
     }
 
@@ -137,16 +191,30 @@
         const points = Array.isArray(marketPayload?.points) ? marketPayload.points : [];
         const concentrationMount = document.getElementById("concentration-chart");
         const rsiMount = document.getElementById("rsi-chart");
+        const priceMount = document.getElementById("price-index-chart");
         destroyCharts();
         concentrationMount.textContent = "";
         rsiMount.textContent = "";
+        priceMount.textContent = "";
         if (!points.length || !window.LightweightCharts) {
             concentrationMount.innerHTML = '<div class="chart-error">该区间暂无集中度数据</div>';
             rsiMount.innerHTML = '<div class="chart-error">该区间暂无 RSI 数据</div>';
+            priceMount.innerHTML = '<div class="chart-error">该区间暂无价格基准数据</div>';
             return;
         }
 
         state.pointByTime = new Map(points.map((point) => [Number(point.time), point]));
+        state.valueByTime = {
+            concentration: new Map(points
+                .filter((point) => Number.isFinite(Number(point.concentration)))
+                .map((point) => [Number(point.time), Number(point.concentration)])),
+            rsi: new Map(points
+                .filter((point) => Number.isFinite(Number(point.rsi_ratio)))
+                .map((point) => [Number(point.time), Number(point.rsi_ratio)])),
+            price: new Map(points
+                .filter((point) => Number.isFinite(Number(point.price_index)))
+                .map((point) => [Number(point.time), Number(point.price_index)])),
+        };
         const concentrationChart = window.LightweightCharts.createChart(
             concentrationMount,
             createChartOptions((price) => `${Number(price).toFixed(2)}%`),
@@ -176,13 +244,42 @@
             .map((point) => ({ time: Number(point.time), value: Number(point.rsi_ratio) })));
         rsiSeries.createPriceLine({ price: 1, color: "#687385", lineWidth: 1, lineStyle: window.LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: "" });
 
-        state.charts = [concentrationChart, rsiChart];
-        state.series = [concentrationSeries, rsiSeries];
-        syncTimeScales(concentrationChart, rsiChart);
-        bindCrosshair(concentrationChart);
-        bindCrosshair(rsiChart);
-        concentrationChart.timeScale().fitContent();
-        rsiChart.timeScale().fitContent();
+        const entries = [
+            { chart: concentrationChart, series: concentrationSeries, metric: "concentration" },
+            { chart: rsiChart, series: rsiSeries, metric: "rsi" },
+        ];
+        const priceLabel = marketPayload?.price_label || `${MARKET_LABELS[state.market]}等权价格（归一化）`;
+        document.getElementById("price-index-title").textContent = priceLabel;
+        const priceData = points
+            .filter((point) => Number.isFinite(Number(point.price_index)))
+            .map((point) => ({ time: Number(point.time), value: Number(point.price_index) }));
+        if (priceData.length) {
+            const priceChart = window.LightweightCharts.createChart(
+                priceMount,
+                createChartOptions((price) => Number(price).toFixed(2)),
+            );
+            const priceSeries = priceChart.addSeries(window.LightweightCharts.LineSeries, {
+                color: "#75c69a",
+                lineWidth: 2,
+                priceLineVisible: false,
+                lastValueVisible: true,
+            });
+            priceSeries.setData(priceData);
+            entries.push({ chart: priceChart, series: priceSeries, metric: "price" });
+        } else {
+            priceMount.innerHTML = '<div class="chart-error">接口暂未返回价格基准，请重启 API 服务后刷新</div>';
+        }
+
+        state.charts = entries.map((entry) => entry.chart);
+        state.series = entries.map((entry) => entry.series);
+        syncTimeScales(...state.charts);
+        entries.forEach((entry) => {
+            bindCrosshair(
+                entry.chart,
+                entries.filter((target) => target !== entry),
+            );
+            entry.chart.timeScale().fitContent();
+        });
         setMetricPoint(points[points.length - 1]);
     }
 

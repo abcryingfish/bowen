@@ -32,12 +32,13 @@ def validate_smoke_result(result: dict) -> dict:
     if failed:
         errors.append(f"存在失败模型: {len(failed)}")
     processed_days = result.get("processed_days") or {}
+    skipped = set(result.get("skipped_models") or [])
     for model_id in completed or []:
         try:
             processed = int(processed_days.get(model_id, 0))
         except (TypeError, ValueError):
             processed = 0
-        if processed < 1:
+        if model_id not in skipped and processed < 1:
             errors.append(f"{model_id} 未生成理论指数日期")
     return {"ok": not errors, "errors": errors}
 
@@ -52,11 +53,11 @@ def inspect_sources(source: StyleDataSource) -> list[dict]:
         raise RuntimeError(f"行情缺少列: {sorted(missing)}")
     report = []
     for model in MODEL_DEFINITIONS:
-        files = source._factor_files(model.factor_name)
+        files = source._factor_files(model.factor_key)
         if not files:
-            raise RuntimeError(f"缺少因子目录: factor={model.factor_name}")
-        latest = source.latest_common_date(model.factor_name)
-        report.append({"model_id": model.model_id, "factor_name": model.factor_name, "partitions": len(files), "latest_common_date": latest.isoformat() if latest else None})
+            raise RuntimeError(f"缺少因子目录: factor={model.factor_key}")
+        latest = source.latest_common_date(model.factor_key)
+        report.append({"model_id": model.model_id, "factor_name": model.factor_name, "factor_key": model.factor_key, "partitions": len(files), "latest_common_date": latest.isoformat() if latest else None})
     return report
 
 

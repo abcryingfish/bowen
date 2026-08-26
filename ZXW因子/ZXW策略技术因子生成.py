@@ -24,9 +24,11 @@ import json
 import importlib
 import subprocess
 import time
+import uuid
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta
+import polars as pl
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -79,7 +81,7 @@ from RSI import build_rsi_factor_bundle
 from OBV因子 import build_obv_factor_bundle
 from 唐奇安下通道 import build_donchian_lower_channel_factor_bundle
 from 动态波动率通道 import build_dynamic_volatility_channel_factor_bundle
-from 筹码结构因子 import build_chip_structure_factor_bundle
+from 筹码结构因子 import build_chip_structure_factor_bundle, clear_chip_structure_bundle_cache
 from 新HL占比 import build_new_hl_ratio_factor_bundle
 from 布林带策略 import build_boll_strategy_factor_bundle
 from 总买入信号_独立全量 import build_total_buy_signal_bundle
@@ -224,7 +226,36 @@ SELECTED_BUNDLES = [
 # 可选：仅回补指定因子；None 表示按已启用 bundle 的全部因子自动补写
 TARGET_FACTORS: Optional[list[str]] = None
 
+
+def _parse_env_list(name: str) -> list[str] | None:
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    return [token.strip() for token in raw.split(",") if token.strip()]
+
+
+_repair_start_raw = os.environ.get("ZXW_REPAIR_START_DATE", "").strip()
+_repair_end_raw = os.environ.get("ZXW_REPAIR_END_DATE", "").strip()
+if bool(_repair_start_raw) != bool(_repair_end_raw):
+    raise ValueError("ZXW_REPAIR_START_DATE 与 ZXW_REPAIR_END_DATE 必须同时设置")
+REPAIR_MODE = bool(_repair_start_raw)
+REPAIR_START_DATE = _repair_start_raw if REPAIR_MODE else None
+REPAIR_END_DATE = _repair_end_raw if REPAIR_MODE else None
+
+_env_selected_bundles = _parse_env_list("ZXW_REPAIR_BUNDLES")
+if _env_selected_bundles is not None:
+    SELECTED_BUNDLES = [bundle.lower() for bundle in _env_selected_bundles]
+_env_target_factors = _parse_env_list("ZXW_REPAIR_FACTORS")
+if _env_target_factors is not None:
+    TARGET_FACTORS = _env_target_factors
+
 LOOKBACK_BUFFER_DAYS = 20
+# 历史补齐时单个执行计划的最大计算跨度；只切分计算，不改变因子写入范围。
+MAX_COMPUTE_WINDOW_YEARS = 2
+CHIP_CODE_BATCH_SIZE = 200
+PURE_TECHNICAL_CODE_BATCH_SIZE = 0  # 0 表示全市场代码一次性向量化计算
+# 200 只股票的正常预热窗口需要超过默认 50000 cells，才能首次生成持久化状态。
+os.environ.setdefault("ZXW_CHIP_STATE_BOOTSTRAP_MAX_CELLS", str(CHIP_CODE_BATCH_SIZE * 1500))
 
 BUNDLE_LOOKBACK_LOADERS = {
     "macd": get_macd_lookback_config,
@@ -630,14 +661,26 @@ def _build_factor_scope_execution_plans(
             if not codes:
                 continue
             plan_start = pd.Timestamp(row["plan_start"]).floor("D")
+            write_start_value = row.get("write_start", row["plan_start"])
+            write_start = pd.Timestamp(write_start_value).floor("D")
             plan_end = pd.Timestamp(row["plan_end"]).floor("D")
             lookback_days = int(factor_lookback_days.get(factor_key, 0) or 0)
-            query_start = plan_start - pd.Timedelta(days=lookback_days + int(buffer_days))
+            requires_full_history = lookback_days >= 10000
+            # 全历史因子会登记很大的逻辑回看窗口（例如 50000 天），
+            # 但不能因此把行情读取起点推到源数据起点之前。
+            source_start_value = globals().get("START_DATE")
+            raw_query_start = plan_start - pd.Timedelta(days=lookback_days + int(buffer_days))
+            query_start = (
+                max(pd.Timestamp(source_start_value).floor("D"), raw_query_start)
+                if source_start_value
+                else raw_query_start
+            )
             group_key = (
                 bundle,
                 scope,
                 tuple(codes),
                 plan_start,
+                write_start,
                 plan_end,
             )
             if group_key not in grouped_plans:
@@ -647,9 +690,11 @@ def _build_factor_scope_execution_plans(
                     "target_keys": [],
                     "codes": codes,
                     "plan_start": plan_start,
+                    "write_start": write_start,
                     "plan_end": plan_end,
                     "query_start": query_start,
                     "lookback_days": lookback_days,
+                    "requires_full_history": requires_full_history,
                 }
             else:
                 grouped_plans[group_key]["query_start"] = min(
@@ -688,7 +733,16 @@ def _build_execution_code_windows(execution_plans: list[dict[str, object]]) -> p
 def _group_execution_plans_for_compute(
     execution_plans: list[dict[str, object]],
 ) -> list[dict[str, object]]:
-    """合并输入范围相同的计划，让组合因子继续共享基础计算。"""
+    """只合并输入窗口完全一致的计划；全历史 bundle 必须独立执行。"""
+    code_batched_bundles = {
+        "chip_structure",
+        "bottom_fishing",
+        "hong_bottom_fishing",
+        "total_buy_signal",
+        "total_sell_pair_test",
+        "sell_factor_volume",
+        "tdx_bottom_alert",
+    }
     grouped: dict[tuple[object, ...], dict[str, object]] = {}
     for plan in execution_plans:
         bundle = str(plan.get("bundle", "")).strip().lower()
@@ -700,17 +754,33 @@ def _group_execution_plans_for_compute(
         })
         if not bundle or not codes:
             continue
+        query_start = pd.Timestamp(plan["query_start"]).floor("D")
+        plan_start = pd.Timestamp(plan["plan_start"]).floor("D")
+        write_start = pd.Timestamp(plan.get("write_start", plan["plan_start"])).floor("D")
         plan_end = pd.Timestamp(plan["plan_end"]).floor("D")
-        group_key = (scope, tuple(codes), plan_end)
+        requires_full_history = bool(plan.get("requires_full_history", False))
+        isolation_key = bundle if requires_full_history or bundle in code_batched_bundles else "rolling"
+        group_key = (
+            scope,
+            tuple(codes),
+            query_start,
+            plan_start,
+            write_start,
+            plan_end,
+            isolation_key,
+        )
         if group_key not in grouped:
             grouped[group_key] = {
                 "bundles": [],
                 "scope": scope,
                 "target_keys": [],
                 "codes": codes,
-                "query_start": pd.Timestamp(plan["query_start"]).floor("D"),
-                "plan_start": pd.Timestamp(plan["plan_start"]).floor("D"),
+                "query_start": query_start,
+                "plan_start": plan_start,
+                "write_start": write_start,
                 "plan_end": plan_end,
+                "lookback_days": int(plan.get("lookback_days", 0) or 0),
+                "requires_full_history": requires_full_history,
             }
         item = grouped[group_key]
         if bundle not in item["bundles"]:
@@ -720,18 +790,88 @@ def _group_execution_plans_for_compute(
             for key in plan.get("target_keys", [])
             if str(key).strip()
         )
-        item["query_start"] = min(
-            pd.Timestamp(item["query_start"]).floor("D"),
-            pd.Timestamp(plan["query_start"]).floor("D"),
-        )
-        item["plan_start"] = min(
-            pd.Timestamp(item["plan_start"]).floor("D"),
-            pd.Timestamp(plan["plan_start"]).floor("D"),
+        item["lookback_days"] = max(
+            int(item.get("lookback_days", 0) or 0),
+            int(plan.get("lookback_days", 0) or 0),
         )
 
     for item in grouped.values():
         item["target_keys"] = sorted(set(item["target_keys"]))
     return list(grouped.values())
+
+
+def _split_execution_batches_by_codes(
+    execution_batches: list[dict[str, object]],
+    *,
+    batch_size: int = 200,
+) -> list[dict[str, object]]:
+    """仅将逐股票独立且会计算筹码的 bundle 按代码分批。"""
+    code_batched_bundles = {
+        "chip_structure",
+        "bottom_fishing",
+        "hong_bottom_fishing",
+        "total_buy_signal",
+        "total_sell_pair_test",
+        "sell_factor_volume",
+        "tdx_bottom_alert",
+    }
+    size = max(1, int(batch_size))
+    result: list[dict[str, object]] = []
+    for plan in execution_batches:
+        bundles = {
+            str(bundle).strip().lower()
+            for bundle in plan.get("bundles", [])
+            if str(bundle).strip()
+        }
+        codes = sorted({
+            str(code).strip().upper()
+            for code in plan.get("codes", [])
+            if str(code).strip()
+        })
+        if not codes or not bundles or not bundles.issubset(code_batched_bundles):
+            result.append(plan)
+            continue
+        for start in range(0, len(codes), size):
+            chunk = dict(plan)
+            chunk["codes"] = codes[start:start + size]
+            chunk["code_batch_index"] = start // size + 1
+            chunk["code_batch_total"] = (len(codes) + size - 1) // size
+            result.append(chunk)
+    return result
+
+
+def _split_execution_batches_by_window(
+    execution_batches: list[dict[str, object]],
+    *,
+    max_years: int = MAX_COMPUTE_WINDOW_YEARS,
+) -> list[dict[str, object]]:
+    """按日期切分过长执行计划，并为每个分片保留足够的回看预热区间。"""
+    years = max(1, int(max_years))
+    source_start_value = globals().get("START_DATE")
+    source_start = pd.Timestamp(source_start_value).floor("D") if source_start_value else None
+    result: list[dict[str, object]] = []
+    for plan in execution_batches:
+        plan_start = pd.Timestamp(plan["plan_start"]).floor("D")
+        plan_end = pd.Timestamp(plan["plan_end"]).floor("D")
+        if plan_start >= plan_end:
+            result.append(plan)
+            continue
+        cursor = plan_start
+        while cursor <= plan_end:
+            chunk_end = min(
+                plan_end,
+                cursor + pd.DateOffset(years=years) - pd.Timedelta(days=1),
+            )
+            lookback_days = int(plan.get("lookback_days", 0) or 0)
+            raw_query_start = cursor - pd.Timedelta(days=lookback_days + LOOKBACK_BUFFER_DAYS)
+            query_start = max(source_start, raw_query_start) if source_start is not None else raw_query_start
+            chunk = dict(plan)
+            chunk["plan_start"] = cursor
+            chunk["plan_end"] = chunk_end
+            chunk["query_start"] = query_start
+            result.append(chunk)
+            cursor = chunk_end + pd.Timedelta(days=1)
+    return result
 
 
 def _prepare_execution_market_long(source: pd.DataFrame) -> pd.DataFrame:
@@ -912,6 +1052,17 @@ def _write_factor_identity_catalog(
                     display = str(name).strip()
                     if display and display not in aliases[stable_id]:
                         aliases[stable_id].append(display)
+        existing_bundles = existing_payload.get("factor_bundles", {})
+        if isinstance(existing_bundles, dict):
+            for factor_id, bundle_names in existing_bundles.items():
+                stable_id = str(factor_id).strip()
+                if not stable_id or not isinstance(bundle_names, list):
+                    continue
+                factor_bundles.setdefault(stable_id, [])
+                for bundle_name in bundle_names:
+                    normalized_bundle = str(bundle_name).strip()
+                    if normalized_bundle and normalized_bundle not in factor_bundles[stable_id]:
+                        factor_bundles[stable_id].append(normalized_bundle)
 
     payload = {
         "version": 1,
@@ -961,13 +1112,22 @@ def _compute_selected_bundles_for_planning(O, H, L, C, V, selected_bundles, T=No
             )
         )
     if "chip_structure" in selected_bundle_set:
+        _chip_stock_codes = {
+            str(code).strip().upper()
+            for code in globals().get("_stock_source_code_set", set())
+            if str(code).strip()
+        }
+        _chip_columns = [
+            code for code in C.columns
+            if str(code).strip().upper() in _chip_stock_codes
+        ]
         bundle_outputs.append(
             build_chip_structure_factor_bundle(
-                H=H,
-                L=L,
-                C=C,
-                V=V,
-                T=T,
+                H=H.loc[:, _chip_columns],
+                L=L.loc[:, _chip_columns],
+                C=C.loc[:, _chip_columns],
+                V=V.loc[:, _chip_columns],
+                T=T.loc[:, _chip_columns] if T is not None else None,
             )
         )
     if "new_hl_ratio" in selected_bundle_set:
@@ -1237,7 +1397,7 @@ def _collect_latest_factor_partition_paths(
                 path
                 for path in sorted(month_dir.glob("part_*.parquet"))
                 if re.fullmatch(
-                    r"part_\d+_\d+_[0-9a-f]+\.parquet",
+                    r"part_(?:\d+_){1,2}[0-9a-f]+\.parquet",
                     path.name,
                     flags=re.IGNORECASE,
                 )
@@ -1389,18 +1549,21 @@ def build_factor_fill_plan(
         )
         if last_dt is None:
             plan_start = start_dt
+            write_start = start_dt
             status = "missing"
             reason = "因子目录不存在或无历史数据"
         elif last_dt < end_dt:
+            write_start = last_dt + pd.Timedelta(days=1)
             if eng_key in full_history_factor_keys:
                 plan_start = start_dt
                 reason = f"因子水位={last_dt.date()}，标记为全历史因子，重新计算至{end_dt.date()}"
             else:
-                plan_start = max(start_dt, last_dt + pd.Timedelta(days=1))
+                plan_start = max(start_dt, write_start)
                 reason = f"因子水位={last_dt.date()}，需尾部补到{end_dt.date()}"
             status = "stale"
         else:
             plan_start = None
+            write_start = None
             status = "up_to_date"
             reason = f"因子水位={last_dt.date()}，已覆盖目标区间"
 
@@ -1413,13 +1576,14 @@ def build_factor_fill_plan(
                 "status": status,
                 "reason": reason,
                 "plan_start": plan_start,
+                "write_start": write_start,
                 "plan_end": end_dt if plan_start is not None else None,
             }
         )
 
     if not rows:
         return pd.DataFrame(
-            columns=["factor_cn", "factor_en", "lookback_days", "last_dt", "status", "reason", "plan_start", "plan_end"]
+            columns=["factor_cn", "factor_en", "lookback_days", "last_dt", "status", "reason", "plan_start", "write_start", "plan_end"]
         )
 
     plan_df = pd.DataFrame(rows)
@@ -1564,6 +1728,9 @@ def _format_save_progress_line(
 selected_bundle_set = {str(x).strip().lower() for x in SELECTED_BUNDLES}
 
 START_DATE = _normalize_date_str(START_DATE)
+if REPAIR_MODE:
+    REPAIR_START_DATE = _normalize_date_str(str(REPAIR_START_DATE))
+    REPAIR_END_DATE = _normalize_date_str(str(REPAIR_END_DATE))
 
 con = duckdb.connect()   # 初始化 DuckDB 连接
 MARKET_DAILY_SOURCE_GLOBS = _existing_market_daily_globs(MARKET_DAILY_SOURCE_PATHS)
@@ -1592,11 +1759,26 @@ _standard_market_source_code_set = _source_code_set - _sector_source_code_set
 _today_dt = pd.Timestamp(datetime.now().date()).floor("D")
 _source_end_dt = pd.Timestamp(_source_max_dt).floor("D")
 END_DATE = min(_today_dt, _source_end_dt).strftime("%Y-%m-%d")
+if REPAIR_MODE:
+    _repair_start_dt = pd.Timestamp(REPAIR_START_DATE).floor("D")
+    _repair_end_dt = pd.Timestamp(REPAIR_END_DATE).floor("D")
+    if _repair_start_dt > _repair_end_dt:
+        raise ValueError(f"修复起点不能晚于终点: {REPAIR_START_DATE} > {REPAIR_END_DATE}")
+    if _repair_end_dt > min(_today_dt, _source_end_dt):
+        raise ValueError(
+            f"修复终点超过可用行情终点: {REPAIR_END_DATE} > "
+            f"{min(_today_dt, _source_end_dt).date()}"
+        )
+    END_DATE = _repair_end_dt.strftime("%Y-%m-%d")
+    print(
+        f"[定向修复] 写入区间={REPAIR_START_DATE} ~ {REPAIR_END_DATE}，"
+        f"bundle={SELECTED_BUNDLES}，指定因子={TARGET_FACTORS or '全部'}"
+    )
 if datetime.strptime(START_DATE, "%Y-%m-%d").date() > datetime.strptime(END_DATE, "%Y-%m-%d").date():
     raise ValueError(f"START_DATE（{START_DATE}）不能晚于源数据终点（{END_DATE}）")
 
 
-def _update_pure_technical_factors_in_code_batches(end_date: str) -> None:
+def _update_pure_technical_factors(end_date: str) -> None:
     runner_path = Path(__file__).resolve().parent / "纯技术面因子" / "将所有的技术面进行使用.py"
     command = [
         sys.executable,
@@ -1609,18 +1791,28 @@ def _update_pure_technical_factors_in_code_batches(end_date: str) -> None:
         "--output-base-dir",
         FACTOR_LIBRARY_BASE_DIR,
         "--code-batch-size",
-        "200",
+        str(PURE_TECHNICAL_CODE_BATCH_SIZE),
         "--max-save-workers",
         "4",
         "--compact-workers",
         "4",
         "--skip-missing-code-check",
     ]
-    print("纯技术因子低内存预更新: 每批最多 200 个代码")
+    if REPAIR_MODE:
+        command.extend(
+            [
+                "--repair-start-date",
+                str(REPAIR_START_DATE),
+                "--repair-end-date",
+                str(REPAIR_END_DATE),
+            ]
+        )
+    print("纯技术因子预更新: 全市场代码一次性向量化计算")
     subprocess.run(command, cwd=str(runner_path.parent), check=True)
 
 
-_update_pure_technical_factors_in_code_batches(END_DATE)
+if "pure_technical" in selected_bundle_set:
+    _update_pure_technical_factors(END_DATE)
 BATCH_COMPLETE_DATE = _get_batch_complete_date(FACTOR_LIBRARY_BASE_DIR)
 
 _peak_valley_v2_existing_map = _load_factor_last_date_map(
@@ -1704,6 +1896,14 @@ if AUTO_PLAN_FROM_FACTOR_LIBRARY:
             factor_last_dt_map=_factor_last_dt_map,
             batch_complete_date=BATCH_COMPLETE_DATE,
         )
+        if REPAIR_MODE and not PREQUERY_PLAN_DF.empty:
+            PREQUERY_PLAN_DF.loc[:, "status"] = "stale"
+            PREQUERY_PLAN_DF.loc[:, "reason"] = (
+                f"定向修复 {REPAIR_START_DATE} ~ {REPAIR_END_DATE}"
+            )
+            PREQUERY_PLAN_DF.loc[:, "plan_start"] = pd.Timestamp(REPAIR_START_DATE)
+            PREQUERY_PLAN_DF.loc[:, "write_start"] = pd.Timestamp(REPAIR_START_DATE)
+            PREQUERY_PLAN_DF.loc[:, "plan_end"] = pd.Timestamp(REPAIR_END_DATE)
         _need_compute = PREQUERY_PLAN_DF[PREQUERY_PLAN_DF["status"].isin(["missing", "stale"])].copy()
 
         if not _need_compute.empty:
@@ -1782,7 +1982,10 @@ if PREQUERY_EXECUTION_PLANS:
         for plan in PREQUERY_EXECUTION_PLANS
     ).strftime("%Y-%m-%d")
 else:
-    QUERY_START_DATE = (_effective_start_dt - pd.Timedelta(days=REQUIRED_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    QUERY_START_DATE = max(
+        pd.Timestamp(START_DATE).floor("D"),
+        _effective_start_dt - pd.Timedelta(days=REQUIRED_LOOKBACK_DAYS),
+    ).strftime("%Y-%m-%d")
 if _PEAK_VALLEY_V2_NEEDS_REFRESH and _PEAK_VALLEY_V2_QUERY_START is not None:
     QUERY_START_DATE = min(
         pd.Timestamp(QUERY_START_DATE).floor("D"),
@@ -2006,7 +2209,7 @@ def _execute_window_sql_with_adj_fallback(sql_text: str) -> pd.DataFrame:
     except Exception as exc:
         if not _ADJ_FACTOR_DAILY_APPLIED:
             raise
-        print(f"[WARN] adj_factor_daily 快路径失败，回退 wide_xdy 复权: {exc}")
+        print(f"[WARN] adj_factor_daily 快路径失败，回退 adj_factor_segments 复权: {exc}")
         _ADJ_FACTOR_DAILY_APPLIED = False
         return con.execute(_LAST_WINDOW_BASE_SQL).df()
 
@@ -2097,7 +2300,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ADJ_WIDE_BASE_PATH = r"D:\database\stock_adj_daily\wide_xdy"
+ADJ_SEGMENTS_PATH = os.environ.get(
+    "ZXW_ADJ_SEGMENTS_PATH",
+    r"D:\database\stock_adj_daily\adj_factor_segments.parquet",
+)
 ADJ_RAW_BASE_PATH = r"D:\database\stock_adj_daily_raw"
 _ZXW_RAW_ADJ_VIEW = "_zxw_stock_adj_raw_events"
 _OHLC = ("open", "high", "low", "close")
@@ -2117,74 +2323,67 @@ def _zxw_ohlc_cols(df: pd.DataFrame) -> list[str]:
     return [lower[k] for k in _OHLC if k in lower]
 
 
-def _zxw_load_wide_xdy_series(codes: np.ndarray) -> dict[str, pd.Series]:
-    wide_base = Path(ADJ_WIDE_BASE_PATH)
-    paths = sorted(wide_base.glob("year=*/month=*/merged.parquet")) if wide_base.exists() else []
-    if not paths:
-        return {}
+def _zxw_build_segment_factor_series(segments: pd.DataFrame) -> dict[str, pd.Series]:
+    required = {"htsc_code", "begin_date", "xdy"}
+    missing = sorted(required.difference(segments.columns))
+    if missing:
+        raise ValueError(f"adj_factor_segments 缺少字段: {missing}")
+
+    frame = segments.copy()
+    frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
+    frame["begin_date"] = pd.to_datetime(frame["begin_date"], errors="coerce").dt.normalize()
+    frame["xdy"] = pd.to_numeric(frame["xdy"], errors="coerce")
+    invalid = (
+        frame["htsc_code"].eq("")
+        | frame["begin_date"].isna()
+        | frame["xdy"].isna()
+        | ~np.isfinite(frame["xdy"].to_numpy(dtype=np.float64))
+        | frame["xdy"].le(0)
+    )
+    if invalid.any():
+        samples = frame.loc[invalid, ["htsc_code", "begin_date", "xdy"]].head(5).to_dict("records")
+        raise ValueError(f"adj_factor_segments 存在无效分段，样例={samples}")
+
+    frame = frame.sort_values(["htsc_code", "begin_date"], kind="stable")
+    duplicated = frame.duplicated(["htsc_code", "begin_date"], keep=False)
+    if duplicated.any():
+        samples = frame.loc[duplicated, ["htsc_code", "begin_date", "xdy"]].head(5).to_dict("records")
+        raise ValueError(f"adj_factor_segments 存在重复起始日，样例={samples}")
+
+    result: dict[str, pd.Series] = {}
+    for code, group in frame.groupby("htsc_code", sort=False):
+        raw = group["xdy"].to_numpy(dtype=np.float64)
+        with np.errstate(over="ignore", invalid="ignore"):
+            cumulative = np.cumprod(raw)
+        if not np.isfinite(cumulative).all() or (cumulative <= 0).any():
+            raise FloatingPointError(f"adj_factor_segments 累乘结果无效: {code}")
+        result[str(code)] = pd.Series(
+            cumulative,
+            index=pd.DatetimeIndex(group["begin_date"]),
+            dtype=np.float64,
+        )
+    return result
+
+
+def _zxw_load_segment_factor_series(codes: np.ndarray) -> dict[str, pd.Series]:
+    path = Path(ADJ_SEGMENTS_PATH)
+    if not path.is_file():
+        raise FileNotFoundError(f"adj_factor_segments 不存在: {path}")
     target_codes = {str(code).strip().upper() for code in codes if str(code).strip()}
-    result: dict[str, list[pd.Series]] = {}
-    for path in paths:
-        try:
-            frame = pd.read_parquet(path)
-        except Exception as exc:
-            print(f"[WARN] ?? wide_xdy ?????: {path} | {exc}")
-            continue
-        if frame.empty or "htsc_code" not in frame.columns:
-            continue
-        frame = frame.copy()
-        frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
-        if target_codes:
-            frame = frame[frame["htsc_code"].isin(target_codes)]
-        if frame.empty:
-            continue
-        date_cols: list[tuple[str, pd.Timestamp]] = []
-        for col in frame.columns:
-            if col in ("htsc_code", "year", "month"):
-                continue
-            day = pd.to_datetime(str(col), format="%Y/%m/%d", errors="coerce")
-            if pd.isna(day):
-                continue
-            date_cols.append((col, pd.Timestamp(day).normalize()))
-        if not date_cols:
-            continue
-        for _, row in frame.iterrows():
-            code = str(row["htsc_code"]).strip().upper()
-            mapping: dict[pd.Timestamp, float] = {}
-            for col, day in date_cols:
-                value = pd.to_numeric(row[col], errors="coerce")
-                if pd.isna(value):
-                    continue
-                mapping[day] = float(value)
-            if mapping:
-                result.setdefault(code, []).append(pd.Series(mapping, dtype=np.float64))
-    out: dict[str, pd.Series] = {}
-    for code, parts in result.items():
-        series = pd.concat(parts).sort_index()
-        series = series[~series.index.duplicated(keep="last")]
-        out[code] = series.astype(np.float64)
-    return out
-
-
-def _zxw_backward_factor_series(xdy_series: pd.Series) -> pd.Series:
-    values = pd.to_numeric(xdy_series, errors="coerce").astype(np.float64).sort_index()
-    if values.empty:
-        return pd.Series(dtype=np.float64)
-    raw_values = values.to_numpy(dtype=np.float64)
-    segment_start = np.ones(len(raw_values), dtype=bool)
-    if len(raw_values) > 1:
-        segment_start[1:] = raw_values[1:] != raw_values[:-1]
-    segment_factors = np.where(segment_start, raw_values, 1.0)
-    return pd.Series(np.cumprod(segment_factors), index=values.index, dtype=np.float64)
+    frame = pd.read_parquet(path, columns=["htsc_code", "begin_date", "xdy"])
+    frame["htsc_code"] = frame["htsc_code"].astype(str).str.strip().str.upper()
+    if target_codes:
+        frame = frame[frame["htsc_code"].isin(target_codes)]
+    return _zxw_build_segment_factor_series(frame)
 
 
 def _zxw_apply_ratio_adjustment(df: pd.DataFrame, mode: str) -> pd.DataFrame:
     cols = _zxw_ohlc_cols(df)
     if not cols:
         raise KeyError("??? open/high/low/close ??????")
-    xdy_by_code = _zxw_load_wide_xdy_series(df["htsc_code"].unique())
-    if not xdy_by_code:
-        print("??? wide_xdy ??????? raw event ??")
+    factor_by_code = _zxw_load_segment_factor_series(df["htsc_code"].unique())
+    if not factor_by_code:
+        print("adj_factor_segments 未命中目标代码，行情保持原始价格")
         return df
 
     out = df.copy()
@@ -2192,11 +2391,8 @@ def _zxw_apply_ratio_adjustment(df: pd.DataFrame, mode: str) -> pd.DataFrame:
     out["time"] = pd.to_datetime(out["time"], errors="coerce").dt.normalize()
     adjusted_rows = 0
     for code, idx in out.groupby("htsc_code", sort=False).groups.items():
-        xdy_series = xdy_by_code.get(code)
-        if xdy_series is None or xdy_series.empty:
-            continue
-        backward_series = _zxw_backward_factor_series(xdy_series)
-        if backward_series.empty:
+        backward_series = factor_by_code.get(code)
+        if backward_series is None or backward_series.empty:
             continue
         row_pos = out.index.get_indexer(idx)
         days = out.iloc[row_pos]["time"]
@@ -2208,10 +2404,17 @@ def _zxw_apply_ratio_adjustment(df: pd.DataFrame, mode: str) -> pd.DataFrame:
         if mode == "forward":
             factors = factors / (last_factor if last_factor != 0.0 else 1.0)
         values = out.iloc[row_pos][cols].to_numpy(dtype=np.float64, copy=True)
-        values = values * factors[:, None]
-        out.iloc[row_pos, out.columns.get_indexer(cols)] = values
+        with np.errstate(over="ignore", invalid="ignore"):
+            adjusted_values = values * factors[:, None]
+        newly_nonfinite = np.isfinite(values) & ~np.isfinite(adjusted_values)
+        if newly_nonfinite.any():
+            raise FloatingPointError(f"分段复权后价格溢出: {code}")
+        out.iloc[row_pos, out.columns.get_indexer(cols)] = adjusted_values
         adjusted_rows += int(len(row_pos))
-    print(f"wide_xdy {ADJ_MODE} ??: ?? {len(xdy_by_code)} ? | ? {adjusted_rows} / {len(out)}")
+    print(
+        f"adj_factor_segments {ADJ_MODE} 复权: "
+        f"分段代码 {len(factor_by_code)} | 已复权 {adjusted_rows} / {len(out)}"
+    )
     return out.reset_index(drop=True)
 
 
@@ -2313,7 +2516,7 @@ elif _mode == "none" or _skip_market_load or len(df_multi) == 0:
 else:
     df_multi["htsc_code"] = df_multi["htsc_code"].astype(str).str.strip().str.upper()
     df_multi["time"] = pd.to_datetime(df_multi["time"], errors="coerce").dt.normalize()
-    # Use wide_xdy for ratio-adjusted prices.
+    # The fast path already applied adj_factor_daily; otherwise use one multiplier per segment.
     df_multi = _zxw_apply_ratio_adjustment(df_multi, _mode)
     gc.collect()
     df_multi["time"] = pd.to_datetime(df_multi["time"]).dt.floor("D")
@@ -2380,7 +2583,7 @@ from RSI import build_rsi_factor_bundle
 from OBV因子 import build_obv_factor_bundle
 from 唐奇安下通道 import build_donchian_lower_channel_factor_bundle
 from 动态波动率通道 import build_dynamic_volatility_channel_factor_bundle
-from 筹码结构因子 import build_chip_structure_factor_bundle
+from 筹码结构因子 import build_chip_structure_factor_bundle, clear_chip_structure_bundle_cache
 from 新HL占比 import build_new_hl_ratio_factor_bundle
 from 布林带策略 import build_boll_strategy_factor_bundle
 from 总买入信号_独立全量 import build_total_buy_signal_bundle
@@ -2404,7 +2607,18 @@ def _merge_bundle_output(output, factor_dfs, factor_name_map):
     factor_name_map.update(output.get("factor_name_map", {}))
 
 
-def _compute_selected_bundles_raw(O, H, L, C, V, selected_bundles, T=None, enable_bottom_cache=True, valid_bar=None):
+def _compute_selected_bundles_raw(
+    O,
+    H,
+    L,
+    C,
+    V,
+    selected_bundles,
+    T=None,
+    enable_bottom_cache=True,
+    valid_bar=None,
+    target_factor_keys=None,
+):
     selected_bundle_set = {str(x).strip().lower() for x in selected_bundles}
     bundle_outputs = []
     shared_factor_dfs = {}
@@ -2460,14 +2674,38 @@ def _compute_selected_bundles_raw(O, H, L, C, V, selected_bundles, T=None, enabl
             _merge_bundle_output(output, shared_factor_dfs, shared_factor_name_map)
 
     if _need("moving_average", "tdx_bottom_alert", "total_sell_pair_test"):
-        output = build_moving_average_factor_bundle(C=C, windows=(5, 10, 15, 20, 30, 40, 50, 60, 70, 120))
+        output = build_moving_average_factor_bundle(
+            C=C,
+            windows=(5, 10, 15, 20, 30, 40, 50, 60, 70, 120),
+            selected_factors=(
+                target_factor_keys
+                if "moving_average" in selected_bundle_set
+                and not _need("tdx_bottom_alert", "total_sell_pair_test")
+                else None
+            ),
+        )
         if "moving_average" in selected_bundle_set:
             _add("moving_average", output)
         else:
             _merge_bundle_output(output, shared_factor_dfs, shared_factor_name_map)
 
     if _need("chip_structure", "total_buy_signal", "tdx_bottom_alert"):
-        output = build_chip_structure_factor_bundle(H=H, L=L, C=C, V=V, T=T)
+        _chip_stock_codes = {
+            str(code).strip().upper()
+            for code in globals().get("_stock_source_code_set", set())
+            if str(code).strip()
+        }
+        _chip_columns = [
+            code for code in C.columns
+            if str(code).strip().upper() in _chip_stock_codes
+        ]
+        output = build_chip_structure_factor_bundle(
+            H=H.loc[:, _chip_columns],
+            L=L.loc[:, _chip_columns],
+            C=C.loc[:, _chip_columns],
+            V=V.loc[:, _chip_columns],
+            T=T.loc[:, _chip_columns] if T is not None else None,
+        )
         if "chip_structure" in selected_bundle_set:
             _add("chip_structure", output)
         else:
@@ -2551,8 +2789,14 @@ def compute_selected_bundles(
     }
     shared_bundles = [item for item in requested_bundles if item not in direct_bundles]
     if shared_bundles:
+        raw_compute = _compute_selected_bundles_raw
+        if target_factor_keys is not None:
+            raw_compute = lambda **kwargs: _compute_selected_bundles_raw(
+                **kwargs,
+                target_factor_keys=target_factor_keys,
+            )
         selected_bundle_set, bundle_outputs = compute_bundles_with_valid_bar(
-            _compute_selected_bundles_raw,
+            raw_compute,
             O=O,
             H=H,
             L=L,
@@ -2800,9 +3044,127 @@ if not factor_plan_df.empty:
     need_compute_df = factor_plan_df[factor_plan_df["status"].isin(["missing", "stale"])].copy()
     if not need_compute_df.empty:
         PLANNED_FACTOR_TIME_RANGES = {
-            str(row["factor_en"]): (pd.Timestamp(row["plan_start"]).floor("D"), pd.Timestamp(row["plan_end"]).floor("D"))
+            str(row["factor_en"]): (
+                pd.Timestamp(row.get("write_start", row["plan_start"])).floor("D"),
+                pd.Timestamp(row["plan_end"]).floor("D"),
+            )
             for _, row in need_compute_df.iterrows()
         }
+
+_STREAMED_BUNDLE_KEYS = {
+    "macd", "kdj", "bottom_fishing", "hong_bottom_fishing", "rsi", "obv",
+    "donchian_lower", "dynamic_volatility_channel", "chip_structure",
+    "new_hl_ratio", "boll_strategy", "total_buy_signal", "total_sell_signal",
+    "macd_sell", "total_sell_pair_test", "sell_factor_volume", "moving_average",
+    "volume_drop", "tdx_bottom_alert",
+}
+_STREAMED_FACTOR_KEYS: set[str] = set()
+_STREAM_OUTPUT_BASE_DIR = r"D:\database\signal_daily"
+
+
+def _stream_write_factor_frame_parts(
+    *,
+    factor_key: str,
+    factor_frame: pd.DataFrame,
+    base_dir: str,
+    start_dt: pd.Timestamp,
+    end_dt: pd.Timestamp,
+) -> int:
+    """将已裁剪的技术因子结果直接追加为正式 part 文件，避免进入全局 factor_dfs。"""
+    if not isinstance(factor_frame, pd.DataFrame) or factor_frame.empty:
+        return 0
+    idx = pd.to_datetime(factor_frame.index, errors="coerce").floor("D")
+    keep = idx.notna() & (idx >= pd.Timestamp(start_dt).floor("D")) & (idx <= pd.Timestamp(end_dt).floor("D"))
+    if not bool(keep.any()):
+        return 0
+    sliced = factor_frame.loc[keep].copy()
+    sliced.index = idx[keep]
+    sliced.index.name = "time"
+    long_df = (
+        sliced.reset_index()
+        .melt(id_vars="time", var_name="htsc_code", value_name="value")
+        .drop_duplicates(subset=["time", "htsc_code"], keep="last")
+    )
+    if long_df.empty:
+        return 0
+    long_df["time"] = pd.to_datetime(long_df["time"], errors="coerce").dt.floor("D")
+    long_df["htsc_code"] = long_df["htsc_code"].astype(str).str.strip()
+    numeric_values = pd.to_numeric(long_df["value"], errors="coerce")
+    infinite = np.isinf(numeric_values.to_numpy(dtype=np.float64))
+    if infinite.any():
+        samples = long_df.loc[infinite, ["time", "htsc_code", "value"]].head(5).to_dict("records")
+        raise FloatingPointError(f"因子 {factor_key} 存在 inf，拒绝落盘，样例={samples}")
+    with np.errstate(over="ignore", invalid="ignore"):
+        float32_values = numeric_values.astype("float32")
+    overflow = numeric_values.notna() & ~np.isfinite(float32_values.to_numpy(dtype=np.float32))
+    if overflow.any():
+        samples = long_df.loc[overflow, ["time", "htsc_code", "value"]].head(5).to_dict("records")
+        raise FloatingPointError(f"因子 {factor_key} 转 float32 溢出，拒绝落盘，样例={samples}")
+    long_df["value"] = float32_values
+    long_df = long_df.dropna(subset=["time", "htsc_code"])
+    if long_df.empty:
+        return 0
+
+    factor_dir = os.path.join(base_dir, f"factor={_sanitize_factor_dir_name(factor_key)}")
+    written = 0
+    for (year, month), month_df in long_df.groupby(
+        [long_df["time"].dt.year, long_df["time"].dt.month], sort=True
+    ):
+        month_dir = os.path.join(factor_dir, f"year={int(year)}", f"month={int(month):02d}")
+        os.makedirs(month_dir, exist_ok=True)
+        part_path = os.path.join(
+            month_dir,
+            f"part_{int(time.time() * 1000)}_{os.getpid()}_{uuid.uuid4().hex}.parquet",
+        )
+        tmp_path = f"{part_path}.tmp"
+        write_error: OSError | None = None
+        for attempt in range(1, 61):
+            try:
+                pl.from_pandas(
+                    month_df[["time", "htsc_code", "value"]], include_index=False
+                ).write_parquet(tmp_path, compression="snappy")
+                write_error = None
+                break
+            except OSError as exc:
+                write_error = exc
+                try:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+                except OSError:
+                    pass
+                if attempt == 1 or attempt % 5 == 0:
+                    print(
+                        f"流式因子临时 parquet 写入被占用，等待后重试: "
+                        f"{tmp_path} ({attempt}/60)"
+                    )
+                time.sleep(1.0)
+        if write_error is not None:
+            raise OSError(f"流式因子临时 parquet 写入失败: {tmp_path}") from write_error
+        # Windows 上杀毒软件、DuckDB 或索引器可能短暂持有新文件句柄；
+        # 原子替换需要重试，否则单个批次会因 WinError 32 中断整个增量运行。
+        replace_error: OSError | None = None
+        for attempt in range(1, 61):
+            try:
+                os.replace(tmp_path, part_path)
+                replace_error = None
+                break
+            except OSError as exc:
+                replace_error = exc
+                if attempt == 1 or attempt % 5 == 0:
+                    print(
+                        f"流式因子 part 替换被占用，等待后重试: "
+                        f"{part_path} ({attempt}/60)"
+                    )
+                time.sleep(1.0)
+        if replace_error is not None:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
+            raise OSError(f"流式因子 part 写入失败，文件可能持续被占用: {part_path}") from replace_error
+        written += len(month_df)
+    return written
 
 active_target_keys = set(auto_target_keys)
 if not active_target_keys:
@@ -2863,6 +3225,7 @@ if compute_bundles:
     ]
     if not execution_plans:
         _fallback_codes = sorted(str(code) for code in _source_code_level)
+        _fallback_bundle_windows, _ = _load_lookback_registry(compute_bundles)
         execution_plans = [
             {
                 "bundle": bundle,
@@ -2872,11 +3235,27 @@ if compute_bundles:
                 "query_start": pd.Timestamp(QUERY_START_DATE).floor("D"),
                 "plan_start": pd.Timestamp(globals().get("EFFECTIVE_START_DATE", START_DATE)).floor("D"),
                 "plan_end": pd.Timestamp(END_DATE).floor("D"),
+                "lookback_days": int(_fallback_bundle_windows.get(bundle, 0) or 0),
+                "requires_full_history": int(_fallback_bundle_windows.get(bundle, 0) or 0) >= 10000,
             }
             for bundle in compute_bundles
         ]
 
-    execution_batches = _group_execution_plans_for_compute(execution_plans)
+    execution_batches = _split_execution_batches_by_codes(
+        _split_execution_batches_by_window(
+            _group_execution_plans_for_compute(execution_plans),
+            max_years=MAX_COMPUTE_WINDOW_YEARS,
+        ),
+        batch_size=CHIP_CODE_BATCH_SIZE,
+    )
+    # 组合信号依赖一组基础因子。分两组计算可让基础因子结果在处理后及时释放，
+    # 同时保留依赖关系和横截面/行业因子的整市场计算语义。
+    _dependent_bundle_keys = {
+        "total_buy_signal",
+        "total_sell_pair_test",
+        "sell_factor_volume",
+        "tdx_bottom_alert",
+    }
     _all_start = perf_counter()
     for _plan_idx, _execution_plan in enumerate(execution_batches, start=1):
         _bundles = [
@@ -2917,7 +3296,7 @@ if compute_bundles:
             target_keys=_target_display_names,
             code_count=len(_execution_plan.get("codes", [])),
             query_start=_compute_start,
-            plan_start=pd.Timestamp(_execution_plan["plan_start"]).floor("D"),
+            plan_start=pd.Timestamp(_execution_plan.get("write_start", _execution_plan["plan_start"])).floor("D"),
             plan_end=_compute_end,
         ):
             print(_progress_line)
@@ -2950,43 +3329,96 @@ if compute_bundles:
             bundle=_bundle_label,
             scope=_scope,
             start=str(_compute_start.date()),
-            write_start=str(pd.Timestamp(_execution_plan["plan_start"]).date()),
+            write_start=str(pd.Timestamp(_execution_plan.get("write_start", _execution_plan["plan_start"])).date()),
             end=str(_compute_end.date()),
             rows=int(len(_local_C.index)),
             cols=int(len(_local_C.columns)),
             targets=sorted(_targets),
         )
-        _task_start = perf_counter()
-        factor_log("bundle.start", bundle=_bundle_label, scope=_scope, selected_bundles=_bundles)
-        _, _outputs = compute_selected_bundles(
-            O=_local_O,
-            H=_local_H,
-            L=_local_L,
-            C=_local_C,
-            V=_local_V,
-            T=_local_T,
-            selected_bundles=_bundles,
-            enable_bottom_cache=False,
-            valid_bar=_local_valid_bar,
-            target_factor_keys=_targets,
-            unadjusted_close=_local_C_unadjusted,
-        )
-
         _batch_generated_keys: set[str] = set()
-        for output in _outputs:
-            _dfs = output.get("factor_dfs", {})
-            _map = output.get("factor_name_map", {})
-            for _ch, _eng in _map.items():
-                _eng_key = str(_eng).strip()
-                if _eng_key not in _targets or _eng_key not in _dfs:
-                    continue
-                _batch_generated_keys.add(_eng_key)
-                _new_frame = _dfs[_eng_key]
-                if _eng_key in factor_dfs:
-                    factor_dfs[_eng_key] = factor_dfs[_eng_key].combine_first(_new_frame)
-                else:
-                    factor_dfs[_eng_key] = _new_frame
-                factor_name_map[_ch] = _eng_key
+        _task_start = perf_counter()
+        _bundle_groups = []
+        _base_bundles = [b for b in _bundles if b not in _dependent_bundle_keys]
+        if _base_bundles:
+            _bundle_groups.append(_base_bundles)
+        _dependent_bundles = [b for b in _bundles if b in _dependent_bundle_keys]
+        if _dependent_bundles:
+            _bundle_groups.append(_dependent_bundles)
+
+        for _bundle_group in _bundle_groups:
+            _group_targets = {
+                key for key in _targets
+                if any(
+                    key in {
+                        str(eng).strip()
+                        for eng in bundle_factor_catalog.get(bundle, {}).values()
+                    }
+                    for bundle in _bundle_group
+                )
+            }
+            if not _group_targets:
+                continue
+            _group_label = "+".join(_bundle_group)
+            factor_log("bundle.start", bundle=_group_label, scope=_scope, selected_bundles=_bundle_group)
+            _, _outputs = compute_selected_bundles(
+                O=_local_O,
+                H=_local_H,
+                L=_local_L,
+                C=_local_C,
+                V=_local_V,
+                T=_local_T,
+                selected_bundles=_bundle_group,
+                enable_bottom_cache=False,
+                valid_bar=_local_valid_bar,
+                target_factor_keys=_group_targets,
+                unadjusted_close=_local_C_unadjusted,
+            )
+
+            for output in _outputs:
+                _dfs = output.get("factor_dfs", {})
+                _map = output.get("factor_name_map", {})
+                _output_bundle = str(output.get("bundle_id", "")).strip().lower()
+                for _ch, _eng in _map.items():
+                    _eng_key = str(_eng).strip()
+                    if _eng_key not in _group_targets or _eng_key not in _dfs:
+                        continue
+                    _batch_generated_keys.add(_eng_key)
+                    _new_frame = _dfs[_eng_key]
+                    # 计算可能需要很长历史，但增量运行通常只需写入尾部日期。
+                    # 在合并到总结果前裁剪，避免把整段历史长期保留在 factor_dfs。
+                    _write_range = PLANNED_FACTOR_TIME_RANGES.get(_eng_key)
+                    if _write_range is not None and isinstance(_new_frame, pd.DataFrame):
+                        _write_start, _write_end = _write_range
+                        _frame_index = pd.DatetimeIndex(pd.to_datetime(_new_frame.index, errors="coerce")).floor("D")
+                        _keep = (_frame_index >= _write_start) & (_frame_index <= _write_end)
+                        _new_frame = _new_frame.loc[_keep].copy()
+                    if _new_frame.empty:
+                        continue
+                    should_stream_output = (
+                        _output_bundle in _STREAMED_BUNDLE_KEYS
+                        or any(bundle in _STREAMED_BUNDLE_KEYS for bundle in _bundle_group)
+                    )
+                    if should_stream_output:
+                        _written_rows = _stream_write_factor_frame_parts(
+                            factor_key=_eng_key,
+                            factor_frame=_new_frame,
+                            base_dir=_STREAM_OUTPUT_BASE_DIR,
+                            start_dt=_write_range[0] if _write_range is not None else _compute_start,
+                            end_dt=_write_range[1] if _write_range is not None else _compute_end,
+                        )
+                        if _written_rows > 0:
+                            _STREAMED_FACTOR_KEYS.add(_eng_key)
+                            factor_name_map[_ch] = _eng_key
+                            continue
+                    if _eng_key in factor_dfs:
+                        factor_dfs[_eng_key] = factor_dfs[_eng_key].combine_first(_new_frame)
+                    else:
+                        factor_dfs[_eng_key] = _new_frame
+                    factor_name_map[_ch] = _eng_key
+            del _outputs
+            if bool(set(_bundle_group) & {"chip_structure", "total_buy_signal", "tdx_bottom_alert"}):
+                clear_chip_structure_bundle_cache()
+            gc.collect()
 
         _task_sec = perf_counter() - _task_start
         factor_log(
@@ -3007,7 +3439,7 @@ if compute_bundles:
                 elapsed_seconds=_task_sec,
             )
         )
-        del _outputs, _market_frames, _local_O, _local_H, _local_L, _local_C, _local_C_unadjusted, _local_V, _local_valid_bar, _local_T
+        del _market_frames, _local_O, _local_H, _local_L, _local_C, _local_C_unadjusted, _local_V, _local_valid_bar, _local_T
         gc.collect()
 
     _sec = perf_counter() - _all_start
@@ -3615,8 +4047,12 @@ def _factor_month_to_long_polars(
         .melt(id_vars="time", var_name="htsc_code", value_name="value")
         .drop_duplicates(subset=["time", "htsc_code"], keep="last")
     )
+    numeric_values = pd.to_numeric(long_df["value"], errors="coerce")
+    infinite = np.isinf(numeric_values.to_numpy(dtype=np.float64))
+    if infinite.any():
+        samples = long_df.loc[infinite, ["time", "htsc_code", "value"]].head(5).to_dict("records")
+        raise FloatingPointError(f"因子结果存在 inf，拒绝进入落盘分区，样例={samples}")
     if drop_null_values:
-        numeric_values = pd.to_numeric(long_df["value"], errors="coerce")
         long_df = long_df.loc[np.isfinite(numeric_values)].copy()
         long_df["value"] = numeric_values.loc[long_df.index]
     if long_df.empty:
@@ -3702,6 +4138,15 @@ def _build_factor_save_tasks(
             "end_dt": pd.Timestamp(task_end).floor("D"),
             "drop_null_values": bool(drop_null_values),
         }
+
+    if REPAIR_MODE:
+        repair_start_dt = max(start_dt, pd.Timestamp(REPAIR_START_DATE).floor("D"))
+        repair_end_dt = min(end_dt, pd.Timestamp(REPAIR_END_DATE).floor("D"))
+        return (
+            [_task(factor_df, repair_start_dt, repair_end_dt)]
+            if repair_start_dt <= repair_end_dt
+            else []
+        )
 
     if existing_last_dt is None:
         return [_task(factor_df, start_dt, end_dt)]
@@ -5028,11 +5473,14 @@ SIGNAL_PART_KEY_COLS = ["time", "htsc_code"]
 
 def _normalize_signal_part_schema(frame: pl.DataFrame) -> pl.DataFrame:
     """Normalize Parquet column order before Polars vertical concatenation."""
-    missing = [column for column in SIGNAL_PART_KEY_COLS if column not in frame.columns]
+    signal_columns = [*SIGNAL_PART_KEY_COLS, "value"]
+    missing = [column for column in signal_columns if column not in frame.columns]
     if missing:
-        raise ValueError(f"signal part 缺少主键列: {missing}")
-    value_columns = [column for column in frame.columns if column not in SIGNAL_PART_KEY_COLS]
-    return frame.select([*SIGNAL_PART_KEY_COLS, *value_columns])
+        raise ValueError(f"signal part 缺少字段: {missing}")
+    return frame.select(signal_columns).with_columns(
+        pl.col("time").cast(pl.Datetime),
+        pl.col("htsc_code").cast(pl.Utf8),
+    )
 
 
 def _signal_part_resolve_target_month_dirs(
@@ -5288,7 +5736,12 @@ def _finalize_factor_batch(
         if current_complete_date is not None
         else None
     )
-    has_factor_updates = bool(factor_dfs_dict or factor_name_map_dict)
+    streamed_factor_keys = {
+        str(value).strip()
+        for value in globals().get("_STREAMED_FACTOR_KEYS", set())
+        if str(value).strip()
+    }
+    has_factor_updates = bool(factor_dfs_dict or factor_name_map_dict or streamed_factor_keys)
     if not has_factor_updates and managed_factor_name_map is None:
         if current_dt is not None and current_dt >= target_dt:
             path = _batch_watermark_path(base_dir)
@@ -5297,7 +5750,7 @@ def _finalize_factor_batch(
         path = _batch_watermark_path(base_dir)
         print("本次因子计划为空，保留现有整批完成水位。")
         return path
-    elif has_factor_updates:
+    elif has_factor_updates and factor_name_map_dict:
         summary = _validate_factor_frames_for_batch(
             factor_dfs_dict=factor_dfs_dict,
             factor_name_map_dict=factor_name_map_dict,
@@ -5312,10 +5765,40 @@ def _finalize_factor_batch(
     selected_compact_func = compact_func or compact_signal_daily_parts
     selected_watermark_writer = watermark_writer or _write_batch_watermark_atomic
     if has_factor_updates:
-        for factor_name in dict.fromkeys(
+        compact_factor_names = [
             str(value).strip() for value in factor_name_map_dict.values() if str(value).strip()
-        ):
-            selected_compact_func(base_dir=base_dir, factor=factor_name)
+        ]
+        # 流式 bundle 已从 factor_dfs 移除，但其 part 文件仍需在收尾阶段
+        # 合并为 merged.parquet，供后续读取路径和前端使用。
+        compact_factor_names.extend(
+            str(value).strip()
+            for value in streamed_factor_keys
+            if str(value).strip()
+        )
+        for factor_name in dict.fromkeys(compact_factor_names):
+            compact_kwargs: dict[str, object] = {
+                "base_dir": base_dir,
+                "factor": factor_name,
+            }
+            if REPAIR_MODE:
+                compact_kwargs.update(
+                    overwrite=True,
+                    replace_start=pd.Timestamp(REPAIR_START_DATE).floor("D"),
+                    replace_end=pd.Timestamp(REPAIR_END_DATE).floor("D"),
+                )
+                repair_start = pd.Timestamp(REPAIR_START_DATE).floor("D")
+                repair_end = pd.Timestamp(REPAIR_END_DATE).floor("D")
+                if repair_start.to_period("M") == repair_end.to_period("M"):
+                    compact_kwargs.update(
+                        year=int(repair_start.year),
+                        month=int(repair_start.month),
+                    )
+            selected_compact_func(**compact_kwargs)
+
+    if REPAIR_MODE:
+        path = _batch_watermark_path(base_dir)
+        print(f"定向修复不改写整批完成水位: {path}")
+        return path
 
     complete_date = target_dt
     if managed_factor_name_map is not None:
@@ -5456,10 +5939,17 @@ _factor_identity_catalog_path = _write_factor_identity_catalog(
     bundle_factor_catalog,
 )
 print(f"因子身份目录已更新: {_factor_identity_catalog_path}")
+_finalize_memory_factor_name_map = {
+    ch_name: eng_name
+    for ch_name, eng_name in factor_name_map.items()
+    if str(eng_name).strip() in factor_dfs
+}
 _finalize_factor_batch(
     base_dir=OUTPUT_BASE_DIR,
     factor_dfs_dict=factor_dfs,
-    factor_name_map_dict=factor_name_map,
+    # 流式写入的因子已落在 part 文件中，不再参与内存矩阵校验；
+    # managed_factor_name_map 仍会负责它们的分区压缩和完整水位校验。
+    factor_name_map_dict=_finalize_memory_factor_name_map,
     target_date=pd.Timestamp(END_DATE),
     current_complete_date=BATCH_COMPLETE_DATE,
     all_market_codes=set(_source_code_set),
@@ -5475,8 +5965,11 @@ if str(_style_monitor_backtrader_root) not in sys.path:
 from models.style_portfolio_monitor.generator_hook import run_after_factor_generation
 
 
-run_after_factor_generation(
-    signal_base_dir=OUTPUT_BASE_DIR,
-    market_base_dir=BASE_PATH,
-    through_date=END_DATE,
-)
+if REPAIR_MODE:
+    print("定向修复跳过风格回测账本 hook；因子数据审计通过后再由正常全链路更新。")
+else:
+    run_after_factor_generation(
+        signal_base_dir=OUTPUT_BASE_DIR,
+        market_base_dir=BASE_PATH,
+        through_date=END_DATE,
+    )

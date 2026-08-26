@@ -232,6 +232,21 @@ class StyleMonitorRepository:
         finally:
             conn.close()
 
+    def load_index_state(self, model_version: str) -> tuple[date | None, dict[str, float], dict[str, dict[str, float]]]:
+        """读取最近指数值和生效权重，供增量续算使用。"""
+        conn = self._connect()
+        try:
+            latest = conn.execute("SELECT max(trade_date) FROM index_daily WHERE model_version=?", [model_version]).fetchone()[0]
+            if latest is None:
+                return None, {}, {"high": {}, "low": {}}
+            values = {str(row[0]): float(row[1]) for row in conn.execute("SELECT leg,index_value FROM index_daily WHERE model_version=? AND trade_date=?", [model_version, latest]).fetchall()}
+            weights = {"high": {}, "low": {}}
+            for leg, code, weight in conn.execute("SELECT leg,htsc_code,effective_weight FROM index_weight_daily WHERE model_version=? AND trade_date=? AND effective_weight>0", [model_version, latest]).fetchall():
+                weights.setdefault(str(leg), {})[str(code)] = float(weight)
+            return latest, values, weights
+        finally:
+            conn.close()
+
     def load_portfolio_state(self, model_version: str, leg: str) -> tuple[PortfolioState, float | None]:
         conn = self._connect()
         try:

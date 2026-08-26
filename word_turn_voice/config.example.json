@@ -1,0 +1,22 @@
+{
+  "input_file": "inbox.txt",
+  "poll_interval_seconds": 2.0,
+  "start_at_end": true,
+  "queue_mode": "fifo",
+  "max_queue_size": 20,
+  "tts": {
+    "backend": "sherpa_onnx",
+    "model": "models/zh/model.onnx",
+    "tokens": "models/zh/tokens.txt",
+    "lexicon": "models/zh/lexicon.txt",
+    "data_dir": "",
+    "rule_fsts": "models/zh/date.fst,models/zh/number.fst,models/zh/phone.fst,models/zh/new_heteronym.fst",
+    "num_threads": 4,
+    "speaker_id": 0,
+    "speed": 0.85,
+    "leading_silence_ms": 1500,
+    "trailing_silence_ms": 120,
+    "volume": 1.0
+    ,"output_device": "system_default"
+  }
+}

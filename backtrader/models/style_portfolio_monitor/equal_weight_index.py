@@ -190,12 +190,10 @@ def _load_fast_adjusted_close(
     return adjusted
 
 
-def _backward_factor_series(values: pd.Series) -> pd.Series:
+def _cumulative_factor_series(values: pd.Series) -> pd.Series:
+    """Normalize wide_xdy values, which are already cumulative factors."""
     values = pd.to_numeric(values, errors="coerce").dropna().sort_index().astype(float)
-    if values.empty:
-        return values
-    changed = values.ne(values.shift())
-    return values.where(changed, 1.0).cumprod()
+    return values
 
 
 def _load_wide_adjusted_close(market: pd.DataFrame, wide_dir: str | Path) -> pd.DataFrame:
@@ -237,7 +235,7 @@ def _load_wide_adjusted_close(market: pd.DataFrame, wide_dir: str | Path) -> pd.
         source = by_code.get(str(code), pd.Series(dtype=float))
         if not source.empty and not source.index.is_unique:
             source = source.groupby(level=0).last()
-        series = _backward_factor_series(source)
+        series = _cumulative_factor_series(source)
         days = pd.DatetimeIndex(adjusted.loc[row_positions, "time"])
         if series.empty:
             continue
@@ -404,6 +402,8 @@ def build_equal_weight_index(
     rebalance_dates: Iterable[pd.Timestamp | date],
     ratio: float = 0.20,
     max_count: int = 200,
+    initial_index_values: Mapping[str, float] | None = None,
+    initial_weights: Mapping[str, Mapping[str, float]] | None = None,
 ) -> dict[str, Any]:
     """计算 T 日收盘打分、T+1 开盘执行的无手续费高低分等权指数。"""
     scores = _normalise_frame(score_frame)
@@ -444,8 +444,8 @@ def build_equal_weight_index(
     execution_targets: dict[str, dict[date, dict[str, float]]] = {"high": {}, "low": {}}
     for leg in ("high", "low"):
         values: list[float] = []
-        current = 100.0
-        active: dict[str, float] = {}
+        current = float((initial_index_values or {}).get(leg, 100.0))
+        active: dict[str, float] = dict((initial_weights or {}).get(leg, {}))
         for position, day in enumerate(index):
             rebalanced = day in effective_by_day[leg]
             reported_weights = dict(active)

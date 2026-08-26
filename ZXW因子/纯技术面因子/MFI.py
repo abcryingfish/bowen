@@ -51,7 +51,12 @@ class MFI:
             "volume_surge": 0.1, 
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "normalized_value",
+            "money_flow_bias",
+            "volume_ratio",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_mfi_components(self, high_prices, low_prices, close_prices, volume, mfi_period=14):
         """向量化计算MFI核心组件"""
@@ -247,6 +252,18 @@ class MFI:
         is_volume_surge = (volume_ratio > volume_surge_threshold).astype(float) * self.signal_strength["volume_surge"]
         return {"volume_surge": is_volume_surge}
 
+    def continuous_signals(self, mfi, pos_flow, neg_flow, volume_ratio):
+        """返回可直接用于排序/回归的连续 MFI 特征。"""
+        normalized_value = ((mfi - 50.0) / 50.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        flow_total = (pos_flow + neg_flow).replace(0.0, np.nan)
+        money_flow_bias = ((pos_flow - neg_flow) / flow_total).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        volume_ratio_value = (volume_ratio - 1.0).clip(lower=-1.0, upper=1.0).fillna(0.0)
+        return {
+            "normalized_value": normalized_value,
+            "money_flow_bias": money_flow_bias,
+            "volume_ratio": volume_ratio_value,
+        }
+
     # ==========================================
     # 修复后的 get_factor_matrices
     # ==========================================
@@ -263,9 +280,10 @@ class MFI:
         div = self.divergence_signals(mfi, Close_data)
         trend = self.trend_signals(mfi)
         vol_surge = self.volume_surge_signal(vol_ratio)
+        continuous = self.continuous_signals(mfi, pos, neg, vol_ratio)
 
         # 3. 合并所有字典
-        all_factors = {**single, **multi, **div, **trend, **vol_surge}
+        all_factors = {**single, **multi, **div, **trend, **vol_surge, **continuous}
         
         # 4. 清洗数据 (reindex_like, fillna, 去除冷启动期)
         skip_rows = mfi_period * 2

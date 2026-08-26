@@ -64,8 +64,8 @@ class BOLL:
             # 核心趋势和通道信号
             "golden_cross": 0.5,                                # 价格上穿中轨
             "death_cross": -0.5,                                # 价格下穿中轨
-            "upper_breakthrough": 0.7,                          # 价格突破上轨（趋势延续，强看涨）
-            "lower_breakthrough": -0.7,                         # 价格跌破下轨（趋势延续，强看跌）
+            "upper_breakthrough": 1.0,                          # 价格接近/突破上轨的连续强度
+            "lower_breakthrough": -1.0,                         # 价格接近/跌破下轨的连续强度
             "upper_pullback": -0.6,                             # 价格回踩上轨（趋势终结，看跌反转）
             "lower_pullback": 0.6,                              # 价格回踩下轨（趋势终结，看涨反转）
             "middle_support": 0.4,                              # 中轨支撑有效（趋势确认）
@@ -96,8 +96,13 @@ class BOLL:
             "stagnation": -0.3,                                 # 钝化形态
         }
 
-        # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        # 所有信号名称列表；连续特征保留布林带位置、宽度和中轨偏离。
+        self.continuous_signal_names = [
+            "band_position",
+            "band_width_ratio",
+            "middle_bias",
+        ]
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
         
         # 复杂形态信号列表（未在主要函数中实现，仅用于内部管理）
         self.complex_patterns = [
@@ -128,13 +133,33 @@ class BOLL:
         boll_position = (price_matrix - boll_lower) / boll_width
         
         # 填充初始NaN值
-        boll_middle = boll_middle.fillna(method='ffill').fillna(price_matrix)
-        boll_upper = boll_upper.fillna(method='ffill').fillna(price_matrix)
-        boll_lower = boll_lower.fillna(method='ffill').fillna(price_matrix)
+        boll_middle = boll_middle.ffill().fillna(price_matrix)
+        boll_upper = boll_upper.ffill().fillna(price_matrix)
+        boll_lower = boll_lower.ffill().fillna(price_matrix)
         boll_width = boll_width.fillna(0)
         boll_position = boll_position.fillna(0.5)
 
         return boll_upper, boll_middle, boll_lower, boll_width, boll_position
+
+    @staticmethod
+    def _continuous_boundary_score(
+        directional_gap,
+        scale,
+        touch_weight=0.25,
+        pre_width=0.5,
+        post_width=0.75,
+    ):
+        """将边界距离映射为单调连续分数，负侧预热、正侧突破后饱和。"""
+        safe_scale = scale.abs().replace(0.0, np.nan)
+        normalized_gap = directional_gap / safe_scale
+        pre_score = touch_weight * np.exp(
+            -0.5 * (normalized_gap / pre_width) ** 2
+        )
+        post_score = touch_weight + (1.0 - touch_weight) * (
+            1.0 - np.exp(-normalized_gap.clip(lower=0.0) / post_width)
+        )
+        score = pre_score.where(normalized_gap < 0.0, post_score)
+        return score.clip(lower=0.0, upper=1.0).fillna(0.0)
 
     def trend_cross_signals(self, price_matrix, boll_upper, boll_middle, boll_lower):
         """价格与布林带三轨的交叉和突破信号"""
@@ -147,11 +172,17 @@ class BOLL:
         # 2. 死叉: 价格下穿中轨
         death_cross = ((price_prev >= boll_middle.shift(1)) & (price_matrix < boll_middle)).astype(float) * self.signal_strength["death_cross"]
         
-        # 3. 上轨突破 (Upper Band Breakthrough)
-        upper_breakthrough = ((price_prev <= boll_upper.shift(1)) & (price_matrix > boll_upper)).astype(float) * self.signal_strength["upper_breakthrough"]
-        
-        # 4. 下轨突破 (Lower Band Breakthrough)
-        lower_breakthrough = ((price_prev >= boll_lower.shift(1)) & (price_matrix < boll_lower)).astype(float) * self.signal_strength["lower_breakthrough"]
+        # 3-4. 上下轨突破改为连续边界强度。布林带宽度在默认参数下为 4 倍
+        # 滚动标准差，因此 width / 4 可作为不依赖价格量级的波动尺度。
+        boundary_scale = (boll_upper - boll_lower).abs() / 4.0
+        upper_breakthrough = self._continuous_boundary_score(
+            price_matrix - boll_upper,
+            boundary_scale,
+        )
+        lower_breakthrough = -self._continuous_boundary_score(
+            boll_lower - price_matrix,
+            boundary_scale,
+        )
         
         # 5. 上轨回踩 (Upper Band Pullback): 价格从上轨外回到上轨内
         upper_pullback = ((price_prev > boll_upper.shift(1)) & (price_matrix <= boll_upper)).astype(float) * self.signal_strength["upper_pullback"]
@@ -268,6 +299,15 @@ class BOLL:
             "extreme_reversal_bottom": is_bottom_reversal.fillna(0)
         }
 
+    def continuous_signals(self, price_matrix, boll_middle, boll_width, boll_position):
+        """返回可直接用于排序/回归的连续布林带特征。"""
+        middle_abs = boll_middle.abs().replace(0.0, np.nan)
+        return {
+            "band_position": boll_position.clip(lower=0.0, upper=1.0).fillna(0.5),
+            "band_width_ratio": (boll_width / middle_abs).clip(lower=0.0, upper=1.0).fillna(0.0),
+            "middle_bias": ((price_matrix - boll_middle) / middle_abs).clip(lower=-1.0, upper=1.0).fillna(0.0),
+        }
+
 
     def get_total_signal_matrix(self, Open_data, High_data, Low_data, Close_data, Volume, enabled_signals=None, boll_period=20, boll_std=2):
         """
@@ -301,12 +341,13 @@ class BOLL:
         volatility = self.volatility_signals(boll_width, boll_middle, boll_period)
         divergence = self.divergence_signals(Close_data, boll_position)
         reversal = self.extreme_reversal_signals(boll_position)
+        continuous = self.continuous_signals(Close_data, boll_middle, boll_width, boll_position)
         
         # 简单形态信号 (此处未实现，仅占位)
         simple_patterns = {} # self.simple_pattern_signals(boll_position) 
 
         # 合并所有信号字典
-        all_signals_dict = {**trend_cross, **support_res, **volatility, **divergence, **reversal, **simple_patterns}
+        all_signals_dict = {**trend_cross, **support_res, **volatility, **divergence, **reversal, **continuous, **simple_patterns}
 
         # 3. 累加启用的信号强度
         for signal_name, signal_matrix in all_signals_dict.items():
@@ -376,7 +417,8 @@ class BOLL:
             self.support_resistance_signals(Close_data, boll_middle),
             self.volatility_signals(boll_width, boll_middle, boll_period),
             self.divergence_signals(Close_data, boll_position),
-            self.extreme_reversal_signals(boll_position)
+            self.extreme_reversal_signals(boll_position),
+            self.continuous_signals(Close_data, boll_middle, boll_width, boll_position),
             # 简单形态信号 (此处未实现，不包含在处理器中)
         ]
         
@@ -438,9 +480,10 @@ class BOLL:
         volatility = self.volatility_signals(boll_width, boll_middle, boll_period)
         divergence = self.divergence_signals(Close_data, boll_position)
         reversal = self.extreme_reversal_signals(boll_position)
+        continuous = self.continuous_signals(Close_data, boll_middle, boll_width, boll_position)
         
         # 3. 合并所有信号字典
-        all_signals_dict = {**trend_cross, **support_res, **volatility, **divergence, **reversal}
+        all_signals_dict = {**trend_cross, **support_res, **volatility, **divergence, **reversal, **continuous}
         
         # 4. 过滤信号
         if exclude_complex_patterns:
@@ -536,9 +579,10 @@ class BOLL:
         vol = self.volatility_signals(width, middle, boll_period)
         div = self.divergence_signals(Close_data, pos)
         rev = self.extreme_reversal_signals(pos)
+        continuous = self.continuous_signals(Close_data, middle, width, pos)
 
         # 3. 合并所有信号并处理初期不稳定数据
-        all_factors = {**trend, **supp_res, **vol, **div, **rev}
+        all_factors = {**trend, **supp_res, **vol, **div, **rev, **continuous}
         
         for name in all_factors:
             all_factors[name].iloc[:boll_period * 2] = 0.0

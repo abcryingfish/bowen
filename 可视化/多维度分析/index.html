@@ -554,7 +554,23 @@
   </script>
   <script>
     (() => {
-      const API_ROOT = "http://127.0.0.1:8000/api";
+      function resolveApiRoot() {
+        const query = new URLSearchParams(window.location.search);
+        const candidates = [query.get("api_base"), query.get("api")];
+        try {
+          candidates.push(localStorage.getItem("RESULTS_API_BASE"));
+          candidates.push(localStorage.getItem("API_BASE_URL"));
+        } catch (_) {}
+        for (const rawValue of candidates) {
+          const raw = String(rawValue || "").trim();
+          if (!raw) continue;
+          try { return new URL(/^https?:\/\//i.test(raw) ? raw : `http://${raw}`).origin; } catch (_) {}
+        }
+        if (window.location.protocol === "https:") return window.location.origin;
+        if (window.location.protocol === "http:") return `http://${window.location.hostname}:8000`;
+        return "http://127.0.0.1:8000";
+      }
+      const API_ROOT = resolveApiRoot();
       const DEFAULT_SECTOR = "885462.THS";
       const FALLBACK_CATALOG = [{code: DEFAULT_SECTOR, name: "乳业"}];
       const esc = value => String(value ?? "未提供").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
@@ -620,7 +636,7 @@
 
       async function loadCatalog() {
         try {
-          const response = await fetch(`${API_ROOT}/sector/entities`);
+          const response = await fetch(`${API_ROOT}/api/sector/entities`);
           const payload = await response.json();
           const rows = Array.isArray(payload.data) ? payload.data : [];
           const mapped = rows.map(row => ({code: row.sector_code, name: row.sector_name || row.sector_code, report_stage: row.report_stage || "formal"})).filter(row => row.code);
@@ -629,7 +645,7 @@
       }
 
       async function loadReport(code) {
-        const response = await fetch(`${API_ROOT}/sector/report?sector_code=${encodeURIComponent(code)}`);
+        const response = await fetch(`${API_ROOT}/api/sector/report?sector_code=${encodeURIComponent(code)}`);
         const payload = await response.json();
         if (!response.ok || !payload.data) throw new Error(read(payload, "error.message", "板块研究报告不存在"));
         return payload.data;

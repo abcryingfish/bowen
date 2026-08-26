@@ -59,18 +59,22 @@ class WMA:
             # 将"周期共振"、"周期背离"等模糊信号并入上述更具体的信号中。
         }
 
-        self.all_signals = list(self.signal_strength.keys())
+        self.continuous_signal_names = [
+            "price_deviation",
+            "slope_rate",
+            "relative_spread",
+        ]
+
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def _calculate_wma(self, prices, period):
         """计算WMA的辅助函数（向量化）"""
-        # 注意：pandas没有内置WMA，需要自定义apply或使用ta-lib/talib的实现。
-        # 此处使用numpy.average with weights，效率低于纯向量化，但比迭代快得多。
-        def wma_func(x):
-            weights = np.arange(1, len(x) + 1)
-            return np.average(x, weights=weights)
-
-        # rolling(raw=False) 强制转换为 Series/DataFrame
-        return prices.rolling(window=period).apply(wma_func, raw=False)
+        weights = np.arange(1, period + 1, dtype=float)
+        weight_sum = float(weights.sum())
+        return prices.rolling(window=period).apply(
+            lambda values: np.dot(values, weights) / weight_sum,
+            raw=True,
+        )
 
 
     def get_wma_components(self, Close_data, wma_short=5, wma_medium=10, wma_long=20, wma_trend=50):
@@ -145,10 +149,24 @@ class WMA:
         wma_distance_perc = (close_prices - wma_s) / wma_s.replace(0, 1)
         prev_wma_distance_perc = wma_distance_perc.shift(1)
 
-        # 极值反转：距离超过0.05（5%）后，距离开始收缩
-        extreme_reversal = ((wma_distance_perc > 0.05) & (wma_distance_perc < prev_wma_distance_perc)) | \
-                           ((wma_distance_perc < -0.05) & (wma_distance_perc > prev_wma_distance_perc))
-        signals["extreme_reversal"] = extreme_reversal.astype(float) * self.signal_strength["extreme_reversal"]
+        # 极值反转：低位负偏离收敛为正，高位正偏离收敛为负。
+        extreme_reversal_bull = (
+            (wma_distance_perc < -0.05)
+            & (wma_distance_perc > prev_wma_distance_perc)
+        )
+        extreme_reversal_bear = (
+            (wma_distance_perc > 0.05)
+            & (wma_distance_perc < prev_wma_distance_perc)
+        )
+        signals["extreme_reversal"] = pd.DataFrame(
+            np.select(
+                [extreme_reversal_bull, extreme_reversal_bear],
+                [self.signal_strength["extreme_reversal"], -self.signal_strength["extreme_reversal"]],
+                default=0.0,
+            ),
+            index=close_prices.index,
+            columns=close_prices.columns,
+        )
 
         # WMA斜率转正/负
         wma_slope = wma_s - prev_wma_s
@@ -180,6 +198,25 @@ class WMA:
         signals["wma_double_top"] = double_top.astype(float) * self.signal_strength["wma_double_top"]
 
         return signals
+
+    def continuous_signals(self, close_prices, wma_s, wma_l):
+        """返回可用于排序/回归的连续 WMA 特征。"""
+        short_safe = wma_s.replace(0.0, np.nan)
+        long_safe = wma_l.replace(0.0, np.nan)
+        price_deviation = ((close_prices - wma_s) / short_safe).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        slope_rate = wma_s.pct_change(fill_method=None).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        relative_spread = ((wma_s - wma_l) / long_safe).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        return {
+            "price_deviation": price_deviation,
+            "slope_rate": slope_rate,
+            "relative_spread": relative_spread,
+        }
 
 
     def get_divergence_signals(self, close_prices, wma_s, lookback_period=10):
@@ -407,9 +444,10 @@ class WMA:
         cross_and_align = self.get_cross_and_alignment_signals(wma_s, wma_m, wma_l, wma_t)
         price_wma = self.get_price_wma_signals(Close_data, wma_s, wma_l, wma_m)
         divergence = self.get_divergence_signals(Close_data, wma_s)
+        continuous = self.continuous_signals(Close_data, wma_s, wma_l)
 
         # 3. 合并所有信号并处理初期不稳定数据 (2 * 最长周期)
-        all_factors = {**cross_and_align, **price_wma, **divergence}
+        all_factors = {**cross_and_align, **price_wma, **divergence, **continuous}
         min_valid = wma_trend * 2
         
         for name, df in all_factors.items():

@@ -47,8 +47,14 @@ class ULTOSC:
             "bull_bear_transition": 0.65,    # 多空转换（ULTOSC穿50）：趋势确认
         }
 
+        self.continuous_signal_names = [
+            "normalized_value",
+            "slope_rate",
+            "range_position",
+        ]
+
         # 所有信号名称列表
-        self.all_signals = list(self.signal_strength.keys())
+        self.all_signals = list(self.signal_strength.keys()) + self.continuous_signal_names
 
     def get_ultosc_components(self, high_prices, low_prices, close_prices, 
                              period1=7, period2=14, period3=28):
@@ -59,10 +65,9 @@ class ULTOSC:
         
         # 1. 计算 Buying Pressure (BP) 和 True Range (TR)
         prev_close = close_prices.shift(1)
-        prev_low = low_prices.shift(1)
-        
-        # BP = Close - min(Close, PrevLow)
-        bp = close_prices - low_prices.combine(prev_low, np.minimum)
+
+        # BP = Close - min(Low, PrevClose)
+        bp = close_prices - low_prices.combine(prev_close, np.minimum)
         
         # TR = max(High, PrevClose) - min(Low, PrevClose)
         true_high = high_prices.combine(prev_close, np.maximum)
@@ -189,6 +194,28 @@ class ULTOSC:
         return {
             "top_divergence": top_divergence.fillna(0),
             "bottom_divergence": bottom_divergence.fillna(0),
+        }
+
+    def continuous_signals(self, ultosc, lookback_period=20):
+        """返回可用于排序/回归的连续 ULTOSC 特征。"""
+        normalized_value = ((ultosc - 50.0) / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+        slope_rate = (ultosc.diff() / 50.0).clip(
+            lower=-1.0, upper=1.0
+        ).fillna(0.0)
+
+        ultosc_min = ultosc.rolling(window=lookback_period, min_periods=1).min()
+        ultosc_max = ultosc.rolling(window=lookback_period, min_periods=1).max()
+        ultosc_range = (ultosc_max - ultosc_min).replace(0.0, np.nan)
+        range_position = (
+            (2.0 * (ultosc - ultosc_min) / ultosc_range) - 1.0
+        ).clip(lower=-1.0, upper=1.0).fillna(0.0)
+
+        return {
+            "normalized_value": normalized_value,
+            "slope_rate": slope_rate,
+            "range_position": range_position,
         }
 
 
@@ -387,9 +414,17 @@ class ULTOSC:
         trend = self.trend_signals_detailed(ultosc_line)
         pattern = self.pattern_signals_detailed(ultosc_line)
         div = self.divergence_signals_detailed(ultosc_line, Close_data)
+        continuous = self.continuous_signals(ultosc_line)
 
         # 3. 合并所有字典
-        all_factors = {**midline, **breakthrough, **trend, **pattern, **div}
+        all_factors = {
+            **midline,
+            **breakthrough,
+            **trend,
+            **pattern,
+            **div,
+            **continuous,
+        }
         
         # 4. 清洗数据
         # ULTOSC 至少需要 period3 才能稳定
